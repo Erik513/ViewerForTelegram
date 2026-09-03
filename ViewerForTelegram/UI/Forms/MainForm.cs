@@ -42,6 +42,8 @@ public sealed class MainForm : StyledForm
     private IReadOnlyList<FeedItem> _items = Array.Empty<FeedItem>();
     private readonly Dictionary<long, AudioMessage> _byFileId = new();
     private long? _currentFileId;
+    private long _pendingFileId;   // a track PlayAsync is currently loading
+    private int _playSeq;          // bumped per PlayAsync so a superseded one bails out
 
     private bool _started;
     private bool _connecting;
@@ -143,6 +145,9 @@ public sealed class MainForm : StyledForm
         _list.Columns.Add("Length", 70);
         _list.Columns.Add("Size", 90);
         _list.FillColumnIndex = 1;
+        // Selecting a row loads and plays it; double-click / Enter on the
+        // already-playing row toggles play/pause.
+        _list.SelectedIndexChanged += (_, _) => LoadSelected();
         _list.MouseDoubleClick += (_, _) => PlaySelected();
         _list.KeyDown += (_, e) =>
         {
@@ -152,6 +157,7 @@ public sealed class MainForm : StyledForm
                 e.Handled = true;
             }
         };
+        _list.ClientSizeChanged += (_, _) => FitColumns();
 
         // ---- player ----
         _player = new PlayerPanel();
@@ -400,6 +406,7 @@ public sealed class MainForm : StyledForm
             _list.Items.Add(row);
         }
         _list.EndUpdate();
+        FitColumns();
 
         if (_items.Count == 0)
         {
@@ -426,6 +433,18 @@ public sealed class MainForm : StyledForm
             ? a
             : null;
 
+    /// <summary>Row selected: load + play it, unless it is already the current / loading track.</summary>
+    private void LoadSelected()
+    {
+        if (SelectedAudio is { } audio
+            && audio.FileId != _currentFileId
+            && audio.FileId != _pendingFileId)
+        {
+            _ = PlayAsync(audio);
+        }
+    }
+
+    /// <summary>Double-click / Enter: like select, but toggles play/pause on the current track.</summary>
     private void PlaySelected()
     {
         if (SelectedAudio is not { } audio)
@@ -433,25 +452,39 @@ public sealed class MainForm : StyledForm
             return;
         }
 
-        // Same track already loaded -> just toggle play/pause.
         if (_currentFileId == audio.FileId && _audio.State != PlaybackState.Stopped)
         {
             OnPlayPause();
             return;
         }
 
-        _ = PlayAsync(audio);
+        if (audio.FileId != _pendingFileId)
+        {
+            _ = PlayAsync(audio);
+        }
     }
 
     private async Task PlayAsync(AudioMessage audio)
     {
+        int seq = ++_playSeq;   // any later PlayAsync makes this one a no-op from here on
+        _pendingFileId = audio.FileId;
+
         StopCurrent();
         _currentFileId = audio.FileId;
 
         string title = audio.DisplayName;
-        _player.SetDownloading(0);
+        _player.SetDownloading(audio, 0);
         Status($"Downloading: {title}");
-        var progress = new Progress<int>(p => _player.SetDownloading(p));
+        // Progress<T> posts asynchronously, so a trailing 100% report can land
+        // after the track has already loaded - only apply it while this file is
+        // still the one being loaded.
+        var progress = new Progress<int>(p =>
+        {
+            if (seq == _playSeq && _pendingFileId == audio.FileId)
+            {
+                _player.SetDownloading(audio, p);
+            }
+        });
 
         string path;
         try
@@ -460,26 +493,27 @@ public sealed class MainForm : StyledForm
         }
         catch (OperationCanceledException)
         {
-            if (_currentFileId == audio.FileId)
+            if (seq == _playSeq)
             {
                 _player.SetIdle();
                 _currentFileId = null;
+                _pendingFileId = 0;
             }
             return;
         }
         catch (Exception ex)
         {
-            if (_currentFileId == audio.FileId)
+            if (seq == _playSeq)
             {
                 _player.SetIdle();
                 _currentFileId = null;
+                _pendingFileId = 0;
+                Status("Download failed: " + ex.Message);
             }
-            Status("Download failed: " + ex.Message);
             return;
         }
 
-        // The user may have started another track while this was downloading.
-        if (_currentFileId != audio.FileId)
+        if (seq != _playSeq)   // superseded by a newer selection
         {
             return;
         }
@@ -494,11 +528,13 @@ public sealed class MainForm : StyledForm
         {
             _player.SetIdle();
             _currentFileId = null;
-            Status($"Cannot play {Path.GetExtension(audio.FileName)} – use Save and open it elsewhere. ({ex.Message})");
+            _pendingFileId = 0;
+            Status($"Cannot play {Path.GetExtension(audio.FileName)} – use the download button and open it elsewhere. ({ex.Message})");
             return;
         }
 
-        _player.SetLoaded(_audio.Duration);
+        _pendingFileId = 0;
+        _player.SetLoaded(audio, _audio.Duration);
         _audio.Play();
         _player.SetPlaying(true);
         _positionTimer.Start();
@@ -532,9 +568,27 @@ public sealed class MainForm : StyledForm
     private void StopCurrent()
     {
         _positionTimer.Stop();
+        if (_currentFileId is long prev)
+        {
+            _downloader.Cancel(prev); // a still-running download for the old track
+        }
         _audio.Stop();
         _player.SetIdle();
         _currentFileId = null;
+    }
+
+    /// <summary>Keep the Title column filling exactly, so no horizontal scrollbar appears.</summary>
+    private void FitColumns()
+    {
+        if (!_list.IsHandleCreated || _list.Columns.Count < 5)
+        {
+            return;
+        }
+
+        int others = _list.Columns[0].Width + _list.Columns[2].Width
+                     + _list.Columns[3].Width + _list.Columns[4].Width;
+        int titleWidth = _list.ClientSize.Width - others - 4;
+        _list.Columns[1].Width = Math.Max(140, titleWidth);
     }
 
     private void SaveCurrent()
@@ -660,6 +714,8 @@ public sealed class MainForm : StyledForm
     private async Task LogoutAsync(bool wipeConfig)
     {
         _downloader.CancelAll();
+        _playSeq++;              // abandon any in-flight PlayAsync
+        _pendingFileId = 0;
         StopCurrent();
 
         await _telegram.DisposeAsync();

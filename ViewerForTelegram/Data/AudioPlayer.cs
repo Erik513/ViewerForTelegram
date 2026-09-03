@@ -8,11 +8,14 @@ using PlaybackState = ViewerForTelegram.Data.Interfaces.PlaybackState;
 namespace ViewerForTelegram.Data;
 
 /// <summary>
-/// <see cref="IAudioPlayer"/> on top of NAudio. .wav / .mp3 are decoded
-/// natively, .flac via <see cref="FlacReader"/> (Media Foundation's FLAC source
-/// does not report a duration), everything else (m4a, aac, wma, …) via Windows
-/// Media Foundation. ogg/opus are not covered and surface as a load error.
-/// Output goes through a single <see cref="WaveOutEvent"/>.
+/// <see cref="IAudioPlayer"/> on top of NAudio. .flac goes through
+/// <see cref="FlacReader"/> (Media Foundation's FLAC source reports no
+/// duration); everything else is tried with <see cref="AudioFileReader"/> first
+/// (native PCM / IEEE-float .wav and .mp3) and falls back to
+/// <see cref="MediaFoundationReader"/> for anything it cannot open - notably
+/// WAVE_FORMAT_EXTENSIBLE .wav files and m4a / aac / wma. ogg/opus are not
+/// covered and surface as a load error. Output goes through one
+/// <see cref="WaveOutEvent"/>.
 /// </summary>
 public sealed class AudioPlayer : IAudioPlayer
 {
@@ -82,9 +85,28 @@ public sealed class AudioPlayer : IAudioPlayer
         }
         else
         {
-            _fileReader = new AudioFileReader(filePath) { Volume = _volume };
-            _stream = _fileReader;
-            output = _fileReader;
+            try
+            {
+                _fileReader = new AudioFileReader(filePath) { Volume = _volume };
+                _stream = _fileReader;
+                output = _fileReader;
+            }
+            catch (Exception ex) when (ex is not FileNotFoundException and not DirectoryNotFoundException)
+            {
+                // AudioFileReader routes anything that is not plain PCM / IEEE
+                // float through ACM - a WAVE_FORMAT_EXTENSIBLE .wav (common for
+                // 24-bit / multichannel exports) then fails with
+                // "NoDriver calling acmFormatSuggest". Media Foundation decodes
+                // those (and m4a/aac/wma) directly.
+                AppLog.Error("Audio",
+                    $"AudioFileReader failed for {Path.GetExtension(filePath)}: " +
+                    $"{ex.GetType().Name}: {ex.Message} - falling back to Media Foundation");
+
+                var mf = new MediaFoundationReader(filePath);
+                _stream = mf;
+                _sampleChannel = new SampleChannel(mf, forceStereo: false) { Volume = _volume };
+                output = _sampleChannel;
+            }
         }
 
         _output = new WaveOutEvent();

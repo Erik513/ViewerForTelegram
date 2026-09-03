@@ -163,6 +163,16 @@ public sealed class MainForm : StyledForm
         _list.CellMouseDoubleClick += (_, _) => OnMainButton();
         _list.KeyDown += OnListKeyDown;
 
+        // WinForms leaves a DataGridView cell tooltip stuck on screen when the
+        // grid scrolls, reloads its rows or the window loses focus while one is
+        // visible. Toggling ShowCellToolTips tears the current one down.
+        _list.CellMouseLeave += (_, _) => HideListToolTip();
+        _list.MouseLeave += (_, _) => HideListToolTip();
+        _list.Leave += (_, _) => HideListToolTip();
+        _list.Scroll += (_, _) => HideListToolTip();
+        _list.RowsRemoved += (_, _) => HideListToolTip();
+        Deactivate += (_, _) => HideListToolTip();
+
         // context menu: save a copy to disk
         var menu = new ContextMenuStrip();
         _saveMenuItem = menu.Items.Add("Save a copy…", null, (_, _) => SaveSelected());
@@ -410,8 +420,22 @@ public sealed class MainForm : StyledForm
         });
     }
 
+    /// <summary>
+    /// Kills a DataGridView cell tooltip that WinForms would otherwise leave
+    /// hanging on screen. Cheap no-op when none is showing.
+    /// </summary>
+    private void HideListToolTip()
+    {
+        if (_list.ShowCellToolTips)
+        {
+            _list.ShowCellToolTips = false;
+            _list.ShowCellToolTips = true;
+        }
+    }
+
     private void RenderList()
     {
+        HideListToolTip();
         string query = _searchBox.Text.Trim();
         var filtered = _items
             .Where(i => query.Length == 0 || Matches(i.Audio, query))

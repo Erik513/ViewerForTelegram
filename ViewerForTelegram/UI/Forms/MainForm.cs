@@ -34,7 +34,7 @@ public sealed class MainForm : StyledForm
     private readonly ComboBox _rangeCombo;
     private readonly TextBox _searchBox;
     private readonly Label _cacheLabel;
-    private readonly Label _statusLabel;
+    private readonly TextBox _statusBox;
     private readonly StyledGrid _list;
     private readonly PlayerPanel _player;
     private readonly ToolTip _toolTip = new() { AutoPopDelay = 12000, InitialDelay = 400 };
@@ -105,12 +105,20 @@ public sealed class MainForm : StyledForm
         _searchBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _searchBox.TextChanged += (_, _) => RenderList();
 
-        _cacheLabel = UIStyles.Labels.CreateMuted("Cache: –");
-        _cacheLabel.Dock = DockStyle.Fill;
-        _cacheLabel.TextAlign = ContentAlignment.MiddleRight;
-        _cacheLabel.AutoSize = false;
-        _cacheLabel.AutoEllipsis = false;
-        _cacheLabel.Margin = new Padding(6, 0, 0, 0);
+        // Plain Label (not UIStyles.Labels.CreateMuted): that one is owner-drawn
+        // and ignores ForeColor, so the "cache full" red would never show.
+        _cacheLabel = new Label
+        {
+            Text = "Cache: –",
+            AutoSize = false,
+            AutoEllipsis = false,
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleRight,
+            Font = UIStyles.Fonts.Small,
+            ForeColor = UIStyles.Colors.TextMuted,
+            BackColor = UIStyles.Colors.BackgroundDarkElevated,
+            Margin = new Padding(6, 0, 0, 0),
+        };
 
         var topRow = new TableLayoutPanel
         {
@@ -131,12 +139,16 @@ public sealed class MainForm : StyledForm
         topRow.Controls.Add(_searchBox, 3, 0);
         topRow.Controls.Add(_cacheLabel, 4, 0);
 
-        _statusLabel = UIStyles.Labels.CreateMuted("");
-        _statusLabel.Dock = DockStyle.Fill;
-        _statusLabel.Padding = new Padding(12, 0, 12, 0);
-        _statusLabel.AutoSize = false;
-        _statusLabel.TextAlign = ContentAlignment.MiddleLeft;
-        _statusLabel.BackColor = UIStyles.Colors.BackgroundDarkElevated;
+        // Status / error line - read-only so the text (paths, error messages)
+        // can be selected and copied. Primary-colour text.
+        _statusBox = UIStyles.TextBoxes.CreateBorderstyleNone();
+        _statusBox.ReadOnly = true;
+        _statusBox.TabStop = false;
+        _statusBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        _statusBox.Margin = new Padding(12, 0, 12, 0);
+        _statusBox.Font = UIStyles.Fonts.Small;
+        _statusBox.ForeColor = UIStyles.Colors.PrimaryLight;
+        _statusBox.BackColor = UIStyles.Colors.BackgroundDarkElevated;
 
         // ---- list ----
         _list = new StyledGrid
@@ -225,12 +237,12 @@ public sealed class MainForm : StyledForm
             BackColor = UIStyles.Colors.BackgroundMedium
         };
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 22));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, PlayerPanel.PanelHeight));
         root.Controls.Add(topRow, 0, 0);
-        root.Controls.Add(_statusLabel, 0, 1);
-        root.Controls.Add(_list, 0, 2);
+        root.Controls.Add(_list, 0, 1);
+        root.Controls.Add(_statusBox, 0, 2);
         root.Controls.Add(_player, 0, 3);
 
         ContentPanel.Controls.Add(root);
@@ -975,7 +987,7 @@ public sealed class MainForm : StyledForm
             VolumePercent: (int)Math.Round(_player.Volume * 100)));
     }
 
-    private void Status(string text) => _statusLabel.Text = text;
+    private void Status(string text) => _statusBox.Text = text;
     private static void TryDelete(string path)
     {
         try

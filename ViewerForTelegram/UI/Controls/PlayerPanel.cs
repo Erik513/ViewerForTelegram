@@ -30,7 +30,8 @@ public sealed class PlayerPanel : Panel
     private readonly Button _browseButton;
     private readonly Label _title;
     private readonly Label _performer;
-    private readonly Label _fileInfo;
+    private readonly Label _fileSize;
+    private readonly Label _fileFormat;
     private readonly SliderBar _seek;
     private readonly SlimProgressBar _downloadBar;
     private readonly TableLayoutPanel _seekRow;
@@ -70,8 +71,10 @@ public sealed class PlayerPanel : Panel
         _title.Font = new Font(_title.Font, FontStyle.Bold);
         _performer = MakeLabel(UIStyles.Labels.CreateMuted(""));
 
-        _fileInfo = MakeLabel(UIStyles.Labels.CreateMuted(""));
-        _fileInfo.TextAlign = ContentAlignment.MiddleCenter;
+        _fileSize = MakeLabel(UIStyles.Labels.CreateMuted(""));
+        _fileSize.TextAlign = ContentAlignment.BottomRight;
+        _fileFormat = MakeLabel(UIStyles.Labels.CreateMuted(""));
+        _fileFormat.TextAlign = ContentAlignment.TopRight;
 
         _seek = new SliderBar { Enabled = false, Anchor = AnchorStyles.Left | AnchorStyles.Right };
         _seek.ValueChanged += (_, _) =>
@@ -96,19 +99,38 @@ public sealed class PlayerPanel : Panel
         _volume = new SliderBar { Maximum = 1.0, Value = 0.1, Anchor = AnchorStyles.Left | AnchorStyles.Right };
         _volume.ValueChanged += (_, _) => VolumeChanged?.Invoke((float)_volume.Value);
 
-        // Top-right cluster: [save]  size·format  [open folder]
+        // Top-right cluster: size / format stacked, then [save][open folder]
+        var fileInfoStack = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2,
+            Margin = new Padding(0), BackColor = Color.Transparent
+        };
+        fileInfoStack.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+        fileInfoStack.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+        fileInfoStack.Controls.Add(_fileSize, 0, 0);
+        fileInfoStack.Controls.Add(_fileFormat, 0, 1);
+
+        var clusterButtons = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1,
+            Margin = new Padding(0), BackColor = Color.Transparent
+        };
+        clusterButtons.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        clusterButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));
+        clusterButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));
+        clusterButtons.Controls.Add(_saveButton, 0, 0);
+        clusterButtons.Controls.Add(_browseButton, 1, 0);
+
         var cluster = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 1,
+            Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1,
             Margin = new Padding(0), BackColor = Color.Transparent
         };
         cluster.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        cluster.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));
         cluster.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        cluster.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));
-        cluster.Controls.Add(_saveButton, 0, 0);
-        cluster.Controls.Add(_fileInfo, 1, 0);
-        cluster.Controls.Add(_browseButton, 2, 0);
+        cluster.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 74));
+        cluster.Controls.Add(fileInfoStack, 0, 0);
+        cluster.Controls.Add(clusterButtons, 1, 0);
 
         // Row 0: title (fill) + the cluster
         var titleRow = new TableLayoutPanel
@@ -118,7 +140,7 @@ public sealed class PlayerPanel : Panel
         };
         titleRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         titleRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        titleRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 190));
+        titleRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200));
         titleRow.Controls.Add(_title, 0, 0);
         titleRow.Controls.Add(cluster, 1, 0);
 
@@ -185,7 +207,8 @@ public sealed class PlayerPanel : Panel
         _saveButton.Enabled = false;
         _title.Text = "Nothing selected";
         _performer.Text = "";
-        _fileInfo.Text = "";
+        _fileSize.Text = "";
+        _fileFormat.Text = "";
         _tips.SetToolTip(_saveButton, "Save a copy to disk");
         _seek.Enabled = false;
         _seek.Value = 0;
@@ -198,9 +221,8 @@ public sealed class PlayerPanel : Panel
     {
         _title.Text = string.IsNullOrWhiteSpace(a.Title) ? a.FileName : a.Title;
         _performer.Text = a.Performer;
-        string ext = Path.GetExtension(a.FileName).TrimStart('.').ToUpperInvariant();
-        _fileInfo.Text = $"{a.SizeBytes / 1024d / 1024d:0.0} MB"
-                         + (ext.Length > 0 ? $"  ·  {ext}" : "");
+        _fileSize.Text = $"{a.SizeBytes / 1024d / 1024d:0.0} MB";
+        _fileFormat.Text = Path.GetExtension(a.FileName).TrimStart('.').ToUpperInvariant();
         _tips.SetToolTip(_saveButton, $"Save a copy of \"{a.FileName}\"");
 
         SetButton(button);

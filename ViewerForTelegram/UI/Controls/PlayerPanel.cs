@@ -23,7 +23,9 @@ public enum PlayerButton
 public sealed class PlayerPanel : Panel
 {
     /// <summary>Fixed height the host should give this panel.</summary>
-    public const int PanelHeight = 96;
+    public const int PanelHeight = 114;
+
+    private const int StatusRowHeight = 18;
 
     private readonly Button _mainButton;
     private readonly Button _saveButton;
@@ -37,6 +39,7 @@ public sealed class PlayerPanel : Panel
     private readonly TableLayoutPanel _seekRow;
     private readonly Label _time;
     private readonly SliderBar _volume;
+    private readonly TextBox _status;
     private readonly ToolTip _tips = new() { AutoPopDelay = 20000 };
 
     private TimeSpan _duration;
@@ -47,7 +50,7 @@ public sealed class PlayerPanel : Panel
     {
         Dock = DockStyle.Bottom;
         Height = PanelHeight;
-        Padding = new Padding(12, 5, 14, 6);
+        Padding = new Padding(12, 5, 14, 3);
         BackColor = UIStyles.Colors.BackgroundDarkElevated;
 
         _mainButton = MakeIconButton(44, "Play / pause");
@@ -184,21 +187,45 @@ public sealed class PlayerPanel : Panel
         stack.Controls.Add(_performer, 0, 1);
         stack.Controls.Add(_seekRow, 0, 2);
 
-        var root = new TableLayoutPanel
+        var controls = new TableLayoutPanel
         {
             Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1,
             Margin = new Padding(0), BackColor = Color.Transparent
         };
+        controls.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        controls.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 52));
+        controls.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        controls.Controls.Add(_mainButton, 0, 0);
+        controls.Controls.Add(stack, 1, 0);
+
+        // Status / error line along the bottom edge - read-only so the text
+        // (paths, error messages) can be selected and copied. Primary accent.
+        _status = UIStyles.TextBoxes.CreateBorderstyleNone();
+        _status.ReadOnly = true;
+        _status.TabStop = false;
+        _status.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        _status.Margin = new Padding(0);
+        _status.Font = UIStyles.Fonts.Small;
+        _status.ForeColor = UIStyles.Colors.PrimaryLight;
+        _status.BackColor = BackColor;
+
+        var root = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2,
+            Margin = new Padding(0), BackColor = Color.Transparent
+        };
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 52));
-        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        root.Controls.Add(_mainButton, 0, 0);
-        root.Controls.Add(stack, 1, 0);
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, StatusRowHeight));
+        root.Controls.Add(controls, 0, 0);
+        root.Controls.Add(_status, 0, 1);
 
         Controls.Add(root);
         Disposed += (_, _) => _tips.Dispose();
         SetIdle();
     }
+
+    /// <summary>Sets the status / error line along the bottom of the player.</summary>
+    public void SetStatus(string text) => _status.Text = text ?? "";
 
     public event Action? MainButton;
     public event Action? Save;                  // save a copy to disk

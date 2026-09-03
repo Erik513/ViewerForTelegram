@@ -34,7 +34,6 @@ public sealed class MainForm : StyledForm
     private readonly ComboBox _rangeCombo;
     private readonly TextBox _searchBox;
     private readonly Label _cacheLabel;
-    private readonly TextBox _statusBox;
     private readonly StyledGrid _list;
     private readonly PlayerPanel _player;
     private readonly ToolTip _toolTip = new() { AutoPopDelay = 12000, InitialDelay = 400 };
@@ -139,17 +138,6 @@ public sealed class MainForm : StyledForm
         topRow.Controls.Add(_searchBox, 3, 0);
         topRow.Controls.Add(_cacheLabel, 4, 0);
 
-        // Status / error line - read-only so the text (paths, error messages)
-        // can be selected and copied. Primary-colour text.
-        _statusBox = UIStyles.TextBoxes.CreateBorderstyleNone();
-        _statusBox.ReadOnly = true;
-        _statusBox.TabStop = false;
-        _statusBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-        _statusBox.Margin = new Padding(12, 0, 12, 0);
-        _statusBox.Font = UIStyles.Fonts.Small;
-        _statusBox.ForeColor = UIStyles.Colors.PrimaryLight;
-        _statusBox.BackColor = UIStyles.Colors.BackgroundDarkElevated;
-
         // ---- list ----
         _list = new StyledGrid
         {
@@ -225,7 +213,8 @@ public sealed class MainForm : StyledForm
             Status("Playback failed: " + ex.Message);
         };
 
-        // A 4-row grid so nothing can overlap regardless of window size.
+        // A 3-row grid so nothing can overlap regardless of window size.
+        // (The status / error line lives at the bottom of the player itself.)
         _player.Dock = DockStyle.Fill;
         _player.Margin = new Padding(0);   // the default 3px margin ate into the panel
 
@@ -233,17 +222,15 @@ public sealed class MainForm : StyledForm
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 4,
+            RowCount = 3,
             BackColor = UIStyles.Colors.BackgroundMedium
         };
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, PlayerPanel.PanelHeight));
         root.Controls.Add(topRow, 0, 0);
         root.Controls.Add(_list, 0, 1);
-        root.Controls.Add(_statusBox, 0, 2);
-        root.Controls.Add(_player, 0, 3);
+        root.Controls.Add(_player, 0, 2);
 
         ContentPanel.Controls.Add(root);
 
@@ -987,7 +974,7 @@ public sealed class MainForm : StyledForm
             VolumePercent: (int)Math.Round(_player.Volume * 100)));
     }
 
-    private void Status(string text) => _statusBox.Text = text;
+    private void Status(string text) => _player.SetStatus(text);
     private static void TryDelete(string path)
     {
         try

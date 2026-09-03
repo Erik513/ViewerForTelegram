@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Viewer for Telegram</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div class="bar">
+    <button id="settings" title="Einstellungen">&#9881;</button>
+
+    <label>Gruppe / Kanal
+      <select id="group" disabled></select>
+    </label>
+
+    <label>Zeitraum
+      <select id="range">
+        <option value="3">Letzte 3 Tage</option>
+        <option value="7">Letzte 7 Tage</option>
+        <option value="14">Letzte 14 Tage</option>
+        <option value="30">Letzte 30 Tage</option>
+      </select>
+    </label>
+
+    <label class="vol">&#128266;
+      <input id="volume" type="range" min="0" max="100">
+    </label>
+
+    <input id="search" type="search" placeholder="Filtern ...">
+    <span id="cache">Cache: –</span>
+    <span id="status">Verbinde ...</span>
+  </div>
+
+  <div class="table-wrap">
+    <table id="songs">
+      <colgroup>
+        <col class="col-date">
+        <col class="col-song">
+        <col class="col-file">
+      </colgroup>
+      <thead>
+        <tr>
+          <th data-key="date">Datum</th>
+          <th data-key="title">Song</th>
+          <th data-key="none" class="no-sort">Datei</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <p id="empty" class="empty" hidden>Keine Audiodateien im Zeitraum.</p>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

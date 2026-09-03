@@ -1,0 +1,13 @@
+# Build-Ausgaben
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+
+# Lokale Konfiguration & Telegram-Session (NIE einchecken!)
+appsettings.local.json
+*.session
+*.session-journal
+cache/

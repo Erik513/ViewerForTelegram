@@ -1,0 +1,1077 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>ErikwnkWFUI</name>
+    </assembly>
+    <members>
+        <member name="T:ErikwnkWFUI.Controls.DataGridView">
+            <summary>
+            A themed <see cref="T:System.Windows.Forms.DataGridView"/> for displaying
+            data bound via <see cref="P:System.Windows.Forms.DataGridView.DataSource"/>
+            (a DataTable, a List&lt;T&gt;, a BindingSource, ...). Unlike
+            <see cref="T:ErikwnkWFUI.Controls.ListView"/> - a plain native ListView has no
+            data-binding support at all, and neither does anything built on top
+            of it - this is the control to reach for when rows come from a bound
+            source rather than being added by hand. A genuine WinForms control
+            (not a thin wrapper around a native Win32 common control the way
+            ListView is), so unlike ListView this needs none of that
+            header-subclassing/WM_PAINT-interception - every visual it has is
+            reachable through its own style properties.
+            </summary>
+            <remarks>
+            Named the same as its own base class (a WinForms convention this
+            library is moving toward, replacing the old "Styled" prefix) - the
+            base type reference below has to stay fully qualified so the class
+            doesn't try to inherit from itself. Consumers never need to spell out
+            <c>ErikwnkWFUI.Controls.DataGridView</c> either: go through
+            <see cref="M:ErikwnkWFUI.UIStyles.DataGridViews.CreateStandard(System.Object)"/>, which hands back
+            a plain <see cref="T:System.Windows.Forms.DataGridView"/>-typed
+            reference.
+            </remarks>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.DataGridView.HeaderBackColor">
+            <summary>Background color of the column header row.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.DataGridView.HeaderForeColor">
+            <summary>Text color of the column header row.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.DataGridView.RowBackColor">
+            <summary>Background color of a normal (not selected) row. Odd/even rows alternate between this and a slightly darker shade of it.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.DataGridView.RowForeColor">
+            <summary>Text color of a normal (not selected) row.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.DataGridView.SelectionBackColor">
+            <summary>
+            Background color of a selected cell/row. Follows the current
+            accent (<see cref="P:ErikwnkWFUI.Styles.UIColors.Primary"/>) live until explicitly
+            set - same pattern as ListView's SelectionOverlayColor.
+            </summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Controls.ListBox">
+            <summary>
+            An owner-drawn <see cref="T:System.Windows.Forms.ListBox"/> with
+            per-item icons, optional drag-to-reorder (a drag handle appears on
+            the right of each item), enumeration numbers, and fully overridable
+            item colors - a themed alternative to the native list box for
+            anything beyond plain text rows. Use <see cref="T:ErikwnkWFUI.Controls.ListBoxControl"/>
+            instead if you also want a header bar above the list.
+            </summary>
+            <remarks>
+            Named the same as its own base class, same as
+            <see cref="T:ErikwnkWFUI.Controls.DataGridView"/> - the base type reference below
+            stays fully qualified so the class doesn't try to inherit from
+            itself. Go through <see cref="M:ErikwnkWFUI.UIStyles.ListBoxes.CreateStandard(System.String,System.Boolean,System.Boolean)"/> to
+            get one without ever having to spell out
+            <c>ErikwnkWFUI.Controls.ListBox</c>.
+            </remarks>
+        </member>
+        <member name="E:ErikwnkWFUI.Controls.ListBox.ItemsReordered">
+            <summary>Raised after a drag-to-reorder moves an item to a new position (see <see cref="P:ErikwnkWFUI.Controls.ListBox.AllowReorder"/>).</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListBox.DisplayTextProvider">
+            <summary>
+            Computes each item's display text from the item itself, e.g.
+            <c>o => ((Track)o).Title</c>. Takes priority over
+            <see cref="P:ErikwnkWFUI.Controls.ListBox.DisplayTextMember"/> when both are set; falls back to
+            <c>item.ToString()</c> when neither is.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListBox.DisplayTextMember">
+            <summary>Name of a property to read each item's display text from via reflection - simpler alternative to <see cref="P:ErikwnkWFUI.Controls.ListBox.DisplayTextProvider"/> for the common case.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListBox.ShowEnumeration">
+            <summary>Prefixes each item with its 1-based position ("1.", "2.", ...).</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListBox.IconProvider">
+            <summary>Optional per-item icon, drawn to the left of the display text.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListBox.IsItemDisabled">
+            <summary>Optional per-item disabled state (grayed out, non-interactive appearance) - independent of the whole control's own <see cref="P:System.Windows.Forms.Control.Enabled"/>.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListBox.AllowReorder">
+            <summary>Whether items can be dragged to reorder them (drag handle on the right of each item) - also controls <see cref="P:System.Windows.Forms.Control.AllowDrop"/>.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListBox.ItemHeightCustom">
+            <summary>Row height in pixels - use this instead of the inherited <see cref="P:System.Windows.Forms.ListBox.ItemHeight"/> so the internal default stays in sync.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListBox.DragIndicatorColor">
+            <summary>
+            Color of the horizontal line shown at the drop position while
+            dragging an item to reorder it. Follows the current accent
+            (PrimaryLight) live until explicitly set - it used to be a plain
+            field snapshotted once at construction, so an app that changed
+            its accent after building the list still saw the drag indicator
+            in whatever accent was active when the list was first created.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListBox.DisabledForeColor">
+            <summary>Text color for an item where <see cref="P:ErikwnkWFUI.Controls.ListBox.IsItemDisabled"/> returns true.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListBox.DisabledBackColor">
+            <summary>Background color for an item where <see cref="P:ErikwnkWFUI.Controls.ListBox.IsItemDisabled"/> returns true.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListBox.SelectedBackColor">
+            <summary>
+            Background color of the selected item. Defaults to the current
+            accent color (<see cref="P:ErikwnkWFUI.Styles.UIColors.Primary"/>) - override this
+            specifically rather than calling <c>UIStyles.Colors.SetAccent</c>
+            if you only want to change selection, not every accent-colored
+            control in the app.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListBox.ItemBackColor">
+            <summary>Background color of a normal (not selected/hovered/disabled) item. Odd/even rows alternate between this and a slightly darker shade of it.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListBox.ItemForeColor">
+            <summary>Text color of a normal (not selected/disabled) item.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListBox.HoverBackColor">
+            <summary>Background color of the item currently under the mouse.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListBox.DragHandleColor">
+            <summary>Color of the drag-handle glyph shown on the right of each item when <see cref="P:ErikwnkWFUI.Controls.ListBox.AllowReorder"/> is true.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Controls.ListBox.ClearSelected">
+            <summary>Clears the single selection. Deliberately hides (not overrides) the inherited multi-select-clearing <see cref="M:ErikwnkWFUI.Controls.ListBox.ClearSelected"/> - this control is always single-select.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Controls.ListBox.MoveItem(System.Int32,System.Int32)">
+            <summary>Moves an item to a new index without user drag interaction - does not raise <see cref="E:ErikwnkWFUI.Controls.ListBox.ItemsReordered"/>.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Controls.ListBoxControl">
+            <summary>
+            A <see cref="T:ErikwnkWFUI.Controls.ListBox"/> with an optional header bar above it.
+            Most members here just proxy the same-named member on the inner list
+            box (see <see cref="P:ErikwnkWFUI.Controls.ListBoxControl.InnerListBox"/>) - reach through InnerListBox
+            directly for anything not proxied.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Controls.ListBoxControl.#ctor(System.String,System.Boolean,System.Boolean,System.String,System.Drawing.ContentAlignment)">
+            <summary>headerTitle left null/empty hides the header bar entirely (the default) - set <see cref="P:ErikwnkWFUI.Controls.ListBoxControl.Title"/> later to show it.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListBoxControl.InnerListBox">
+            <summary>The wrapped list box - use this for anything (events, colors, ...) not already proxied by a member on this class.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Controls.CopyConfirmationStyle">
+            <summary>How <see cref="T:ErikwnkWFUI.Controls.ListView"/> confirms a Ctrl+C/Ctrl+Shift+C copy.</summary>
+        </member>
+        <member name="F:ErikwnkWFUI.Controls.CopyConfirmationStyle.Toast">
+            <summary>A <see cref="T:ErikwnkWFUI.Forms.ToastForm"/> popup (the original, default behavior).</summary>
+        </member>
+        <member name="F:ErikwnkWFUI.Controls.CopyConfirmationStyle.ToolTip">
+            <summary>A brief standard <see cref="F:ErikwnkWFUI.Controls.CopyConfirmationStyle.ToolTip"/> instead - for apps that don't want ToastForm's separate popup window.</summary>
+        </member>
+        <member name="F:ErikwnkWFUI.Controls.CopyConfirmationStyle.None">
+            <summary>No visual confirmation at all - the copy still happens, just silently.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Controls.ListView">
+            <summary>
+            A dark-themed, multi-column ListView (Details view) with completely
+            standard, native row selection - click, Ctrl+click, Shift+click, and
+            the native rubber-band drag (including its own auto-scroll past an
+            edge) all work exactly like Explorer's own list view, since they
+            simply are Explorer's own list view under the hood. Only the visuals
+            (row/header colors, fonts, the selection overlay) are this control's
+            own - selection itself is left entirely to
+            <see cref="P:System.Windows.Forms.ListView.MultiSelect"/> and
+            <see cref="P:System.Windows.Forms.ListView.SelectedItems"/>, not
+            reimplemented by hand.
+            <list type="bullet">
+            <item>Hovering a cell whose text is wider than its column shows the full text in a tooltip.</item>
+            </list>
+            Ctrl+C copies every selected row (tab-separated columns, one line
+            per row, no header line - meant to be pasted as plain data). Ctrl+
+            Shift+C copies the same rows with a leading row of column names, for
+            pasting as a proper table. Both also place an HTML table on the
+            clipboard alongside the plain text, so apps that understand it (Word,
+            Outlook, browsers, Excel, ...) paste an actual bordered table instead
+            of raw tab characters; plain-text-only targets still get the tab-
+            separated fallback. The right-click menu only shows "Copy selection"
+            and "Copy all" at the top level; hovering either opens a submenu with
+            the plain action again plus "As table". Every copy is confirmed with
+            a <see cref="T:ErikwnkWFUI.Forms.ToastForm"/>.
+            </summary>
+            <remarks>
+            Named the same as its own base class, same as
+            <see cref="T:ErikwnkWFUI.Controls.DataGridView"/> and <see cref="T:ErikwnkWFUI.Controls.ListBox"/>
+            - the base type reference below stays fully qualified so the class
+            doesn't try to inherit from itself.
+            </remarks>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListView.MinimumColumnWidth">
+            <summary>No column can be resized narrower than this.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListView.CopyConfirmation">
+            <summary>How a Ctrl+C/Ctrl+Shift+C copy is confirmed. Defaults to <see cref="F:ErikwnkWFUI.Controls.CopyConfirmationStyle.Toast"/> (unchanged from before this existed).</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListView.FillColumnIndex">
+            <summary>
+            Which column stretches to fill any leftover width. -1 (the
+            default) means "whichever column is last" - set this explicitly
+            if a different column should be the one that stretches instead.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListView.RowBackColor">
+            <summary>Background color of a normal (not selected) row. Odd/even rows alternate between this and a slightly darker shade of it.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListView.RowForeColor">
+            <summary>Text color of a normal (not selected) row.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListView.SelectionOverlayColor">
+            <summary>
+            Painted on top of a selected cell's normal background rather than
+            replacing it outright - <see cref="P:ErikwnkWFUI.Styles.UIColors.Selection"/> is a
+            translucent blue for exactly this, so the row's own (e.g.
+            severity) color still shows through underneath a selection.
+            Follows the current accent live until explicitly set - it used to
+            be a plain field snapshotted once at construction (like
+            ListBox's DragIndicatorColor before the same fix), so an
+            app that changed its accent after building the list still showed
+            the default blue regardless.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListView.ColumnReorderIndicatorColor">
+            <summary>
+            Color of the vertical line the header shows while a column is
+            being dragged to reorder it. Follows the current accent live
+            until explicitly set, same as <see cref="P:ErikwnkWFUI.Controls.ListView.SelectionOverlayColor"/>.
+            Column reordering is fully hand-rolled (see the mouse handlers
+            below) rather than using <see cref="P:System.Windows.Forms.ListView.AllowColumnReorder"/>
+            - that hands the whole drag to the native Win32 header control
+            (comctl32), which draws its own insertion line as native chrome
+            with no public API to recolor, and (confirmed by instrumenting a
+            live drag) draws it in a way that isn't reliably interceptable by
+            subclassing at all. Owning the whole gesture means this line is
+            just an ordinary part of <see cref="M:ErikwnkWFUI.Controls.ListView.OnDrawColumnHeader(System.Object,System.Windows.Forms.DrawListViewColumnHeaderEventArgs)"/>'s
+            existing owner-draw painting - no native chrome involved.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListView.BorderColor">
+            <summary>
+            Color of the whole control's "frame": the outer border's left,
+            right, and bottom edges (see WndProc) and each header cell's own
+            divider (OnDrawColumnHeader), which together form the top edge.
+            Defaults to <see cref="P:ErikwnkWFUI.Styles.UIColors.BorderMedium"/> - a fixed,
+            neutral border regardless of the current accent, matching this
+            control's original, unconditional look
+            (<see cref="M:ErikwnkWFUI.Factories.UIListViewFactory.CreateStandard"/> still
+            gets exactly that, unchanged). <see cref="M:ErikwnkWFUI.Factories.UIListViewFactory.CreatePrimary"/>
+            sets this to <see cref="P:ErikwnkWFUI.Styles.UIColors.Primary"/> instead for a
+            variant framed entirely in the current accent color.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListView.HeaderBackColor">
+            <summary>Background color of the column header row.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListView.HeaderForeColor">
+            <summary>Text color of the column header row.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListView.HeaderFont">
+            <summary>
+            Font for the column header row - defaults to a bold version of
+            <see cref="P:System.Windows.Forms.Control.Font"/> if never set. Setting this to a larger
+            size is also the way to make the native header band itself
+            taller (there's no direct "header height" API on the underlying
+            Win32 header control - it sizes itself from its own font
+            metrics, same as row height below).
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListView.RowHeight">
+            <summary>
+            Forces every row to this exact height in pixels. Unset (0) lets
+            rows size themselves from <see cref="P:System.Windows.Forms.Control.Font"/> as usual.
+            Implemented via the classic Win32 trick of assigning a 1px-wide,
+            N-tall <c>SmallImageList</c> - the native ListView derives its
+            row height from the small image list's height when one is set,
+            since there's no direct row-height API either. Don't also assign
+            a real <c>SmallImageList</c> for per-item icons while this is
+            set; the two would fight over the same slot.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListView.AllowColumnResizing">
+            <summary>
+            Configurable per column, independent of <see cref="P:ErikwnkWFUI.Controls.ListView.MinimumColumnWidth"/> - a
+            column can be locked at its current width entirely (e.g. a
+            narrow status/quality column that should never accidentally get
+            dragged to something illegible) while others stay freely
+            resizable.
+            </summary>
+            <summary>
+            Master switch for whether ANY column can be resized at all -
+            simpler than calling <see cref="M:ErikwnkWFUI.Controls.ListView.SetColumnResizable(System.Int32,System.Boolean)"/> for every
+            column when the answer is "none of them". Per-column overrides
+            via <see cref="M:ErikwnkWFUI.Controls.ListView.SetColumnResizable(System.Int32,System.Boolean)"/> still apply among whichever
+            columns this allows; setting this false overrides all of them
+            (nothing becomes resizable no matter what they say). Defaults to
+            true, matching this control's previous unconditional behavior.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ListView.AllowColumnReordering">
+            <summary>
+            Master switch for whether ANY column can be dragged to reorder
+            it at all - simpler than calling <see cref="M:ErikwnkWFUI.Controls.ListView.SetColumnReorderable(System.Int32,System.Boolean)"/>
+            for every column when the answer is "none of them". Per-column
+            overrides via <see cref="M:ErikwnkWFUI.Controls.ListView.SetColumnReorderable(System.Int32,System.Boolean)"/> still apply
+            among whichever columns this allows; setting this false
+            overrides all of them. Defaults to true, matching this control's
+            previous unconditional behavior.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Controls.ListView.SetColumnReorderable(System.Int32,System.Boolean)">
+            <summary>
+            Configurable per column, independent of <see cref="P:ErikwnkWFUI.Controls.ListView.AllowColumnReordering"/>:
+            a column can be pinned in place (e.g. a leading "Time"/"Metric"
+            column that should always stay leftmost) while the rest can
+            still be freely dragged into a new order.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Controls.ListView.AutoFitColumnsToContent">
+            <summary>
+            Sizes every column (other than the fill column, which stretches
+            regardless) to fit its current content and header text, then lets
+            the fill column absorb whatever space is left. Call this again
+            after rebuilding the rows, since content driving the "right" width
+            may have changed.
+            </summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Controls.PropertyTable">
+            <summary>
+            A two-column "label: editor" table, grouped into optional labeled
+            sections - typical use is a settings/options panel. Build it up with
+            <see cref="M:ErikwnkWFUI.Controls.PropertyTable.AddSection(System.String)"/> and <see cref="M:ErikwnkWFUI.Controls.PropertyTable.AddRow(System.String,System.Windows.Forms.Control[])"/>;
+            a row can hold more than one editor control side by side via the
+            <see cref="T:ErikwnkWFUI.Controls.UIColumn"/>-based overloads.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Controls.PropertyTable.ClearRows">
+            <summary>Removes every row and section, leaving an empty table.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Controls.PropertyTable.AddSection(System.String)">
+            <summary>Adds a full-width section header row.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Controls.PropertyTable.AddRow(System.String,System.Windows.Forms.Control[])">
+            <summary>
+            Adds a row: a label on the left, one or more editor controls
+            sharing the remaining width equally on the right (each gets
+            <see cref="M:ErikwnkWFUI.Controls.UIColumn.Auto(System.Windows.Forms.Control)"/> sizing). Use the
+            <see cref="M:ErikwnkWFUI.Controls.PropertyTable.AddRow(System.String,ErikwnkWFUI.Controls.UIColumn[])"/> overload instead if the
+            controls need different widths.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Controls.PropertyTable.AddRow(System.String,System.Int32,System.Windows.Forms.Control[])">
+            <inheritdoc cref="M:ErikwnkWFUI.Controls.PropertyTable.AddRow(System.String,System.Windows.Forms.Control[])"/>
+        </member>
+        <member name="M:ErikwnkWFUI.Controls.PropertyTable.AddRow(System.String,ErikwnkWFUI.Controls.UIColumn[])">
+            <summary>Adds a row with explicit per-column sizing - see <see cref="M:ErikwnkWFUI.Controls.UIColumn.Auto(System.Windows.Forms.Control)"/>/<see cref="M:ErikwnkWFUI.Controls.UIColumn.Absolute(System.Windows.Forms.Control,System.Int32)"/>/<see cref="M:ErikwnkWFUI.Controls.UIColumn.Percent(System.Windows.Forms.Control,System.Single)"/>.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Controls.PropertyTable.AddRow(System.String,System.Int32,ErikwnkWFUI.Controls.UIColumn[])">
+            <inheritdoc cref="M:ErikwnkWFUI.Controls.PropertyTable.AddRow(System.String,ErikwnkWFUI.Controls.UIColumn[])"/>
+        </member>
+        <member name="T:ErikwnkWFUI.Controls.SlimProgressBar">
+            <summary>
+            A thin, fully custom-drawn progress bar - unlike <see cref="T:System.Windows.Forms.ProgressBar"/>,
+            there is no native Win32 control underneath, so none of the
+            theming/non-client-border quirks that control needs working around
+            apply here. Meant for slim status-strip-style progress indicators
+            (e.g. a background task's progress shown as a thin strip under a
+            status label) rather than a prominent, full-size bar - see
+            <see cref="T:ErikwnkWFUI.UIStyles.ProgressBars"/> for that.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.SlimProgressBar.UseStatusGradient">
+            <summary>
+            When true, the fill color follows <see cref="P:ErikwnkWFUI.Controls.SlimProgressBar.Value"/> instead of
+            <see cref="P:System.Windows.Forms.Control.ForeColor"/> - red at <see cref="P:ErikwnkWFUI.Controls.SlimProgressBar.Minimum"/>,
+            yellow at the midpoint, green at <see cref="P:ErikwnkWFUI.Controls.SlimProgressBar.Maximum"/>, blending
+            smoothly between them. For a "status/health" bar where the color
+            itself communicates good/bad, not just the fill amount.
+            </summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Controls.TitleBarControl">
+            <summary>
+            A custom-drawn window title bar: logo, title text, minimize/maximize/
+            close buttons, and window dragging (including drag-to-maximize and
+            double-click-to-maximize) - all reimplemented in managed code since it
+            replaces the native one. <see cref="T:ErikwnkWFUI.Forms.StyledForm"/> already creates and
+            docks one of these for you; construct it directly only if you're
+            building a custom top-level window from scratch instead of deriving
+            from StyledForm.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.TitleBarControl.Title">
+            <summary>The window title text.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.TitleBarControl.IconImage">
+            <summary>The small logo at the top-left, or null to hide it entirely (default). See ErikwnkWFUI/README.md for how to load this from your own embedded resources.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.TitleBarControl.TitleForeColor">
+            <summary>The title text's color.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Controls.TitleBarControl.#ctor(System.Drawing.Image,System.String,System.Drawing.ContentAlignment,System.Boolean,System.Boolean,System.Boolean,System.Boolean,System.Nullable{System.Drawing.Color})">
+            <summary>allowWindowSnapAndMaximize controls both double-click-to-maximize and drag-to-top-of-screen-to-maximize.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Controls.TitleBarControl.RefreshTheme">
+            <summary>
+            Re-reads the current theme's colors and reapplies them to this
+            title bar and its sub-controls (title label, minimize/maximize/
+            close buttons) - only needed by an app that switches theme after
+            the owning StyledForm was already built, since every color here
+            is otherwise only ever read once, at construction. Overwrites a
+            custom <c>StyledFormOptions.TitleBarBackColor</c> set at
+            construction time with the current theme's default; only call
+            this if that's the behavior you want.
+            </summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Controls.ToggleSwitch">
+            <summary>An iOS-style on/off switch, an alternative to a <see cref="T:System.Windows.Forms.CheckBox"/>.</summary>
+        </member>
+        <member name="E:ErikwnkWFUI.Controls.ToggleSwitch.CheckedChanged">
+            <summary>Raised when <see cref="P:ErikwnkWFUI.Controls.ToggleSwitch.Checked"/> changes, whether from user interaction or setting the property directly.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ToggleSwitch.Checked">
+            <summary>The switch's on/off state.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ToggleSwitch.ToolTipTextChecked">
+            <summary>Tooltip text shown while <see cref="P:ErikwnkWFUI.Controls.ToggleSwitch.Checked"/> is true.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ToggleSwitch.ToolTipTextUnchecked">
+            <summary>Tooltip text shown while <see cref="P:ErikwnkWFUI.Controls.ToggleSwitch.Checked"/> is false.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ToggleSwitch.ToolTipText">
+            <summary>Write-only shorthand for setting both <see cref="P:ErikwnkWFUI.Controls.ToggleSwitch.ToolTipTextChecked"/> and <see cref="P:ErikwnkWFUI.Controls.ToggleSwitch.ToolTipTextUnchecked"/> to the same text.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ToggleSwitch.CheckedBackColor">
+            <summary>
+            Null (the default) means "follow the current theme/accent", same
+            as every other control - set any of these to opt a single
+            instance out of the shared theme for a special case (e.g. a
+            danger toggle that should always read red, regardless of accent).
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ToggleSwitch.UncheckedBackColor">
+            <inheritdoc cref="P:ErikwnkWFUI.Controls.ToggleSwitch.CheckedBackColor"/>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.ToggleSwitch.KnobColor">
+            <inheritdoc cref="P:ErikwnkWFUI.Controls.ToggleSwitch.CheckedBackColor"/>
+        </member>
+        <member name="T:ErikwnkWFUI.Controls.UIColumn">
+            <summary>
+            Pairs a <see cref="P:ErikwnkWFUI.Controls.UIColumn.Control"/> (or a null placeholder) with a
+            <see cref="T:System.Windows.Forms.TableLayoutPanel"/> column width, for
+            <see cref="T:ErikwnkWFUI.Controls.PropertyTable"/>'s multi-column row overloads. Build
+            one with <see cref="M:ErikwnkWFUI.Controls.UIColumn.Auto(System.Windows.Forms.Control)"/>, <see cref="M:ErikwnkWFUI.Controls.UIColumn.Absolute(System.Windows.Forms.Control,System.Int32)"/>, or
+            <see cref="M:ErikwnkWFUI.Controls.UIColumn.Percent(System.Windows.Forms.Control,System.Single)"/> rather than constructing it directly.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Controls.UIColumn.Auto(System.Windows.Forms.Control)">
+            <summary>A column that takes up all remaining width (equivalent to <see cref="M:ErikwnkWFUI.Controls.UIColumn.Percent(System.Windows.Forms.Control,System.Single)"/> with 100).</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Controls.UIColumn.Absolute(System.Windows.Forms.Control,System.Int32)">
+            <summary>A column with a fixed pixel width.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Controls.UIColumn.Percent(System.Windows.Forms.Control,System.Single)">
+            <summary>A column sized as a percentage of the row's total width.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Factories.UIButtonFactory.UpdateTooltip(System.Windows.Forms.Button,System.String)">
+            <summary>
+            Changes an already-created button's tooltip text - e.g. to
+            re-translate it after a language switch. No-op if the button was
+            created without a tooltip in the first place.
+            </summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Forms.AppUpdater">
+            <summary>
+            Self-contained "check for update" flow for apps hosting their releases on
+            GitHub. Provides all the UI itself (prompt, progress, failure message) and
+            only needs the repo coordinates and a couple of HttpClients to talk to
+            ErikwnkCore.Updater - the consuming app never touches that library directly.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.AppUpdater.#ctor(System.String,System.String,System.Net.Http.HttpClient,System.Net.Http.HttpClient)">
+            <summary>checkHttpClient/downloadHttpClient are typically two separate <see cref="T:System.Net.Http.HttpClient"/>s so the download's own timeout/headers don't have to match the (usually much shorter) update-check ones.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.AppUpdater.CheckForUpdateAsync(System.Version,System.TimeSpan,System.Windows.Forms.Form)">
+            <summary>
+            Best-effort, non-blocking check against GitHub's latest release. Never
+            throws; a failed or slow check just means no prompt is shown. On "Update
+            now", downloads and swaps in the new build and exits the app so the swap
+            helper can finish the job.
+            </summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Forms.InfoPopupForm">
+            <summary>
+            A small, borderless, rounded-corner tooltip-like popup for showing
+            extra info next to a control or the mouse cursor - reuse a single
+            instance across many show calls rather than creating a new one each
+            time (it repositions/relabels itself instead of flashing closed and
+            reopening). Two independent content modes: a single block of text
+            (<see cref="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowInfo(System.String,System.Windows.Forms.Control)"/>/<see cref="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowInfoAtMouse(System.String,System.Windows.Forms.Control,System.Drawing.Point)"/>) or one or more
+            labeled sections (<see cref="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowSections(System.Windows.Forms.Control,ErikwnkWFUI.Forms.InfoPopupSection[])"/> and friends).
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowInfo(System.String,System.Windows.Forms.Control)">
+            <summary>Shows (or repositions, if already visible) a single block of text, anchored to the bottom-right of <paramref name="owner"/>.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowInfoAtMouse(System.String,System.Windows.Forms.Control,System.Drawing.Point)">
+            <summary>Same as <see cref="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowInfo(System.String,System.Windows.Forms.Control)"/>, but anchored near <paramref name="mouseScreenPosition"/> instead of <paramref name="owner"/>'s bounds - typical use is showing this from a MouseMove handler.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowSections(System.Windows.Forms.Control,ErikwnkWFUI.Forms.InfoPopupSection[])">
+            <summary>Shows one or more labeled <see cref="T:ErikwnkWFUI.Forms.InfoPopupSection"/>s instead of plain text, anchored to <paramref name="owner"/>.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowSectionsAtMouseDelayed(System.Windows.Forms.Control,System.Drawing.Point,ErikwnkWFUI.Forms.InfoPopupSection[])">
+            <summary>
+            Like <see cref="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowSectionsAtMouse(System.Windows.Forms.Control,System.Drawing.Point,ErikwnkWFUI.Forms.InfoPopupSection[])"/>, but waits 400ms before
+            actually showing - meant for hover tooltips, so quickly passing
+            the mouse over several items doesn't flash a popup for each one.
+            Call <see cref="M:ErikwnkWFUI.Forms.InfoPopupForm.CancelPendingShow"/> on MouseLeave to cancel a
+            still-pending show.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.InfoPopupForm.CancelPendingShow">
+            <summary>Cancels a show scheduled by <see cref="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowSectionsAtMouseDelayed(System.Windows.Forms.Control,System.Drawing.Point,ErikwnkWFUI.Forms.InfoPopupSection[])"/> that hasn't fired yet - does not hide the popup if it's already showing.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowSectionsAtMouse(System.Windows.Forms.Control,System.Drawing.Point,ErikwnkWFUI.Forms.InfoPopupSection[])">
+            <summary>Immediate (non-delayed) version of <see cref="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowSectionsAtMouseDelayed(System.Windows.Forms.Control,System.Drawing.Point,ErikwnkWFUI.Forms.InfoPopupSection[])"/> - skips rebuilding the section labels if the content is identical to what's already showing.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Forms.InfoPopupSection">
+            <summary>One labeled block of text for <see cref="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowSections(System.Windows.Forms.Control,ErikwnkWFUI.Forms.InfoPopupSection[])"/> and its overloads - a section with an empty/null Header or Text just omits that part.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Forms.MessageBoxButtons">
+            <summary>Which buttons a <see cref="T:ErikwnkWFUI.Forms.MessageBox"/> shows.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Forms.MessageBoxIcon">
+            <summary>Which icon a <see cref="T:ErikwnkWFUI.Forms.MessageBox"/> shows in its title bar.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Forms.MessageBoxSize">
+            <summary>Overall size preset for a <see cref="T:ErikwnkWFUI.Forms.MessageBox"/>.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Forms.MessageBox">
+            <summary>
+            ErikwnkWFUI's themed replacement for
+            <see cref="T:System.Windows.Forms.MessageBox"/> - call <see cref="M:ErikwnkWFUI.Forms.MessageBox.Show(System.String,System.String,ErikwnkWFUI.Forms.MessageBoxButtons,ErikwnkWFUI.Forms.MessageBoxIcon,System.Windows.Forms.Form,ErikwnkWFUI.Forms.MessageBoxSize)"/>.
+            </summary>
+            <remarks>
+            Named the same as the native dialog it replaces, same as
+            <see cref="T:ErikwnkWFUI.Controls.ListView"/> and friends - callers never need to
+            spell out <c>ErikwnkWFUI.Forms.MessageBox</c> themselves as long as
+            they don't also have <c>using System.Windows.Forms;</c> in scope
+            wherever they call <see cref="M:ErikwnkWFUI.Forms.MessageBox.Show(System.String,System.String,ErikwnkWFUI.Forms.MessageBoxButtons,ErikwnkWFUI.Forms.MessageBoxIcon,System.Windows.Forms.Form,ErikwnkWFUI.Forms.MessageBoxSize)"/>.
+            </remarks>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.MessageBox.Show(System.String,System.String,ErikwnkWFUI.Forms.MessageBoxButtons,ErikwnkWFUI.Forms.MessageBoxIcon,System.Windows.Forms.Form,ErikwnkWFUI.Forms.MessageBoxSize)">
+            <summary>Shows the dialog modally and returns which button was clicked (or the safe default - Cancel/No/OK - if the dialog is closed without clicking one).</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Forms.StyledForm">
+            <summary>
+            A <see cref="T:System.Windows.Forms.Form"/> with ErikwnkWFUI's own custom-drawn title bar
+            (<see cref="P:ErikwnkWFUI.Forms.StyledForm.TitleBar"/>) instead of the native Windows one, and
+            optional borderless resizing. This is the base class every ErikwnkWFUI
+            window is built on - either use it directly (<c>new StyledForm(title)</c>
+            for a quick window, or the <see cref="T:ErikwnkWFUI.Forms.StyledFormOptions"/> constructor
+            for full control), or derive from it the way
+            <see cref="T:ErikwnkWFUI.Forms.MessageBoxForm"/> and <see cref="T:ErikwnkWFUI.Forms.UpdateAvailableForm"/>
+            do. Add your own controls to <see cref="P:ErikwnkWFUI.Forms.StyledForm.ContentPanel"/>, not directly
+            to the form - the title bar already occupies the top of the form's
+            own <see cref="P:System.Windows.Forms.Control.Controls"/> collection.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Forms.StyledForm.ContentPanel">
+            <summary>The panel below the title bar - add your own UI here.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Forms.StyledForm.TitleBar">
+            <summary>
+            The title bar itself - reach through here for anything not
+            already proxied by <see cref="P:ErikwnkWFUI.Forms.StyledForm.FormTitle"/>/<see cref="P:ErikwnkWFUI.Forms.StyledForm.FormIcon"/>,
+            e.g. <c>TitleBar.TitleForeColor</c>.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Forms.StyledForm.FormTitle">
+            <summary>Shorthand for <c>TitleBar.Title</c>.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Forms.StyledForm.FormIcon">
+            <summary>Shorthand for <c>TitleBar.IconImage</c> - the small logo shown at the top-left of the title bar, not the OS-level icon (see <see cref="P:ErikwnkWFUI.Forms.StyledFormOptions.WindowIcon"/> for that).</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.StyledForm.#ctor(ErikwnkWFUI.Forms.StyledFormOptions)">
+            <summary>
+            Builds the form from a full <see cref="T:ErikwnkWFUI.Forms.StyledFormOptions"/> - use
+            <see cref="M:ErikwnkWFUI.Forms.StyledFormOptions.CreateStandard(System.String,System.Drawing.ContentAlignment,System.Nullable{System.Drawing.Color},System.Drawing.Image,System.Drawing.Icon)"/> or
+            <see cref="M:ErikwnkWFUI.Forms.StyledFormOptions.CreateDialog(System.String,System.Drawing.ContentAlignment,System.Nullable{System.Drawing.Color},System.Drawing.Image,System.Drawing.Icon)"/> as a starting point.
+            Passing null is the same as <c>StyledFormOptions.CreateStandard()</c>.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.StyledForm.#ctor(System.String,ErikwnkWFUI.Forms.StyledFormType)">
+            <summary>Quick-start constructor for the common case - just a title and whether it behaves like a dialog (no minimize/maximize, fixed size) or a standard resizable window.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Forms.StyledFormType">
+            <summary>Which <see cref="T:ErikwnkWFUI.Forms.StyledFormOptions"/> preset a <see cref="T:ErikwnkWFUI.Forms.StyledForm"/> should start from.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Forms.StyledFormOptions">
+            <summary>
+            Full set of knobs for a <see cref="T:ErikwnkWFUI.Forms.StyledForm"/>. Build one with
+            <see cref="M:ErikwnkWFUI.Forms.StyledFormOptions.CreateStandard(System.String,System.Drawing.ContentAlignment,System.Nullable{System.Drawing.Color},System.Drawing.Image,System.Drawing.Icon)"/> or <see cref="M:ErikwnkWFUI.Forms.StyledFormOptions.CreateDialog(System.String,System.Drawing.ContentAlignment,System.Nullable{System.Drawing.Color},System.Drawing.Image,System.Drawing.Icon)"/> and tweak
+            individual properties from there, rather than constructing it with
+            <c>new StyledFormOptions { ... }</c> directly - the two factory
+            methods keep related properties in sync (e.g. a dialog has no
+            maximize button AND can't be snapped/maximized by dragging).
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Forms.StyledFormOptions.Borderless">
+            <summary>True (the default) removes the native Windows title bar/frame in favor of ErikwnkWFUI's own <see cref="T:ErikwnkWFUI.Controls.TitleBarControl"/>.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Forms.StyledFormOptions.Resizable">
+            <summary>Whether the window can be resized by dragging its edges - only meaningful when <see cref="P:ErikwnkWFUI.Forms.StyledFormOptions.Borderless"/> is true.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Forms.StyledFormOptions.Icon">
+            <summary>The small logo shown at the top-left of the title bar. See <see cref="P:ErikwnkWFUI.Forms.StyledForm.FormIcon"/> for the equivalent post-construction property.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Forms.StyledFormOptions.AllowWindowSnapAndMaximize">
+            <summary>Whether double-clicking the title bar or dragging it to the top of the screen maximizes the window - independent of <see cref="P:ErikwnkWFUI.Forms.StyledFormOptions.ShowMaximizeButton"/>, but the two built-in presets always keep them in sync.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Forms.StyledFormOptions.WindowIcon">
+            <summary>The OS-level icon (taskbar, Alt-Tab, system menu) - not the title bar logo, see <see cref="P:ErikwnkWFUI.Forms.StyledFormOptions.Icon"/> for that. Falls back to the running exe's own icon when left null.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.StyledFormOptions.CreateStandard(System.String,System.Drawing.ContentAlignment,System.Nullable{System.Drawing.Color},System.Drawing.Image,System.Drawing.Icon)">
+            <summary>A normal, resizable window with minimize/maximize/close.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.StyledFormOptions.CreateDialog(System.String,System.Drawing.ContentAlignment,System.Nullable{System.Drawing.Color},System.Drawing.Image,System.Drawing.Icon)">
+            <summary>A fixed-size dialog: no minimize/maximize, can't be snapped or maximized by dragging.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Forms.StyledOptionsForm">
+            <summary>
+            A small options/settings dialog built around a PropertyTable:
+            add rows to PropertyTable, then call FitToContent() so the window
+            sizes itself to exactly fit whatever was added, instead of guessing
+            a fixed size up front.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Forms.StyledOptionsForm.PropertyTable">
+            <summary>Add your option rows here, then call <see cref="M:ErikwnkWFUI.Forms.StyledOptionsForm.FitToContent(System.Int32,System.Int32)"/>.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Forms.StyledOptionsForm.SaveButtonText">
+            <summary>
+            "Save"/"Cancel" by default - this class has no notion of the
+            consuming app's language, so callers that localize their own UI
+            (e.g. via AppLocalization) need to set these explicitly, or the
+            buttons stay stuck in English regardless of the app's language.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Forms.StyledOptionsForm.CancelButtonText">
+            <inheritdoc cref="P:ErikwnkWFUI.Forms.StyledOptionsForm.SaveButtonText"/>
+        </member>
+        <member name="E:ErikwnkWFUI.Forms.StyledOptionsForm.SaveClicked">
+            <summary>
+            Raised when the save button is clicked, before the dialog closes
+            with DialogResult.OK - read whatever the option controls added
+            to PropertyTable are currently set to here.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.StyledOptionsForm.#ctor(System.String)">
+            <summary>Add rows to <see cref="P:ErikwnkWFUI.Forms.StyledOptionsForm.PropertyTable"/> and call <see cref="M:ErikwnkWFUI.Forms.StyledOptionsForm.FitToContent(System.Int32,System.Int32)"/> after construction.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.StyledOptionsForm.FitToContent(System.Int32,System.Int32)">
+            <summary>
+            Sizes the window to exactly fit the rows currently in
+            PropertyTable plus the button bar - call once after populating
+            PropertyTable, instead of guessing a fixed window size.
+            </summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Forms.ToastForm">
+            <summary>
+            A small, rounded, self-dismissing confirmation toast (checkmark +
+            message) - call the static <see cref="M:ErikwnkWFUI.Forms.ToastForm.ShowToast(System.String,System.Windows.Forms.Form)"/> rather than
+            constructing this directly. Only one toast shows at a time; showing
+            a new one closes whatever's currently up.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.ToastForm.ShowToast(System.String,System.Windows.Forms.Form)">
+            <summary>Shows a toast near the bottom-center of <paramref name="owner"/>, auto-closing itself after ~2.5s.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Forms.UpdateOutcome">
+            <summary>How an <see cref="M:ErikwnkWFUI.Forms.UpdatePrompt.ShowUpdateAvailableAsync(System.String,System.String,System.Func{System.IProgress{System.Int32},System.Threading.Tasks.Task{System.Boolean}},System.Windows.Forms.Form,System.String)"/> dialog ended.</summary>
+        </member>
+        <member name="F:ErikwnkWFUI.Forms.UpdateOutcome.Declined">
+            <summary>Closed without clicking "Update now".</summary>
+        </member>
+        <member name="F:ErikwnkWFUI.Forms.UpdateOutcome.Applied">
+            <summary>applyUpdateAsync returned true.</summary>
+        </member>
+        <member name="F:ErikwnkWFUI.Forms.UpdateOutcome.Failed">
+            <summary>applyUpdateAsync returned false or threw.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.UpdatePrompt.ShowUpdateAvailableAsync(System.String,System.String,System.Func{System.IProgress{System.Int32},System.Threading.Tasks.Task{System.Boolean}},System.Windows.Forms.Form,System.String)">
+            <summary>
+            Shows a standardized "a new version is available" dialog. If the user
+            clicks "Update now", the same window switches to a progress view and calls
+            applyUpdateAsync, reporting its progress back into that view. Returns how
+            the dialog ended.
+            </summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Forms.UpdateAvailableForm">
+            <summary>The dialog behind <see cref="M:ErikwnkWFUI.Forms.UpdatePrompt.ShowUpdateAvailableAsync(System.String,System.String,System.Func{System.IProgress{System.Int32},System.Threading.Tasks.Task{System.Boolean}},System.Windows.Forms.Form,System.String)"/> - prefer calling that over constructing this directly, it handles wiring <see cref="E:ErikwnkWFUI.Forms.UpdateAvailableForm.UpdateRequested"/> up to your download logic and reporting the outcome.</summary>
+        </member>
+        <member name="E:ErikwnkWFUI.Forms.UpdateAvailableForm.UpdateRequested">
+            <summary>Raised when "Update now" is clicked - call <see cref="M:ErikwnkWFUI.Forms.UpdateAvailableForm.ShowProgressState"/> and start downloading.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.UpdateAvailableForm.ShowProgressState">
+            <summary>
+            Switches the window from the prompt (headline + buttons) to a progress
+            view (status text + progress bar), without opening a second window.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.UpdateAvailableForm.SetProgress(System.Int32)">
+            <summary>Updates the progress bar/status text - safe to call from a background download thread, marshals to the UI thread itself.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Helpers.BorderlessResizeHandler">
+            <summary>
+            Restores edge/corner resize cursors and dragging for a borderless
+            (<see cref="F:System.Windows.Forms.FormBorderStyle.None"/>) form, which loses that
+            automatically along with its native frame.
+            <see cref="T:ErikwnkWFUI.Forms.StyledForm"/> already wires this up for
+            you when its Borderless/Resizable options are both true - construct
+            one directly only if you're building a borderless window from
+            scratch instead of deriving from StyledForm.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Helpers.BorderlessResizeHandler.TryHandleMessage(System.Windows.Forms.Message@)">
+            <summary>Call from the form's <c>WndProc</c> override with every message. Returns true (and sets <c>message.Result</c>) if this handled it as a resize hit-test - the form should skip its own handling of that message when this returns true.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Helpers.TextDragDropHelper">
+            <summary>
+            Helper for adding drag and drop support to controls.
+            
+            TextDragDropHelper.EnableTextDragDrop(
+                txtPath,
+                text => txtPath.Text = text);
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Helpers.TextDragDropHelper.EnableTextDragDrop(System.Windows.Forms.Control,System.Action{System.String})">
+            <summary>Wires up drag/drop of plain text onto <paramref name="control"/>, calling <paramref name="onTextDropped"/> with whatever text was dropped. Sets <see cref="P:System.Windows.Forms.Control.AllowDrop"/> and swaps the cursor to indicate whether the current drag target has droppable text.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.AppCurrencyFormatter">
+            <summary>
+            Formats amounts for a chosen currency - deliberately independent of
+            AppLanguage/AppLocalization. Someone reading German text doesn't
+            necessarily want US number formatting just because they picked
+            Dollar, and vice versa, so this only controls the currency symbol
+            and its own number format, not the rest of the UI.
+            </summary>
+        </member>
+        <member name="E:ErikwnkWFUI.AppCurrencyFormatter.CurrencyChanged">
+            <summary>
+            Raised when Currency changes. Like AppLocalization.LanguageChanged,
+            this only signals that already-displayed amounts should be
+            re-formatted and re-applied - it doesn't do that automatically.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.AppCurrencyFormatter.Format(System.Decimal,System.String)">
+            <summary>
+            Formats an amount using the currently selected currency's own
+            symbol, placement and number format (e.g. "1.234,50€" for Euro,
+            "$1,234.50" for Dollar) - regardless of the app's UI language.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.AppCurrencyFormatter.Symbol">
+            <summary>
+            Just the symbol for the currently selected currency, for cases
+            that build their own formatted string (e.g. appending it to an
+            already-formatted number).
+            </summary>
+        </member>
+        <member name="T:ErikwnkWFUI.AppLocalization">
+            <summary>
+            General-purpose text localization for a consumer app's own strings -
+            separate from ErikwnkWFUI's internal UIStrings, which only covers the
+            library's own built-in dialogs (title bar tooltips, update prompt).
+            An app registers one dictionary per language once at startup, then
+            looks strings up by key. Switching Language raises LanguageChanged so
+            already-built UI can refresh itself.
+            </summary>
+        </member>
+        <member name="E:ErikwnkWFUI.AppLocalization.LanguageChanged">
+            <summary>
+            Raised when Language changes. UI built before the change has to
+            re-fetch its strings and re-apply them itself - this event only
+            signals that it should, it doesn't do that automatically.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.AppLocalization.Register(ErikwnkWFUI.AppLanguage,System.Collections.Generic.IDictionary{System.String,System.String})">
+            <summary>
+            Adds (or overwrites) the translations for one language. Call once
+            per language at startup, before building any UI that uses Get.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.AppLocalization.Get(System.String)">
+            <summary>
+            Looks up a string in the current language. Falls back to
+            English, then to the key itself, so a missing translation never
+            crashes - it just shows the raw key, which is easy to notice.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.AppLocalization.Get(System.String,System.Object[])">
+            <summary>
+            Same as Get, but runs the result through string.Format with the
+            given arguments - for strings with placeholders like "{0}".
+            </summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Styles.UIAccentColors">
+            <summary>
+            A curated palette of base colors for <see cref="M:ErikwnkWFUI.Styles.UIColors.SetAccent(System.Drawing.Color)"/>,
+            picked at roughly the same brightness/saturation as <see cref="F:ErikwnkWFUI.Styles.UIAccentColors.Blue"/>
+            (the default) so every choice produces a comparably good set of
+            derived light/dark shades. Not exhaustive - SetAccent takes any Color,
+            this is just a ready-made "pick one" set for a color-picker UI.
+            </summary>
+        </member>
+        <member name="F:ErikwnkWFUI.Styles.UIAccentColors.Blue">
+            <summary>ErikwnkWFUI's original, always-has-been-the-default accent.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Styles.UIColors.ApplyTheme(ErikwnkWFUI.Styles.UIColorTheme)">
+            <summary>
+            Replaces every base surface color (backgrounds, text, borders,
+            hover/active tints - everything except the accent, which is set
+            independently via <see cref="M:ErikwnkWFUI.Styles.UIColors.SetAccent(System.Drawing.Color)"/>) with the ones from the
+            given theme, e.g. <see cref="F:ErikwnkWFUI.Styles.UIThemes.Light"/> to switch away from
+            the dark default. Same "call once, as early as possible - before
+            building any UI" caveat as SetAccent: every control that already
+            exists keeps the colors it was built with, since none of them
+            re-read UIColors after construction. Applying <see
+            cref="F:ErikwnkWFUI.Styles.UIThemes.Dark"/> is a no-op unless something else already
+            changed the theme, since Dark matches today's original defaults
+            exactly.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Styles.UIColors.SetAccent(System.Drawing.Color)">
+            <summary>
+            Replaces every accent shade (Primary/Secondary/Selection/
+            BorderPrimary - everything a consuming app would otherwise have
+            to override control-by-control) with tints and shades computed
+            from a single base color. Call once, as early as possible
+            (before building any UI) - a handful of controls read their
+            accent color once into a field at construction time rather than
+            on every paint, so they won't pick up a change made after
+            they're already built.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Styles.UIColors.GetContrastingForeColor(System.Drawing.Color)">
+            <summary>
+            White or near-black, whichever reads better on top of the given
+            background - e.g. white text is unreadable on a bright yellow
+            accent even though it's fine on the default dark blue. Not the
+            current theme's TextPrimary - callers use this specifically for
+            surfaces (accent/semantic colors) that don't follow the base
+            theme, so the answer must not depend on it either.
+            </summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Styles.UIColorTheme">
+            <summary>
+            The set of base surface colors (backgrounds, text, borders, hover/active
+            tints) that make up a theme - everything except the accent color, which
+            is set independently via <see cref="M:ErikwnkWFUI.Styles.UIColors.SetAccent(System.Drawing.Color)"/> so any accent
+            can be combined with either theme. Property names describe each color's
+            role (e.g. "the default control surface"), not its literal shade - in
+            <see cref="F:ErikwnkWFUI.Styles.UIThemes.Light"/>, "BackgroundLighter" still means "the most
+            raised/active surface", even though it holds a darker RGB value than
+            "BackgroundMedium" there (you can't go lighter than white, so the light
+            theme's hover/press feedback works by adding a bit of gray instead).
+            Defaults to today's dark values, so creating one and overriding just a
+            few properties still yields a complete, usable theme.
+            </summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Styles.UIFonts">
+            <summary>The fonts used across ErikwnkWFUI's controls - fixed, not part of the theme system.</summary>
+        </member>
+        <member name="F:ErikwnkWFUI.Styles.UIFonts.Title">
+            <summary>Bold, for headings/titles.</summary>
+        </member>
+        <member name="F:ErikwnkWFUI.Styles.UIFonts.Normal">
+            <summary>Default body text.</summary>
+        </member>
+        <member name="F:ErikwnkWFUI.Styles.UIFonts.Small">
+            <summary>Smaller, de-emphasized text.</summary>
+        </member>
+        <member name="F:ErikwnkWFUI.Styles.UIFonts.Monospace">
+            <summary>Fixed-width, for code/tabular text.</summary>
+        </member>
+        <member name="F:ErikwnkWFUI.Styles.UIFonts.Icon">
+            <summary>Segoe UI Symbol glyphs, used for icon buttons.</summary>
+        </member>
+        <member name="F:ErikwnkWFUI.Styles.UIFonts.Emoji">
+            <summary>Color emoji glyphs.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Styles.UIIcons.LoadEmbedded(System.Reflection.Assembly,System.String)">
+            <summary>
+            Loads an image from an embedded resource in the given assembly. Intended
+            for consuming apps to load their own logo/icon the same way ErikwnkWFUI
+            loads its bundled icons: baked into the assembly instead of a loose file
+            next to the exe, so it can't go missing or get left behind by an update.
+            </summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Styles.UIStrings">
+            <summary>
+            User-facing text for the handful of built-in dialogs/controls that ship
+            their own copy (update prompt, title bar tooltips). Defaults to English so
+            existing consumers see no change; set <see cref="P:ErikwnkWFUI.Styles.UIStrings.Language"/> (e.g. via
+            UIStyles.Language) to switch everything at once, at startup or live at
+            runtime - LanguageChanged lets already-built controls (like the title
+            bar's own tooltips) react immediately.
+            </summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Styles.UIThemes">
+            <summary>
+            Ready-to-use base themes for <see cref="M:ErikwnkWFUI.Styles.UIColors.ApplyTheme(ErikwnkWFUI.Styles.UIColorTheme)"/>. Dark
+            matches ErikwnkWFUI's original, always-has-been-the-default palette
+            exactly (applying it is a no-op unless something else already changed
+            the theme). Light is a from-scratch light palette, not a per-channel
+            inversion of Dark - see the note on <see cref="T:ErikwnkWFUI.Styles.UIColorTheme"/> about
+            why the same role can hold a lighter or darker RGB value depending on
+            which theme is active.
+            </summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles">
+            <summary>
+            The single entry point for ErikwnkWFUI's control factories and styling
+            - start here rather than the individual classes under
+            <see cref="N:ErikwnkWFUI.Factories"/>/<see cref="N:ErikwnkWFUI.Styles"/>
+            (most of which are internal). Each nested class below (<see
+            cref="T:ErikwnkWFUI.UIStyles.Buttons"/>, <see cref="T:ErikwnkWFUI.UIStyles.Labels"/>, ...) mirrors one control type
+            with a set of <c>Create*</c> factory methods that return a
+            pre-themed, ready-to-add WinForms control. See <see cref="T:ErikwnkWFUI.UIStyles.Colors"/>
+            for how to customize the color scheme (accent color and/or full
+            light/dark theme) and <see cref="P:ErikwnkWFUI.UIStyles.Language"/> for switching the
+            language of built-in dialog text.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.UIStyles.Language">
+            <summary>
+            Language used by built-in dialogs/controls that ship their own text
+            (update prompt, title bar tooltips). Set once at startup, before any
+            ErikwnkWFUI form is created, to switch away from the English default.
+            </summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.Colors">
+            <summary>
+            Read-only access to every color used across ErikwnkWFUI's controls,
+            plus <see cref="M:ErikwnkWFUI.UIStyles.Colors.SetAccent(System.Drawing.Color)"/>/<see cref="M:ErikwnkWFUI.UIStyles.Colors.ApplyTheme(ErikwnkWFUI.Styles.UIColorTheme)"/> to customize
+            them. Defaults to a dark gray theme with a blue accent; nothing
+            here needs to be set unless you want to change that.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.Colors.SetAccent(System.Drawing.Color)">
+            <summary>
+            Replaces the blue accent used throughout every built-in
+            control (buttons, toggle switches, selection highlights,
+            ...) with shades computed from a single color. Set once, as
+            early as possible - before building any UI - same as
+            <see cref="P:ErikwnkWFUI.UIStyles.Language"/>; a couple of controls only read their
+            accent color once at construction time, so they won't
+            retroactively pick up a change made after they're built.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.Colors.ApplyTheme(ErikwnkWFUI.Styles.UIColorTheme)">
+            <summary>
+            Switches the base theme (backgrounds/text/borders), e.g.
+            UIThemes.Light to move off the dark default. Same "call once,
+            before building any UI" caveat as <see cref="M:ErikwnkWFUI.UIStyles.Colors.SetAccent(System.Drawing.Color)"/>. Combine
+            freely with SetAccent - the two are independent (e.g. a light
+            theme with a purple accent).
+            </summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.Fonts">
+            <summary>The fonts used across ErikwnkWFUI's controls.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.Buttons">
+            <summary>Flat, themed <see cref="T:System.Windows.Forms.Button"/>s in a few preset colors (<see cref="M:ErikwnkWFUI.UIStyles.Buttons.CreateStandard(System.String,System.String,System.Nullable{System.Drawing.Size},System.Boolean)"/>, <see cref="M:ErikwnkWFUI.UIStyles.Buttons.CreatePrimary(System.String,System.String,System.Nullable{System.Drawing.Size},System.Boolean)"/>, <see cref="M:ErikwnkWFUI.UIStyles.Buttons.CreateGreen(System.String,System.String,System.Nullable{System.Drawing.Size},System.Boolean)"/>, <see cref="M:ErikwnkWFUI.UIStyles.Buttons.CreateRed(System.String,System.String,System.Nullable{System.Drawing.Size},System.Boolean)"/>) plus a couple of special-purpose ones.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.Buttons.UpdateTooltip(System.Windows.Forms.Button,System.String)">
+            <summary>
+            Changes an already-created button's tooltip text - e.g. to
+            re-translate it after a language switch.
+            </summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.DataGridViews">
+            <summary>A themed <see cref="T:System.Windows.Forms.DataGridView"/> for data bound via <see cref="P:System.Windows.Forms.DataGridView.DataSource"/> - the control to reach for when rows come from a bound source rather than being added by hand.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.Labels">
+            <summary>Themed <see cref="T:System.Windows.Forms.Label"/>s: <see cref="M:ErikwnkWFUI.UIStyles.Labels.CreateTitle(System.String)"/> (bold/large), <see cref="M:ErikwnkWFUI.UIStyles.Labels.CreateNormal(System.String)"/> (body text), <see cref="M:ErikwnkWFUI.UIStyles.Labels.CreateMuted(System.String)"/> (de-emphasized).</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.TextBoxes">
+            <summary>Themed <see cref="T:System.Windows.Forms.TextBox"/>es.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.ComboBoxes">
+            <summary>A themed <see cref="T:System.Windows.Forms.ComboBox"/>. Note: only the edit portion follows the theme - the native dropdown list itself still renders with system colors (see ErikwnkWFUI/README.md).</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.Panels">
+            <summary>Plain <see cref="T:System.Windows.Forms.Panel"/>s pre-filled with one of the theme's background shades - handy as containers/cards.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.CheckBoxes">
+            <summary>Themed <see cref="T:System.Windows.Forms.CheckBox"/>es.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.ToggleSwitches">
+            <summary>iOS-style on/off <see cref="T:ErikwnkWFUI.Controls.ToggleSwitch"/>es in three sizes. Colors can be overridden per-instance - see <see cref="P:ErikwnkWFUI.Controls.ToggleSwitch.CheckedBackColor"/>.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.TableLayoutPanels">
+            <summary>Themed <see cref="T:System.Windows.Forms.TableLayoutPanel"/>s, pre-sized to the given column/row count.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.ToolTips">
+            <summary>Creates a plain <see cref="T:System.Windows.Forms.ToolTip"/> component - note it isn't owned by any control, so dispose it yourself if you're not letting it live for the app's whole lifetime.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.ListViews">
+            <summary>A dark-themed, multi-column <see cref="T:ErikwnkWFUI.Controls.ListView"/> (Details view) with spreadsheet-style cell-range selection, hand-rolled column reordering/resizing, and Ctrl+C/Ctrl+Shift+C copy - see the class itself for the full behavior.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.ListBoxes">
+            <summary>A themed, owner-drawn, optionally drag-reorderable <see cref="T:ErikwnkWFUI.Controls.ListBox"/> - a heavier alternative to the native ListBox with icons, custom item colors, and enumeration support.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.ListBoxControls">
+            <summary>A <see cref="T:ErikwnkWFUI.Controls.ListBox"/> wrapped with an optional header bar - see <see cref="T:ErikwnkWFUI.UIStyles.ListBoxes"/> for the list box on its own.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.PropertyTables">
+            <summary>A themed key/value <see cref="T:ErikwnkWFUI.Controls.PropertyTable"/> (label + editor per row, grouped into sections) - typical use is a settings/options panel.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.NumericUpDowns">
+            <summary>A themed <see cref="T:System.Windows.Forms.NumericUpDown"/>. Note: the up/down spinner buttons themselves stay system-colored - only the field's own colors follow the theme.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.FlowLayoutPanels">
+            <summary>A plain, transparent <see cref="T:System.Windows.Forms.FlowLayoutPanel"/> with no padding/margin - a layout helper, not itself themed.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.ProgressBars">
+            <summary>A themed <see cref="T:System.Windows.Forms.ProgressBar"/> (continuous style, not the native blocky one).</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.ProgressBars.CreateGreenTransparent">
+            <summary>Like <see cref="M:ErikwnkWFUI.UIStyles.ProgressBars.CreateGreen"/> but without the border, and BackColor left for you to match your own panel - the closest a ProgressBar can get to a transparent background.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.ProgressBars.CreatePrimary">
+            <summary>Like <see cref="M:ErikwnkWFUI.UIStyles.ProgressBars.CreateGreen"/> but the fill follows the app-wide accent instead of the fixed green.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.ProgressBars.CreatePrimaryTransparent">
+            <summary>Like <see cref="M:ErikwnkWFUI.UIStyles.ProgressBars.CreatePrimary"/> but without the border, and BackColor left for you to match your own panel - the accent-following equivalent of <see cref="M:ErikwnkWFUI.UIStyles.ProgressBars.CreateGreenTransparent"/>.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.ProgressBars.CreateStatus">
+            <summary>Fill color follows Value instead of being fixed - red at Minimum, yellow at the midpoint, green at Maximum, blending smoothly between them. For a "status/health" bar where color communicates good/bad.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.ProgressBars.CreateStatusTransparent">
+            <summary>Like <see cref="M:ErikwnkWFUI.UIStyles.ProgressBars.CreateStatus"/> but without the border, and BackColor left for you to match your own panel - the status-gradient equivalent of <see cref="M:ErikwnkWFUI.UIStyles.ProgressBars.CreateGreenTransparent"/>.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.SlimProgressBars">
+            <summary>
+            A thin, fully custom-drawn <see cref="T:ErikwnkWFUI.Controls.SlimProgressBar"/> - no
+            native Win32 control underneath (unlike <see cref="T:ErikwnkWFUI.UIStyles.ProgressBars"/>),
+            so no border/theming quirks to work around. For slim status-strip-
+            style progress indicators rather than a prominent, full-size bar.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.SlimProgressBars.CreatePrimary">
+            <summary>Like <see cref="M:ErikwnkWFUI.UIStyles.SlimProgressBars.CreateGreen"/> but the fill follows the app-wide accent instead of the fixed green.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.SlimProgressBars.CreateStatus">
+            <summary>Fill color follows Value instead of being fixed - red at Minimum, yellow at the midpoint, green at Maximum, blending smoothly between them. For a "status/health" bar where color communicates good/bad.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.Icons">
+            <summary>
+            ErikwnkWFUI's own bundled icons (Web/Folder/Document/Application),
+            plus <see cref="M:ErikwnkWFUI.UIStyles.Icons.LoadEmbedded(System.Reflection.Assembly,System.String)"/> for loading your own app's icon
+            from its embedded resources the same way - see
+            ErikwnkWFUI/README.md for why that's preferable to a loose file.
+            </summary>
+        </member>
+    </members>
+</doc>

@@ -203,6 +203,7 @@ public sealed class MainForm : StyledForm
 
         // A 4-row grid so nothing can overlap regardless of window size.
         _player.Dock = DockStyle.Fill;
+        _player.Margin = new Padding(0);   // the default 3px margin ate into the panel
 
         var root = new TableLayoutPanel
         {

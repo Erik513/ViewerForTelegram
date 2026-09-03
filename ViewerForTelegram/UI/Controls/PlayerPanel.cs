@@ -23,7 +23,7 @@ public enum PlayerButton
 public sealed class PlayerPanel : Panel
 {
     /// <summary>Fixed height the host should give this panel.</summary>
-    public const int PanelHeight = 94;
+    public const int PanelHeight = 96;
 
     private readonly Button _mainButton;
     private readonly Button _saveButton;
@@ -174,7 +174,7 @@ public sealed class PlayerPanel : Panel
         };
         stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
         stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 16));
-        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+        stack.RowStyles.Add(new RowStyle(SizeType.Percent, 100));   // seek row absorbs the rest
         stack.Controls.Add(titleRow, 0, 0);
         stack.Controls.Add(_performer, 0, 1);
         stack.Controls.Add(_seekRow, 0, 2);
@@ -184,6 +184,7 @@ public sealed class PlayerPanel : Panel
             Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1,
             Margin = new Padding(0), BackColor = Color.Transparent
         };
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 52));
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         root.Controls.Add(_mainButton, 0, 0);

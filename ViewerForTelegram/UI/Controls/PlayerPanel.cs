@@ -23,7 +23,7 @@ public enum PlayerButton
 public sealed class PlayerPanel : Panel
 {
     /// <summary>Fixed height the host should give this panel.</summary>
-    public const int PanelHeight = 106;
+    public const int PanelHeight = 94;
 
     private readonly Button _mainButton;
     private readonly Button _saveButton;
@@ -47,7 +47,7 @@ public sealed class PlayerPanel : Panel
     {
         Dock = DockStyle.Bottom;
         Height = PanelHeight;
-        Padding = new Padding(12, 6, 14, 8);
+        Padding = new Padding(12, 5, 14, 6);
         BackColor = UIStyles.Colors.BackgroundDarkElevated;
 
         _mainButton = MakeIconButton(44, "Play / pause");
@@ -76,7 +76,12 @@ public sealed class PlayerPanel : Panel
         _fileFormat = MakeLabel(UIStyles.Labels.CreateMuted(""));
         _fileFormat.TextAlign = ContentAlignment.TopRight;
 
-        _seek = new SliderBar { Enabled = false, Anchor = AnchorStyles.Left | AnchorStyles.Right };
+        _seek = new SliderBar
+        {
+            Enabled = false,
+            Anchor = AnchorStyles.Left | AnchorStyles.Right,
+            Margin = new Padding(0)
+        };
         _seek.ValueChanged += (_, _) =>
         {
             if (_seek.Enabled)
@@ -86,9 +91,11 @@ public sealed class PlayerPanel : Panel
         };
 
         // Shown in place of the seek bar while a download runs - red→yellow→green.
+        // Same left/right inset as the seek track so the two line up exactly.
         _downloadBar = UIStyles.SlimProgressBars.CreateStatus();
         _downloadBar.BackColor = UIStyles.Colors.BorderMedium;
         _downloadBar.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        _downloadBar.Margin = new Padding(SliderBar.TrackInset, 0, SliderBar.TrackInset, 0);
 
         _time = MakeLabel(UIStyles.Labels.CreateMuted("–:– / –:–"));
         _time.TextAlign = ContentAlignment.MiddleCenter;
@@ -165,9 +172,9 @@ public sealed class PlayerPanel : Panel
             Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3,
             Margin = new Padding(12, 0, 0, 0), BackColor = Color.Transparent
         };
-        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
-        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 20));
-        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 16));
+        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
         stack.Controls.Add(titleRow, 0, 0);
         stack.Controls.Add(_performer, 0, 1);
         stack.Controls.Add(_seekRow, 0, 2);

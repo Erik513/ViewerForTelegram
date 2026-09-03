@@ -19,6 +19,11 @@ public sealed class SliderBar : Control
     private const int TrackHeight = 4;
     private const int ThumbRadius = 6;
 
+    /// <summary>Pixels the track is inset from each edge (room for the thumb).
+    /// Anything meant to line up with the track (e.g. a progress bar) should use
+    /// the same left/right margin.</summary>
+    public const int TrackInset = ThumbRadius + 1;
+
     public SliderBar()
     {
         SetStyle(
@@ -82,8 +87,8 @@ public sealed class SliderBar : Control
         ValueChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    private int TrackLeft => ThumbRadius + 1;
-    private int TrackRight => Width - ThumbRadius - 1;
+    private int TrackLeft => TrackInset;
+    private int TrackRight => Width - TrackInset;
     private int TrackWidth => Math.Max(1, TrackRight - TrackLeft);
 
     private double ValueFromX(int x) => (x - TrackLeft) / (double)TrackWidth * _maximum;

@@ -514,6 +514,7 @@ public sealed class MainForm : StyledForm
         // re-render; on the first load fall back to the track from ui-state.
         long? keep = _selectedFileId ?? _currentFileId
             ?? (_restoreFileId != 0 ? _restoreFileId : (long?)null);
+        DataGridViewRow? keptRow = null;
         if (keep is long fid)
         {
             foreach (DataGridViewRow row in _list.Rows)
@@ -522,11 +523,22 @@ public sealed class MainForm : StyledForm
                 {
                     _list.CurrentCell = row.Cells[0];
                     row.Selected = true;
+                    keptRow = row;
                     break;
                 }
             }
         }
         _list.ResumeLayout();
+
+        // Scroll the kept/restored row into view - inside SuspendLayout the
+        // CurrentCell scroll doesn't stick, and on the first load the row can be
+        // anywhere in a long list.
+        if (keptRow is not null)
+        {
+            try { _list.FirstDisplayedScrollingRowIndex = keptRow.Index; }
+            catch { /* row not in a scrollable state yet */ }
+        }
+
         _suppressListEvents = false;
         HighlightPlayingRow();
         ShowSelected();
@@ -692,6 +704,7 @@ public sealed class MainForm : StyledForm
         _currentFileId = audio.FileId;
         BackfillDuration(audio.FileId, _audio.Duration);
         HighlightPlayingRow();
+        SaveUiState();   // remember this track for the next launch
         _player.SetLoaded(_audio.Duration);
         _audio.Play();
         _player.SetButton(PlayerButton.Pause);
@@ -815,6 +828,7 @@ public sealed class MainForm : StyledForm
         _currentFileId = audio.FileId;
         BackfillDuration(audio.FileId, _audio.Duration);
         HighlightPlayingRow();
+        SaveUiState();   // remember this track for the next launch
         _audio.Play();
         _positionTimer.Start();
         if (_selectedFileId == audio.FileId)

@@ -509,6 +509,7 @@ public sealed class MainForm : StyledForm
                 $"{a.SizeBytes / 1024d / 1024d:0.0} MB");
             _list.Rows[i].Tag = a.FileId;
         }
+        int scrollBefore = Math.Max(0, _list.FirstDisplayedScrollingRowIndex);
         _list.ClearSelection();
         try { _list.CurrentCell = null; } catch { }   // no auto-selected row 0
 
@@ -516,7 +517,6 @@ public sealed class MainForm : StyledForm
         // re-render; on the first load fall back to the track from ui-state.
         long? keep = _selectedFileId ?? _currentFileId
             ?? (_lastTrackId != 0 ? _lastTrackId : (long?)null);
-        DataGridViewRow? keptRow = null;
         if (keep is long fid)
         {
             foreach (DataGridViewRow row in _list.Rows)
@@ -525,20 +525,18 @@ public sealed class MainForm : StyledForm
                 {
                     _list.CurrentCell = row.Cells[0];
                     row.Selected = true;
-                    keptRow = row;
                     break;
                 }
             }
         }
         _list.ResumeLayout();
 
-        // Scroll the kept/restored row into view - inside SuspendLayout the
-        // CurrentCell scroll doesn't stick, and on the first load the row can be
-        // anywhere in a long list.
-        if (keptRow is not null)
+        // Setting CurrentCell scrolls the row into view - don't jump the list
+        // for it, just mark it. Restore the scroll position (0 on a fresh load).
+        if (_list.RowCount > 0)
         {
-            try { _list.FirstDisplayedScrollingRowIndex = keptRow.Index; }
-            catch { /* row not in a scrollable state yet */ }
+            try { _list.FirstDisplayedScrollingRowIndex = Math.Min(scrollBefore, _list.RowCount - 1); }
+            catch { /* not scrollable yet */ }
         }
 
         _suppressListEvents = false;

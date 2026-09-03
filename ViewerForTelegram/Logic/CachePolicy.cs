@@ -1,15 +1,15 @@
 namespace ViewerForTelegram.Logic;
 
 /// <summary>
-/// Zentrale Cache-Regel. Liegt in Logic, damit alle Beteiligten (Composition
-/// Root, <see cref="Services.MediaDownloader"/>, die Einstellungsanzeige)
-/// denselben Wert verwenden.
+/// Central cache rule. Lives in Logic so that everyone involved (the
+/// composition root, <see cref="Services.MediaDownloader"/>, the settings
+/// display) uses the same value.
 /// </summary>
 public static class CachePolicy
 {
     /// <summary>
-    /// Obergrenze des Song-Caches, wenn er nicht bei jedem Start geleert wird
-    /// (glatte 3000 MB, damit die Anzeige rund aussieht).
+    /// Upper limit of the song cache when it is not wiped on every start
+    /// (a round 3000 MB, so the display reads nicely).
     /// </summary>
     public const long LimitBytes = 3000L * 1024 * 1024;
 }

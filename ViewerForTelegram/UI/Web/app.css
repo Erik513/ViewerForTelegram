@@ -20,7 +20,7 @@ body {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;                 /* nie das ganze Fenster scrollen */
+  overflow: hidden;                 /* never scroll the whole window */
   background: var(--bg);
   color: var(--text);
   font-family: "Segoe UI", Arial, sans-serif;
@@ -28,7 +28,7 @@ body {
   line-height: 1.4;
 }
 
-/* ---- obere Leiste ---- */
+/* ---- top bar ---- */
 .bar {
   flex: none;
   display: flex;
@@ -97,7 +97,7 @@ body {
   font-size: 13px;
 }
 
-/* ---- Tabelle ---- */
+/* ---- table ---- */
 .table-wrap {
   flex: 1;
   min-height: 0;
@@ -109,13 +109,13 @@ body {
   box-shadow: var(--shadow);
 }
 
-/* Scrollbar rechts daneben, mit Abstand zum Inhalt */
+/* scrollbar alongside, with spacing from the content */
 .table-wrap::-webkit-scrollbar { width: 14px; }
 .table-wrap::-webkit-scrollbar-track { background: transparent; }
 .table-wrap::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 8px;
-  border: 4px solid var(--panel);   /* wirkt wie Innenabstand */
+  border: 4px solid var(--panel);   /* acts like inner padding */
 }
 .table-wrap::-webkit-scrollbar-thumb:hover { background: #3a4d5e; }
 
@@ -177,7 +177,7 @@ tr.hidden { display: none; }
   text-overflow: ellipsis;
 }
 
-/* ---- Datei-Zelle: Player + Meta + Ladebalken ---- */
+/* ---- file cell: player + meta + progress bar ---- */
 .file-cell {
   display: flex;
   flex-direction: column;

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- net8.0-windows, weil das Projekt unter Test es ist (UseWindowsForms). -->
+    <!-- net8.0-windows because the project under test is (UseWindowsForms). -->
     <TargetFramework>net8.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>

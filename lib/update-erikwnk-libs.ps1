@@ -1,12 +1,12 @@
 <#
-    Kopiert die aktuellen ErikwnkWFUI- und ErikwnkCore-DLLs aus den
-    Nachbar-Repos hierher (lib\ErikwnkWFUI\).
+    Copies the current ErikwnkWFUI and ErikwnkCore DLLs from the neighbouring
+    repos into here (lib\ErikwnkWFUI\).
 
-    Nur ausführen, wenn du an ErikwnkWFUI/ErikwnkCore etwas geändert und
-    die Lib neu gebaut hast. Danach ViewerForTelegram neu bauen.
+    Only run this when you changed something in ErikwnkWFUI/ErikwnkCore and
+    rebuilt the library. Then rebuild ViewerForTelegram.
 
-    Aufruf:  powershell -ExecutionPolicy Bypass -File lib\update-erikwnk-libs.ps1
-             [-Configuration Release]
+    Usage:  powershell -ExecutionPolicy Bypass -File lib\update-erikwnk-libs.ps1
+            [-Configuration Release]
 #>
 param(
     [string]$Configuration = "Debug"
@@ -19,7 +19,7 @@ $sourceRepo = Join-Path (Split-Path $repoRoot -Parent) "ErikwnkWFUI\ErikwnkWFUI\
 $target     = Join-Path $PSScriptRoot "ErikwnkWFUI"
 
 if (-not (Test-Path $sourceRepo)) {
-    throw "Nicht gefunden: $sourceRepo`nErst 'dotnet build' im ErikwnkWFUI-Repo ausführen (Konfiguration: $Configuration)."
+    throw "Not found: $sourceRepo`nRun 'dotnet build' in the ErikwnkWFUI repo first (configuration: $Configuration)."
 }
 
 $files = @(
@@ -31,10 +31,10 @@ foreach ($file in $files) {
     $src = Join-Path $sourceRepo $file
     if (Test-Path $src) {
         Copy-Item $src $target -Force
-        Write-Host "kopiert:  $file"
+        Write-Host "copied:  $file"
     } else {
-        Write-Warning "fehlt:    $file"
+        Write-Warning "missing: $file"
     }
 }
 
-Write-Host "`nFertig. Jetzt ViewerForTelegram neu bauen." -ForegroundColor Green
+Write-Host "`nDone. Now rebuild ViewerForTelegram." -ForegroundColor Green

@@ -5,33 +5,33 @@ namespace ViewerForTelegram.Tests;
 public class TelegramConfigTests
 {
     [Fact]
-    public void Empty_IstNichtVollstaendig()
+    public void Empty_IsNotComplete()
     {
         Assert.False(TelegramConfig.Empty.IsComplete);
     }
 
     [Fact]
-    public void AlleFelderGefuellt_IstVollstaendig()
+    public void AllFieldsFilled_IsComplete()
     {
         var c = new TelegramConfig(12345, "abcdef", "+491701234567");
         Assert.True(c.IsComplete);
     }
 
     [Theory]
-    [InlineData(0, "abc", "+49170")]        // api_id fehlt
-    [InlineData(-1, "abc", "+49170")]       // api_id ungültig
-    [InlineData(12345, "", "+49170")]       // api_hash leer
-    [InlineData(12345, "   ", "+49170")]    // api_hash nur Leerzeichen
-    [InlineData(12345, "abc", "")]          // Telefon leer
-    [InlineData(12345, "abc", "   ")]       // Telefon nur Leerzeichen
-    public void FehlendesFeld_IstNichtVollstaendig(int apiId, string apiHash, string phone)
+    [InlineData(0, "abc", "+49170")]        // api_id missing
+    [InlineData(-1, "abc", "+49170")]       // api_id invalid
+    [InlineData(12345, "", "+49170")]       // api_hash empty
+    [InlineData(12345, "   ", "+49170")]    // api_hash whitespace only
+    [InlineData(12345, "abc", "")]          // phone empty
+    [InlineData(12345, "abc", "   ")]       // phone whitespace only
+    public void MissingField_IsNotComplete(int apiId, string apiHash, string phone)
     {
         var c = new TelegramConfig(apiId, apiHash, phone);
         Assert.False(c.IsComplete);
     }
 
     [Fact]
-    public void Standardwerte_CacheLeerenAn_KeinOrdner()
+    public void Defaults_ClearCacheOn_NoFolder()
     {
         var c = new TelegramConfig(1, "h", "+1");
         Assert.True(c.ClearCacheOnStart);
@@ -40,7 +40,7 @@ public class TelegramConfigTests
     }
 
     [Fact]
-    public void Wertgleichheit_AlsRecord()
+    public void ValueEquality_AsRecord()
     {
         var a = new TelegramConfig(1, "h", "+1", ClearCacheOnStart: false);
         var b = new TelegramConfig(1, "h", "+1", ClearCacheOnStart: false);

@@ -5,14 +5,14 @@ using ErikwnkWFUI.Forms;
 namespace ViewerForTelegram.UI.Forms;
 
 /// <summary>
-/// Kurzanleitung: wie man api_id / api_hash auf my.telegram.org anlegt.
+/// Short guide: how to create api_id / api_hash on my.telegram.org.
 /// </summary>
 public sealed class TelegramApiHelpForm : StyledForm
 {
     private const string Url = "https://my.telegram.org";
 
     public TelegramApiHelpForm()
-        : base(StyledFormOptions.CreateDialog("Zugangsdaten anlegen"))
+        : base(StyledFormOptions.CreateDialog("Create credentials"))
     {
         StartPosition = FormStartPosition.CenterParent;
         ClientSize = new Size(600, 420);
@@ -46,11 +46,11 @@ public sealed class TelegramApiHelpForm : StyledForm
             BackColor = Color.Transparent
         };
 
-        Button close = UIStyles.Buttons.CreateStandard("Schließen", "", new Size(110, 32));
+        Button close = UIStyles.Buttons.CreateStandard("Close", "", new Size(110, 32));
         close.Margin = new Padding(8, 4, 0, 4);
         close.Click += (_, _) => Close();
 
-        Button open = UIStyles.Buttons.CreatePrimary("my.telegram.org öffnen", "", new Size(200, 32));
+        Button open = UIStyles.Buttons.CreatePrimary("Open my.telegram.org", "", new Size(200, 32));
         open.Margin = new Padding(0, 4, 0, 4);
         open.Click += (_, _) => OpenUrl();
 
@@ -78,27 +78,27 @@ public sealed class TelegramApiHelpForm : StyledForm
         }
         catch
         {
-            // ignorieren - der Nutzer kann die Adresse auch abtippen
+            // ignore - the user can also type the address manually
         }
     }
 
     private static string InstructionText() =>
-        "ViewerForTelegram liefert keine gemeinsamen API-Zugangsdaten mit - jeder Nutzer\r\n" +
-        "legt seine eigenen an. Das ist kostenlos und dauert 2 Minuten.\r\n\r\n" +
-        "So kommst du an api_id und api_hash:\r\n\r\n" +
-        "1. Unten auf \"my.telegram.org öffnen\" klicken.\r\n" +
-        "2. Mit deiner Telegram-Telefonnummer anmelden - der Bestätigungscode\r\n" +
-        "   kommt in deiner Telegram-App.\r\n" +
-        "3. \"API development tools\" anklicken.\r\n" +
-        "4. Das Formular ausfüllen:\r\n" +
-        "     App title:   z. B. ViewerForTelegram\r\n" +
-        "     Short name:  z. B. tgviewer\r\n" +
+        "ViewerForTelegram ships no shared API credentials - every user creates\r\n" +
+        "their own. It is free and takes about 2 minutes.\r\n\r\n" +
+        "How to get api_id and api_hash:\r\n\r\n" +
+        "1. Click \"Open my.telegram.org\" below.\r\n" +
+        "2. Sign in with your Telegram phone number - the confirmation code\r\n" +
+        "   arrives in your Telegram app.\r\n" +
+        "3. Click \"API development tools\".\r\n" +
+        "4. Fill in the form:\r\n" +
+        "     App title:   e.g. ViewerForTelegram\r\n" +
+        "     Short name:  e.g. tgviewer\r\n" +
         "     Platform:    Desktop\r\n" +
-        "     (URL und Beschreibung können leer bleiben)\r\n" +
-        "5. \"Create application\" klicken.\r\n" +
-        "6. Auf der nächsten Seite stehen \"App api_id\" (eine Zahl) und\r\n" +
-        "   \"App api_hash\" (langer Hex-String).\r\n" +
-        "7. Beide hier in den Einstellungen eintragen - das Stift-Symbol\r\n" +
-        "   entsperrt das jeweilige Feld.\r\n\r\n" +
-        "Wichtig: der api_hash ist wie ein Passwort - nicht weitergeben.";
+        "     (URL and description can stay empty)\r\n" +
+        "5. Click \"Create application\".\r\n" +
+        "6. The next page shows \"App api_id\" (a number) and\r\n" +
+        "   \"App api_hash\" (a long hex string).\r\n" +
+        "7. Enter both here in the settings - the pencil icon unlocks the\r\n" +
+        "   respective field.\r\n\r\n" +
+        "Important: the api_hash is like a password - do not share it.";
 }

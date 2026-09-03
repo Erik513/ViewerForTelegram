@@ -1,35 +1,35 @@
 using ViewerForTelegram.Data.Interfaces;
 using ViewerForTelegram.Data.Models;
 using TL;
-// TL.Message kollidiert mit System.Windows.Forms.Message (kommt projektweit
-// über UseWindowsForms rein). Hier meinen wir immer die Telegram-Nachricht.
+// TL.Message collides with System.Windows.Forms.Message (pulled in project-wide
+// via UseWindowsForms). Here we always mean the Telegram message.
 using Message = TL.Message;
 
 namespace ViewerForTelegram.Data;
 
 /// <summary>
-/// <see cref="ITelegramSource"/> auf Basis von WTelegramClient (MTProto,
-/// meldet sich als der Benutzer an). Die einzige Klasse im Projekt, die
-/// den Namespace <c>TL</c> / <c>WTelegram</c> überhaupt kennt.
+/// <see cref="ITelegramSource"/> on top of WTelegramClient (MTProto, signs in
+/// as the user). The only class in the project that knows the <c>TL</c> /
+/// <c>WTelegram</c> namespace at all.
 /// </summary>
 public sealed class TelegramSource : ITelegramSource
 {
     private readonly IConfigStore _configStore;
     private readonly string _sessionPath;
 
-    // Wird bei der Selbstheilung (Telefonnummer-Korrektur) ersetzt.
+    // Replaced during self-healing (phone-number correction).
     private TelegramConfig _config;
 
     private WTelegram.Client? _client;
     private Func<Task<string>>? _requestCode;
 
-    // Aus GetChatsAsync: chatId -> ansprechbarer Telegram-Peer. Messages_GetHistory
-    // braucht einen InputPeer, nicht nur die Id.
+    // From GetChatsAsync: chatId -> addressable Telegram peer. Messages_GetHistory
+    // needs an InputPeer, not just the id.
     private Dictionary<long, InputPeer>? _peers;
 
-    // Aus GetAudioMessagesSinceAsync: FileId -> das echte Telegram-Dokument.
-    // DownloadFileAsync braucht das ganze Document (access_hash, file_reference,
-    // dc_id), nicht nur unsere FileId.
+    // From GetAudioMessagesSinceAsync: FileId -> the real Telegram document.
+    // DownloadFileAsync needs the whole Document (access_hash, file_reference,
+    // dc_id), not just our FileId.
     private readonly Dictionary<long, Document> _documents = new();
 
     public TelegramSource(IConfigStore configStore, string sessionPath)
@@ -45,17 +45,17 @@ public sealed class TelegramSource : ITelegramSource
     {
         _requestCode = requestVerificationCode;
 
-        // Config frisch aus dem Store lesen - so wirkt eine gerade im
-        // SetupForm gespeicherte Änderung sofort, ohne die Klasse neu zu bauen.
+        // Read the config fresh from the store - so a change just saved in the
+        // settings form takes effect immediately, without rebuilding this class.
         _config = _configStore.Load();
         if (!_config.IsComplete)
         {
             throw new InvalidOperationException(
-                "Zugangsdaten fehlen - bitte erst die Einrichtung ausfüllen.");
+                "Credentials are missing - please complete the setup first.");
         }
 
-        // WTelegramClient-Meldungen ab Level "Info" (2) mitschreiben - Level 0/1
-        // ist Paket-für-Paket-Rauschen.
+        // Capture WTelegramClient messages from level "Info" (2) upwards - level
+        // 0/1 is packet-by-packet noise.
         WTelegram.Helpers.Log = (level, message) =>
         {
             if (level >= 2)
@@ -65,23 +65,23 @@ public sealed class TelegramSource : ITelegramSource
         };
 
         LogLine(File.Exists(_sessionPath)
-            ? $"Session-Datei vorhanden: {_sessionPath} ({new FileInfo(_sessionPath).Length} Bytes)"
-            : $"Keine Session-Datei unter {_sessionPath} - voller Login nötig.");
+            ? $"Session file present: {_sessionPath} ({new FileInfo(_sessionPath).Length} bytes)"
+            : $"No session file at {_sessionPath} - full login required.");
 
         _client = new WTelegram.Client(ProvideConfigValue);
         User me = await _client.LoginUserIfNeeded();
 
-        LogLine($"Angemeldet als {me.first_name} (id {me.id}). " +
-                $"Session jetzt: {(File.Exists(_sessionPath) ? new FileInfo(_sessionPath).Length + " Bytes" : "FEHLT")}");
+        LogLine($"Signed in as {me.first_name} (id {me.id}). " +
+                $"Session now: {(File.Exists(_sessionPath) ? new FileInfo(_sessionPath).Length + " bytes" : "MISSING")}");
 
         HealPhoneNumber(me);
     }
 
     /// <summary>
-    /// Selbstheilung: Telegram meldet die kanonische Nummer des Kontos. Weicht
-    /// die gespeicherte davon ab (z. B. eine 0 zu viel), würde WTelegramClient
-    /// die Session bei JEDEM Start als "fremd" verwerfen und neu einloggen.
-    /// Wir schreiben die korrekte Nummer einmalig zurück in die Config.
+    /// Self-healing: Telegram reports the account's canonical number. If the
+    /// stored one differs (e.g. an extra leading 0), WTelegramClient would
+    /// discard the session as "foreign" on EVERY start and log in again. We
+    /// write the correct number back into the config once.
     /// </summary>
     private void HealPhoneNumber(User me)
     {
@@ -93,19 +93,18 @@ public sealed class TelegramSource : ITelegramSource
 
         if (PhoneNumbers.DigitsOnly(_config.PhoneNumber) == reported)
         {
-            return; // passt bereits
+            return; // already matches
         }
 
         string corrected = "+" + reported;
-        LogLine($"Telefonnummer korrigiert: '{_config.PhoneNumber}' -> '{corrected}'");
+        LogLine($"Phone number corrected: '{_config.PhoneNumber}' -> '{corrected}'");
         _config = _config with { PhoneNumber = corrected };
         _configStore.Save(_config);
     }
 
     /// <summary>
-    /// Wird von WTelegramClient Feld für Feld aufgerufen, um den Login
-    /// zusammenzusetzen. Ein <c>null</c> bedeutet "kein Wert / nimm den
-    /// Standard".
+    /// Called by WTelegramClient field by field to assemble the login. A
+    /// <c>null</c> means "no value / use the default".
     /// </summary>
     private string? ProvideConfigValue(string key) => key switch
     {
@@ -114,13 +113,13 @@ public sealed class TelegramSource : ITelegramSource
         "phone_number" => _config.PhoneNumber,
         "session_pathname" => _sessionPath,
 
-        // Der Code ist erst zur Laufzeit bekannt. Diese Methode ist synchron,
-        // also warten wir hier blockierend auf den (asynchronen) UI-Dialog.
-        // Unkritisch, weil dieser Aufruf auf einem Worker-Thread läuft.
+        // The code is only known at runtime. This method is synchronous, so we
+        // block here waiting for the (asynchronous) UI dialog. Harmless because
+        // this call runs on a worker thread.
         "verification_code" => _requestCode!().GetAwaiter().GetResult(),
 
         "password" => throw new NotSupportedException(
-            "Dieses Konto nutzt ein Cloud-Passwort (2FA). Das wird später ergänzt."),
+            "This account uses a cloud password (2FA). Support for that will be added later."),
 
         _ => null
     };
@@ -138,7 +137,7 @@ public sealed class TelegramSource : ITelegramSource
         {
             if (!chat.IsActive)
             {
-                continue; // verlassene / gesperrte Chats überspringen
+                continue; // skip left / banned chats
             }
 
             TelegramChatKind kind = chat.IsChannel
@@ -164,7 +163,7 @@ public sealed class TelegramSource : ITelegramSource
         if (_peers is null || !_peers.TryGetValue(chatId, out InputPeer? peer))
         {
             throw new InvalidOperationException(
-                "Chat nicht bekannt - GetChatsAsync muss zuerst gelaufen sein.");
+                "Chat not known - GetChatsAsync must have run first.");
         }
 
         DateTime since = sinceUtc.Kind == DateTimeKind.Unspecified
@@ -172,7 +171,7 @@ public sealed class TelegramSource : ITelegramSource
             : sinceUtc.ToUniversalTime();
 
         var result = new List<AudioMessage>();
-        int offsetId = 0; // 0 = ab der neuesten Nachricht
+        int offsetId = 0; // 0 = from the newest message
 
         for (int page = 0; page < MaxPages; page++)
         {
@@ -184,14 +183,14 @@ public sealed class TelegramSource : ITelegramSource
             MessageBase[] messages = batch.Messages;
             if (messages.Length == 0)
             {
-                break; // nichts mehr da
+                break; // nothing left
             }
 
             bool reachedOlder = false;
             foreach (MessageBase mb in messages)
             {
-                // Nachrichten kommen neueste -> älteste. Sobald eine älter als
-                // 'since' ist, sind alle folgenden es auch.
+                // Messages come newest -> oldest. Once one is older than
+                // 'since', all following ones are too.
                 if (mb.Date < since)
                 {
                     reachedOlder = true;
@@ -204,22 +203,22 @@ public sealed class TelegramSource : ITelegramSource
                 }
             }
 
-            offsetId = messages[^1].ID; // älteste Id dieser Seite -> nächste Seite älter
+            offsetId = messages[^1].ID; // oldest id of this page -> next page older
             if (reachedOlder || result.Count >= MaxMessages || messages.Length < HistoryPageSize)
             {
                 break;
             }
         }
 
-        LogLine($"GetAudioMessagesSince: chat {chatId}, ab {since:u} -> {result.Count} Audios");
+        LogLine($"GetAudioMessagesSince: chat {chatId}, since {since:u} -> {result.Count} audios");
         return result;
     }
 
     /// <summary>
-    /// Wandelt eine Nachricht in ein <see cref="AudioMessage"/> um, sofern sie
-    /// überhaupt eine Audiodatei enthält (als "Musik" mit Audio-Attribut oder
-    /// als "Datei" mit audio/*-MIME-Typ). Sprachnachrichten sind bewusst dabei -
-    /// gefiltert wird später in den App-Einstellungen.
+    /// Turns a message into an <see cref="AudioMessage"/> if it contains an
+    /// audio file at all (as "music" with an audio attribute, or as a "file"
+    /// with an audio/* MIME type). Voice messages are deliberately included -
+    /// filtering happens later in the app settings.
     /// </summary>
     private bool TryMapAudio(Message message, long chatId, out AudioMessage audio)
     {
@@ -246,7 +245,7 @@ public sealed class TelegramSource : ITelegramSource
         string title =
             !string.IsNullOrWhiteSpace(audioAttr?.title) ? audioAttr!.title
             : !string.IsNullOrWhiteSpace(fileName) ? Path.GetFileNameWithoutExtension(fileName)
-            : "(ohne Titel)";
+            : "(untitled)";
 
         audio = new AudioMessage(
             ChatId: chatId,
@@ -261,7 +260,7 @@ public sealed class TelegramSource : ITelegramSource
             FileName: fileName ?? $"{doc.id}{MimeToExtension(doc.mime_type)}",
             DateUtc: message.date);
 
-        _documents[doc.id] = doc; // für den späteren Download aufheben
+        _documents[doc.id] = doc; // keep for the later download
         return true;
     }
 
@@ -284,14 +283,14 @@ public sealed class TelegramSource : ITelegramSource
         if (!_documents.TryGetValue(message.FileId, out Document? doc))
         {
             throw new InvalidOperationException(
-                "Datei nicht bekannt - erst die Liste laden.");
+                "File not known - load the list first.");
         }
 
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
         string partPath = targetPath + ".part";
 
-        // Manche Dokumente melden im Callback total = 0 - dann die bekannte
-        // Größe aus der Nachricht nehmen, sonst käme nie ein Fortschritt.
+        // Some documents report total = 0 in the callback - then take the known
+        // size from the message, otherwise no progress would ever arrive.
         long knownTotal = message.SizeBytes;
         WTelegram.Client.ProgressCallback? cb = (transmitted, total) =>
         {
@@ -307,8 +306,8 @@ public sealed class TelegramSource : ITelegramSource
         {
             await using FileStream fs = new(
                 partPath, FileMode.Create, FileAccess.Write, FileShare.None);
-            // Abbruch: FileStream schließen -> nächster Schreibversuch in
-            // DownloadFileAsync wirft -> der Download endet.
+            // Cancel: close the FileStream -> the next write in DownloadFileAsync
+            // throws -> the download ends.
             await using CancellationTokenRegistration reg =
                 ct.Register(() => { try { fs.Dispose(); } catch { } });
 
@@ -331,8 +330,8 @@ public sealed class TelegramSource : ITelegramSource
         }
         File.Move(partPath, targetPath);
 
-        LogLine($"Download fertig: {Path.GetFileName(targetPath)} " +
-                $"({new FileInfo(targetPath).Length} Bytes)");
+        LogLine($"Download complete: {Path.GetFileName(targetPath)} " +
+                $"({new FileInfo(targetPath).Length} bytes)");
     }
 
     private static void TryDelete(string path)
@@ -346,7 +345,7 @@ public sealed class TelegramSource : ITelegramSource
         }
         catch
         {
-            // egal
+            // never mind
         }
     }
 
@@ -359,15 +358,16 @@ public sealed class TelegramSource : ITelegramSource
             return;
         }
 
-        // WTelegramClient.Dispose() ist synchron und kann beim Verbindungsabbau
-        // hängen - auf einen Hintergrund-Thread auslagern und nach 3 s aufgeben.
+        // WTelegramClient.Dispose() is synchronous and can hang while tearing
+        // down the connection - offload it to a background thread and give up
+        // after 3 s.
         try
         {
             await Task.Run(client.Dispose).WaitAsync(TimeSpan.FromSeconds(3));
         }
         catch
         {
-            // hängt oder wirft - beim Runterfahren egal
+            // hangs or throws - does not matter on shutdown
         }
     }
 
@@ -378,7 +378,7 @@ public sealed class TelegramSource : ITelegramSource
         if (_client is null)
         {
             throw new InvalidOperationException(
-                $"{nameof(ConnectAsync)} muss zuerst erfolgreich durchlaufen.");
+                $"{nameof(ConnectAsync)} must run successfully first.");
         }
     }
 }

@@ -6,14 +6,14 @@ namespace ViewerForTelegram.Tests;
 public class JsonConfigStoreTests
 {
     [Fact]
-    public void SpeichernUndLaden_ErgibtGleicheConfig()
+    public void SaveAndLoad_RoundTrips()
     {
         using var file = TempPath.File();
         var store = new JsonConfigStore(file.Path);
 
         var config = new TelegramConfig(
             12345, "abcdef123456", "+491701234567",
-            ClearCacheOnStart: false, DownloadFolder: @"C:\Musik", UseDownloadFolder: true);
+            ClearCacheOnStart: false, DownloadFolder: @"C:\Music", UseDownloadFolder: true);
 
         store.Save(config);
         TelegramConfig loaded = store.Load();
@@ -22,26 +22,26 @@ public class JsonConfigStoreTests
     }
 
     [Fact]
-    public void Laden_DateiFehlt_GibtEmpty()
+    public void Load_FileMissing_ReturnsEmpty()
     {
-        using var file = TempPath.File(); // nicht angelegt
+        using var file = TempPath.File(); // not created
         var store = new JsonConfigStore(file.Path);
 
         Assert.Equal(TelegramConfig.Empty, store.Load());
     }
 
     [Fact]
-    public void Laden_KaputteDatei_GibtEmpty()
+    public void Load_CorruptFile_ReturnsEmpty()
     {
         using var file = TempPath.File();
-        File.WriteAllText(file.Path, "{ das ist kein JSON ");
+        File.WriteAllText(file.Path, "{ this is not JSON ");
         var store = new JsonConfigStore(file.Path);
 
         Assert.Equal(TelegramConfig.Empty, store.Load());
     }
 
     [Fact]
-    public void Laden_AltesFormatOhneNeueFelder_NimmtStandardwerte()
+    public void Load_OldFormatWithoutNewFields_UsesDefaults()
     {
         using var file = TempPath.File();
         File.WriteAllText(file.Path,
@@ -54,14 +54,14 @@ public class JsonConfigStoreTests
         Assert.Equal(555, loaded.ApiId);
         Assert.Equal("hash", loaded.ApiHash);
         Assert.Equal("+49170", loaded.PhoneNumber);
-        Assert.True(loaded.ClearCacheOnStart);   // Standardwert
+        Assert.True(loaded.ClearCacheOnStart);   // default value
         Assert.False(loaded.UseDownloadFolder);
         Assert.Equal("", loaded.DownloadFolder);
         Assert.True(loaded.IsComplete);
     }
 
     [Fact]
-    public void Speichern_SchreibtKeineBerechnetenFelder()
+    public void Save_DoesNotWriteComputedFields()
     {
         using var file = TempPath.File();
         new JsonConfigStore(file.Path).Save(new TelegramConfig(1, "h", "+1"));

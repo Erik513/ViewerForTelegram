@@ -3,25 +3,24 @@ using System.Text.Json.Serialization;
 namespace ViewerForTelegram.Data.Models;
 
 /// <summary>
-/// Die Zugangsdaten, die der Nutzer beim ersten Start eingibt. Werden als
-/// JSON in <see cref="AppPaths.ConfigFile"/> gespeichert - nie im Repo.
+/// The credentials the user enters on first run. Stored as JSON in
+/// <see cref="AppPaths.ConfigFile"/> - never in the repo.
 ///
-/// api_id / api_hash holt sich jeder Nutzer selbst auf my.telegram.org
-/// ("API development tools"); sie können bei einer öffentlichen App nicht
-/// mitgeliefert werden.
+/// Every user obtains api_id / api_hash themselves on my.telegram.org
+/// ("API development tools"); they cannot be shipped with a public app.
 /// </summary>
-/// <param name="ApiId">Zahl von my.telegram.org.</param>
-/// <param name="ApiHash">32-stelliger Hex-String von my.telegram.org.</param>
-/// <param name="PhoneNumber">Telefonnummer des Telegram-Kontos, international (z. B. +49170...).</param>
+/// <param name="ApiId">Number from my.telegram.org.</param>
+/// <param name="ApiHash">32-character hex string from my.telegram.org.</param>
+/// <param name="PhoneNumber">Phone number of the Telegram account, international (e.g. +49170...).</param>
 /// <param name="ClearCacheOnStart">
-/// Wenn true (Standard), wird der Song-Cache bei jedem Programmstart geleert -
-/// passend zum "ich höre mal rein"-Anwendungsfall. Ausschaltbar, dann bleibt
-/// der Cache und wird nur auf die Obergrenze gestutzt.
+/// When true (default), the song cache is wiped on every startup - fitting the
+/// "just checking what's new" use case. Can be turned off, then the cache is
+/// kept and only trimmed to the size limit.
 /// </param>
-/// <param name="DownloadFolder">Standardordner für "Herunterladen" aus dem Player.</param>
+/// <param name="DownloadFolder">Default folder for "download" from the player.</param>
 /// <param name="UseDownloadFolder">
-/// true: Downloads gehen ohne Nachfrage in <see cref="DownloadFolder"/>.
-/// false: bei jedem Download den Ordner wählen.
+/// true: downloads go to <see cref="DownloadFolder"/> without asking.
+/// false: pick the folder on every download.
 /// </param>
 public sealed record TelegramConfig(
     int ApiId,
@@ -31,10 +30,10 @@ public sealed record TelegramConfig(
     string DownloadFolder = "",
     bool UseDownloadFolder = false)
 {
-    /// <summary>Leerzustand für "noch nichts eingegeben".</summary>
+    /// <summary>Empty state for "nothing entered yet".</summary>
     public static TelegramConfig Empty { get; } = new(0, "", "");
 
-    /// <summary>Sind alle Pflichtfelder plausibel gefüllt?</summary>
+    /// <summary>Are all required fields plausibly filled?</summary>
     [JsonIgnore]
     public bool IsComplete =>
         ApiId > 0

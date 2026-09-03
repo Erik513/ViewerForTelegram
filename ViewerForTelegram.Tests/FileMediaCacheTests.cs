@@ -10,7 +10,7 @@ public class FileMediaCacheTests
             Duration: null, SizeBytes: size, FileName: name, DateUtc: DateTime.UtcNow);
 
     [Fact]
-    public void GetPath_EnthaeltFileIdUndLiegtImCacheOrdner()
+    public void GetPath_ContainsFileIdAndLivesInCacheFolder()
     {
         using var dir = TempPath.Dir();
         var cache = new FileMediaCache(dir.Path);
@@ -23,7 +23,7 @@ public class FileMediaCacheTests
     }
 
     [Fact]
-    public void GetPath_SaeubertUnzulaessigeZeichen()
+    public void GetPath_SanitizesInvalidCharacters()
     {
         using var dir = TempPath.Dir();
         var cache = new FileMediaCache(dir.Path);
@@ -37,7 +37,7 @@ public class FileMediaCacheTests
     }
 
     [Fact]
-    public void Contains_NurWennDaUndGroessePasst()
+    public void Contains_OnlyWhenPresentAndSizeMatches()
     {
         using var dir = TempPath.Dir();
         var cache = new FileMediaCache(dir.Path);
@@ -45,15 +45,15 @@ public class FileMediaCacheTests
 
         Assert.False(cache.Contains(a));
 
-        File.WriteAllBytes(cache.GetPath(a), new byte[50]); // falsche Größe
+        File.WriteAllBytes(cache.GetPath(a), new byte[50]); // wrong size
         Assert.False(cache.Contains(a));
 
-        File.WriteAllBytes(cache.GetPath(a), new byte[100]); // passt
+        File.WriteAllBytes(cache.GetPath(a), new byte[100]); // matches
         Assert.True(cache.Contains(a));
     }
 
     [Fact]
-    public void GetStats_ZaehltDateienUndBytes_IgnoriertPartDateien()
+    public void GetStats_CountsFilesAndBytes_IgnoresPartFiles()
     {
         using var dir = TempPath.Dir();
         var cache = new FileMediaCache(dir.Path);
@@ -69,7 +69,7 @@ public class FileMediaCacheTests
     }
 
     [Fact]
-    public void Clear_LoeschtAlleFertigenDateien()
+    public void Clear_DeletesAllCompleteFiles()
     {
         using var dir = TempPath.Dir();
         var cache = new FileMediaCache(dir.Path);
@@ -82,31 +82,31 @@ public class FileMediaCacheTests
     }
 
     [Fact]
-    public void PruneToLimit_LoeschtDieAeltestenBisUnterGrenze()
+    public void PruneToLimit_DeletesOldestUntilBelowLimit()
     {
         using var dir = TempPath.Dir();
         var cache = new FileMediaCache(dir.Path);
 
-        string alt = Path.Combine(dir.Path, "1__alt.mp3");
-        string mittel = Path.Combine(dir.Path, "2__mittel.mp3");
-        string neu = Path.Combine(dir.Path, "3__neu.mp3");
+        string old = Path.Combine(dir.Path, "1__old.mp3");
+        string mid = Path.Combine(dir.Path, "2__mid.mp3");
+        string fresh = Path.Combine(dir.Path, "3__fresh.mp3");
 
-        File.WriteAllBytes(alt, new byte[100]);
-        File.SetLastWriteTimeUtc(alt, DateTime.UtcNow.AddHours(-3));
-        File.WriteAllBytes(mittel, new byte[100]);
-        File.SetLastWriteTimeUtc(mittel, DateTime.UtcNow.AddHours(-2));
-        File.WriteAllBytes(neu, new byte[100]);
-        File.SetLastWriteTimeUtc(neu, DateTime.UtcNow.AddHours(-1));
+        File.WriteAllBytes(old, new byte[100]);
+        File.SetLastWriteTimeUtc(old, DateTime.UtcNow.AddHours(-3));
+        File.WriteAllBytes(mid, new byte[100]);
+        File.SetLastWriteTimeUtc(mid, DateTime.UtcNow.AddHours(-2));
+        File.WriteAllBytes(fresh, new byte[100]);
+        File.SetLastWriteTimeUtc(fresh, DateTime.UtcNow.AddHours(-1));
 
-        cache.PruneToLimit(150); // muss 2 der 3 Dateien löschen
+        cache.PruneToLimit(150); // must delete 2 of the 3 files
 
-        Assert.False(File.Exists(alt));
-        Assert.False(File.Exists(mittel));
-        Assert.True(File.Exists(neu));
+        Assert.False(File.Exists(old));
+        Assert.False(File.Exists(mid));
+        Assert.True(File.Exists(fresh));
     }
 
     [Fact]
-    public void PruneToLimit_UnterGrenze_MachtNichts()
+    public void PruneToLimit_BelowLimit_DoesNothing()
     {
         using var dir = TempPath.Dir();
         var cache = new FileMediaCache(dir.Path);

@@ -1,16 +1,16 @@
 namespace ViewerForTelegram.Data;
 
 /// <summary>
-/// Kleine Helfer für Telefonnummern. Telegram führt Nummern intern als
-/// reine Ziffernfolge ohne "+" (z. B. <c>4917647123238</c>).
+/// Small helpers for phone numbers. Telegram stores numbers internally as a
+/// plain digit sequence without a "+" (e.g. <c>4917647123238</c>).
 /// </summary>
 public static class PhoneNumbers
 {
-    /// <summary>Nur die Ziffern - "+", Leerzeichen, Klammern, Bindestriche fallen weg.</summary>
+    /// <summary>Digits only - "+", spaces, parentheses and dashes are dropped.</summary>
     public static string DigitsOnly(string? input) =>
         new((input ?? "").Where(char.IsDigit).ToArray());
 
-    /// <summary>Anzeigeform: "+" plus Ziffern. Leerer String bleibt leer.</summary>
+    /// <summary>Display form: "+" plus digits. An empty string stays empty.</summary>
     public static string ToPlusForm(string? input)
     {
         string digits = DigitsOnly(input);

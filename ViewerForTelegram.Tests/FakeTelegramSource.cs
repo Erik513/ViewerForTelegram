@@ -3,15 +3,15 @@ using ViewerForTelegram.Data.Models;
 
 namespace ViewerForTelegram.Tests;
 
-/// <summary>In-Memory-Ersatz für <see cref="ITelegramSource"/> in Service-Tests.</summary>
+/// <summary>In-memory stand-in for <see cref="ITelegramSource"/> in service tests.</summary>
 internal sealed class FakeTelegramSource : ITelegramSource
 {
     public List<AudioMessage> Audios { get; } = new();
     public int DownloadCalls { get; private set; }
 
     /// <summary>
-    /// Optionale eigene Download-Simulation. Standard: schreibt
-    /// <see cref="AudioMessage.SizeBytes"/> Nullbytes und meldet 100 %.
+    /// Optional custom download simulation. Default: writes
+    /// <see cref="AudioMessage.SizeBytes"/> zero bytes and reports 100%.
     /// </summary>
     public Func<AudioMessage, string, IProgress<int>?, CancellationToken, Task>? DownloadBehavior { get; set; }
 

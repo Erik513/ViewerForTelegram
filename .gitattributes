@@ -1,0 +1,14 @@
+# Normalize line endings: LF in the repo, native on checkout.
+* text=auto
+
+*.cs      text diff=csharp
+*.csproj  text
+*.sln     text eol=crlf
+*.md      text
+*.html    text
+*.css     text
+*.js      text
+*.ps1     text eol=crlf
+
+*.dll     binary
+*.pdb     binary

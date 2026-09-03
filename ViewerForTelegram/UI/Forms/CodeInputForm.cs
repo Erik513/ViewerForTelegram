@@ -4,31 +4,31 @@ using ErikwnkWFUI.Forms;
 namespace ViewerForTelegram.UI.Forms;
 
 /// <summary>
-/// Kleiner modaler Dialog für den Telegram-Login-Code. Wird von der
-/// <see cref="Data.TelegramSource"/> über einen Callback angefordert, damit
-/// die Data-Schicht selbst nichts von Fenstern wissen muss.
+/// Small modal dialog for the Telegram login code. Requested by
+/// <see cref="Data.TelegramSource"/> through a callback, so the Data layer
+/// itself needs to know nothing about windows.
 /// </summary>
 public sealed class CodeInputForm : StyledForm
 {
     private readonly TextBox _codeBox;
 
-    /// <summary>Der eingegebene Code, oder null bei Abbruch.</summary>
+    /// <summary>The entered code, or null on cancel.</summary>
     public string? Code { get; private set; }
 
     public CodeInputForm()
-        : base(StyledFormOptions.CreateDialog("Telegram-Code"))
+        : base(StyledFormOptions.CreateDialog("Telegram code"))
     {
         Size = new Size(380, 230);
         StartPosition = FormStartPosition.CenterScreen;
 
         Label label = UIStyles.Labels.CreateNormal(
-            "Telegram hat dir einen Login-Code geschickt\r\n(in der App oder per SMS). Bitte eingeben:");
+            "Telegram sent you a login code\r\n(in the app or by SMS). Please enter it:");
         label.SetBounds(24, 16, 320, 48);
 
         _codeBox = UIStyles.TextBoxes.CreateStandard("", "12345");
         _codeBox.SetBounds(24, 74, 320, 30);
 
-        Button okButton = UIStyles.Buttons.CreatePrimary("Bestätigen");
+        Button okButton = UIStyles.Buttons.CreatePrimary("Confirm");
         okButton.SetBounds(24, 122, 320, 42);
         okButton.Click += (_, _) =>
         {

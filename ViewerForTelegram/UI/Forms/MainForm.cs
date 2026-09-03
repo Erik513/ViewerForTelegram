@@ -14,10 +14,10 @@ using MessageBoxIcon = ErikwnkWFUI.Forms.MessageBoxIcon;
 namespace ViewerForTelegram.UI.Forms;
 
 /// <summary>
-/// Hauptfenster: besteht nur aus der eingebetteten WebView2. Die komplette
-/// Bedienung (Gruppenwahl, Zeitraum, Liste, Player) liegt in der HTML-Seite
-/// unter web\. C# liefert Daten und die Audiodateien. Anmeldung und Optionen
-/// laufen über die <see cref="SettingsForm"/>.
+/// Main window: nothing but the embedded WebView2. The whole UI (chat picker,
+/// time window, list, player) lives in the HTML page under web\. C# supplies the
+/// data and the audio files. Sign-in and options run through
+/// <see cref="SettingsForm"/>.
 /// </summary>
 public sealed class MainForm : StyledForm
 {
@@ -82,10 +82,10 @@ public sealed class MainForm : StyledForm
         if (!WebView2Available())
         {
             DialogResult r = StyledMessageBox.Show(
-                "Die WebView2-Runtime von Microsoft ist nicht installiert.\r\n" +
-                "Viewer for Telegram braucht sie für die Oberfläche.\r\n\r\n" +
-                "Jetzt die Download-Seite öffnen?",
-                "WebView2 fehlt", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, this);
+                "Microsoft's WebView2 runtime is not installed.\r\n" +
+                "Viewer for Telegram needs it for the UI.\r\n\r\n" +
+                "Open the download page now?",
+                "WebView2 missing", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, this);
 
             if (r == DialogResult.Yes)
             {
@@ -107,8 +107,8 @@ public sealed class MainForm : StyledForm
 
         _ = PushCacheInfoAsync();
 
-        // Nicht angemeldet (keine Zugangsdaten oder keine gespeicherte Sitzung)
-        // -> Einstellungen direkt öffnen. Sonst still über die Sitzung anmelden.
+        // Not signed in (no credentials or no stored session) -> open settings
+        // directly. Otherwise sign in silently via the session.
         bool hasSession = File.Exists(AppPaths.SessionFile);
         if (!_configStore.Load().IsComplete || !hasSession)
         {
@@ -120,7 +120,7 @@ public sealed class MainForm : StyledForm
         }
     }
 
-    /// <summary>Anmelden + Chatliste holen.</summary>
+    /// <summary>Sign in + fetch the chat list.</summary>
     private async Task ConnectAsync()
     {
         if (_connecting)
@@ -138,7 +138,7 @@ public sealed class MainForm : StyledForm
         {
             _connected = false;
             await RunScriptAsync("window.tv.setConnected(false)");
-            await SetStatusAsync("Anmeldung fehlgeschlagen: " + ex.Message);
+            await SetStatusAsync("Sign-in failed: " + ex.Message);
         }
         finally
         {
@@ -168,7 +168,7 @@ public sealed class MainForm : StyledForm
         }
         catch
         {
-            // egal - der Nutzer kann die Adresse auch abtippen
+            // never mind - the user can also type the address manually
         }
     }
 
@@ -207,22 +207,22 @@ public sealed class MainForm : StyledForm
         }
         catch
         {
-            // Skript-Aufrufe dürfen nie den Ablauf abbrechen (z. B. beim Schließen).
+            // Script calls must never break the flow (e.g. while closing).
         }
     }
 
     private Task SetStatusAsync(string text) =>
         RunScriptAsync($"window.tv.setStatus({JsStr(text)})");
 
-    // ---------- Anmeldung ----------
+    // ---------- Sign-in ----------
     private async Task ConnectAndListChatsAsync()
     {
         if (!_configStore.Load().IsComplete)
         {
-            throw new InvalidOperationException("Zugangsdaten fehlen.");
+            throw new InvalidOperationException("Credentials are missing.");
         }
 
-        await SetStatusAsync("Verbinde …");
+        await SetStatusAsync("Connecting …");
         await _telegram.ConnectAsync(AskForCodeAsync, CancellationToken.None);
 
         _chats = (await _telegram.GetChatsAsync(CancellationToken.None))
@@ -231,7 +231,7 @@ public sealed class MainForm : StyledForm
 
         var dtos = _chats.Select(c => new ChatDto(c.Id.ToString(), c.Title, c.Kind.ToString()));
         await RunScriptAsync($"window.tv.setChats({JsonSerializer.Serialize(dtos, JsonOpts)})");
-        await SetStatusAsync($"Angemeldet – {_chats.Count} Gruppen/Kanäle.");
+        await SetStatusAsync($"Signed in – {_chats.Count} groups/channels.");
     }
 
     private Task<string> AskForCodeAsync()
@@ -246,15 +246,15 @@ public sealed class MainForm : StyledForm
                     return form.Code!;
                 }
 
-                throw new OperationCanceledException("Kein Login-Code eingegeben.");
+                throw new OperationCanceledException("No login code entered.");
             });
 
             return Task.FromResult(code);
         }
         catch (Exception ex) when (ex is ObjectDisposedException or InvalidOperationException)
         {
-            // Fenster wurde geschlossen, bevor der Code eingegeben wurde.
-            throw new OperationCanceledException("Anmeldung abgebrochen.");
+            // Window was closed before the code was entered.
+            throw new OperationCanceledException("Sign-in cancelled.");
         }
     }
 
@@ -263,8 +263,8 @@ public sealed class MainForm : StyledForm
     {
         string messageJson = e.WebMessageAsJson;
 
-        // Raus aus dem WebView2-Callback-Stack, BEVOR wir modale Dialoge öffnen
-        // (ShowDialog aus einem WebView2-Handler heraus kann WebView2 abschießen).
+        // Get off the WebView2 callback stack BEFORE opening modal dialogs
+        // (ShowDialog from inside a WebView2 handler can take WebView2 down).
         await Task.Yield();
 
         long chatId;
@@ -323,7 +323,7 @@ public sealed class MainForm : StyledForm
         }
         catch (Exception ex)
         {
-            await SetStatusAsync("Laden fehlgeschlagen: " + ex.Message);
+            await SetStatusAsync("Loading failed: " + ex.Message);
         }
     }
 
@@ -332,7 +332,7 @@ public sealed class MainForm : StyledForm
         var dtos = items.Select(i => i.Audio).Select(a => new SongDto(
             a.FileId.ToString(),
             a.DateUtc.ToString("yyyy-MM-dd"),
-            a.DateUtc.ToLocalTime().ToString("dd.MM.yyyy"),
+            a.DateUtc.ToLocalTime().ToString("yyyy-MM-dd"),
             a.Performer,
             a.Title,
             a.FileName,
@@ -343,8 +343,8 @@ public sealed class MainForm : StyledForm
         return RunScriptAsync($"window.tv.setSongs({json})");
     }
 
-    // ---------- Audio ausliefern ----------
-    private const int MaxChunk = 16 * 1024 * 1024; // je Antwort höchstens 16 MB in den Speicher
+    // ---------- Serving audio ----------
+    private const int MaxChunk = 16 * 1024 * 1024; // at most 16 MB into memory per response
 
     private async void OnCacheResourceRequested(
         object? sender, CoreWebView2WebResourceRequestedEventArgs e)
@@ -363,14 +363,14 @@ public sealed class MainForm : StyledForm
             }
             catch (Exception ex)
             {
-                Trace("FEHLER beim Ausliefern: " + ex);
+                Trace("ERROR while serving: " + ex);
                 e.Response = SafeErrorResponse(500, "Error");
-                _ = SetStatusAsync("Wiedergabe fehlgeschlagen: " + ex.Message);
+                _ = SetStatusAsync("Playback failed: " + ex.Message);
             }
         }
         catch
         {
-            // nichts darf hier hochblubbern - sonst Absturz
+            // nothing may bubble up here - otherwise a crash
         }
         finally
         {
@@ -401,12 +401,12 @@ public sealed class MainForm : StyledForm
         if (!long.TryParse(idText, out long id)
             || !_loadedAudios.TryGetValue(id, out AudioMessage? audio))
         {
-            Trace($"Anfrage {idText}: unbekannt (404). geladen={_loadedAudios.Count}");
+            Trace($"Request {idText}: unknown (404). loaded={_loadedAudios.Count}");
             return _web.CoreWebView2.Environment
                 .CreateWebResourceResponse(null, 404, "Not Found", "");
         }
 
-        Trace($"Anfrage {id} \"{audio.FileName}\" Range={rangeHdr} " +
+        Trace($"Request {id} \"{audio.FileName}\" Range={rangeHdr} " +
               $"cached={_cache.Contains(audio)}");
 
         string path = await EnsureDownloadedAsync(audio);
@@ -433,9 +433,9 @@ public sealed class MainForm : StyledForm
             ranged = true;
         }
 
-        // Nie mehr als MaxChunk am Stück ausliefern - der Browser holt den
-        // Rest per Folge-Range. Hält den Speicher pro Anfrage begrenzt und
-        // vermeidet hängende FileStreams.
+        // Never serve more than MaxChunk at once - the browser fetches the rest
+        // with follow-up ranges. Keeps memory per request bounded and avoids
+        // hanging FileStreams.
         if (end - start + 1 > MaxChunk)
         {
             end = start + MaxChunk - 1;
@@ -466,9 +466,9 @@ public sealed class MainForm : StyledForm
     }
 
     /// <summary>
-    /// "Herunterladen" aus dem Player-Menue: Dateiname auf den Originalnamen
-    /// setzen, und je nach Einstellung direkt in den Standardordner speichern
-    /// oder den Speichern-Dialog zeigen.
+    /// "Download" from the player menu: set the file name to the original, and
+    /// depending on the setting either save straight to the default folder or
+    /// show the save dialog.
     /// </summary>
     private void OnDownloadStarting(object? sender, CoreWebView2DownloadStartingEventArgs e)
     {
@@ -488,24 +488,24 @@ public sealed class MainForm : StyledForm
                 && Directory.Exists(cfg.DownloadFolder))
             {
                 e.ResultFilePath = Path.Combine(cfg.DownloadFolder, name);
-                e.Handled = true; // ohne den Standard-Download-Balken
+                e.Handled = true; // without the default download bar
 
                 CoreWebView2DownloadOperation op = e.DownloadOperation;
                 op.StateChanged += (_, _) =>
                 {
                     if (op.State == CoreWebView2DownloadState.Completed)
                     {
-                        _ = SetStatusAsync($"Gespeichert: {Path.GetFileName(op.ResultFilePath)}");
+                        _ = SetStatusAsync($"Saved: {Path.GetFileName(op.ResultFilePath)}");
                     }
                     else if (op.State == CoreWebView2DownloadState.Interrupted)
                     {
-                        _ = SetStatusAsync($"Download fehlgeschlagen ({op.InterruptReason}).");
+                        _ = SetStatusAsync($"Download failed ({op.InterruptReason}).");
                     }
                 };
             }
             else
             {
-                // Speichern-Dialog von WebView2 - aber mit gutem Dateinamen.
+                // WebView2's own save dialog - but with a good file name.
                 string start = string.IsNullOrWhiteSpace(cfg.DownloadFolder)
                     ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
                     : cfg.DownloadFolder;
@@ -514,7 +514,7 @@ public sealed class MainForm : StyledForm
         }
         catch
         {
-            // im Zweifel den Standard von WebView2 lassen
+            // when in doubt, leave WebView2's default
         }
     }
 
@@ -530,9 +530,9 @@ public sealed class MainForm : StyledForm
         };
 
     /// <summary>
-    /// Sorgt dafür, dass die Datei im Cache liegt; gibt den Pfad zurück. Hier
-    /// nur die WebView-Hülle (Statuszeile, Fortschrittsbalken, Cache-Anzeige) -
-    /// das eigentliche Laden macht <see cref="MediaDownloader"/>.
+    /// Makes sure the file is in the cache; returns the path. Only the WebView
+    /// shell here (status line, progress bar, cache display) - the actual
+    /// download is done by <see cref="MediaDownloader"/>.
     /// </summary>
     private async Task<string> EnsureDownloadedAsync(AudioMessage audio)
     {
@@ -546,8 +546,8 @@ public sealed class MainForm : StyledForm
             _ = RunScriptAsync($"window.tv.setProgress({JsStr(fid)}, {p})"));
         try
         {
-            await SetStatusAsync($"Lade \"{audio.DisplayName}\" ...");
-            Trace($"Download START {audio.FileId} ({audio.SizeBytes} Bytes)");
+            await SetStatusAsync($"Downloading \"{audio.DisplayName}\" ...");
+            Trace($"Download START {audio.FileId} ({audio.SizeBytes} bytes)");
             string path = await _downloader.EnsureLocalAsync(audio, progress, CancellationToken.None);
             Trace($"Download OK {audio.FileId}");
             return path;
@@ -555,7 +555,7 @@ public sealed class MainForm : StyledForm
         finally
         {
             _ = RunScriptAsync($"window.tv.clearProgress({JsStr(fid)})");
-            _ = SetStatusAsync($"{_loadedAudios.Count} Audios");
+            _ = SetStatusAsync($"{_loadedAudios.Count} audios");
             _ = PushCacheInfoAsync();
         }
     }
@@ -570,10 +570,9 @@ public sealed class MainForm : StyledForm
     }
 
     /// <summary>
-    /// Öffnet die <see cref="SettingsForm"/> und reagiert auf das, was der
-    /// Nutzer darin ausgelöst hat (Anmelden / Abmelden / Zurücksetzen / nur
-    /// speichern). Beim Programmstart wird bei vollständigen Daten automatisch
-    /// angemeldet.
+    /// Opens <see cref="SettingsForm"/> and reacts to what the user triggered in
+    /// it (sign in / sign out / reset / save only). On startup, complete
+    /// credentials mean an automatic sign-in.
     /// </summary>
     private async Task OpenSettingsAsync(bool isStartup)
     {
@@ -612,17 +611,17 @@ public sealed class MainForm : StyledForm
             if (wantsConnect && !after.IsComplete)
             {
                 DialogResult r = StyledMessageBox.Show(
-                    "api_id, api_hash und Telefonnummer müssen vollständig ausgefüllt sein.\r\n" +
-                    "Erneut eingeben?",
-                    "Zugangsdaten unvollständig",
+                    "api_id, api_hash and phone number must all be filled in.\r\n" +
+                    "Enter them again?",
+                    "Credentials incomplete",
                     MessageBoxButtons.YesNo, MessageBoxIcon.Warning, this);
 
                 if (r == DialogResult.Yes)
                 {
-                    continue; // Dialog erneut öffnen
+                    continue; // reopen the dialog
                 }
 
-                await SetStatusAsync("Nicht angemeldet – Einstellungen öffnen.");
+                await SetStatusAsync("Not signed in – open Settings.");
                 return;
             }
 
@@ -641,7 +640,7 @@ public sealed class MainForm : StyledForm
             }
             else if (!_connected)
             {
-                await SetStatusAsync("Nicht angemeldet – Einstellungen öffnen.");
+                await SetStatusAsync("Not signed in – open Settings.");
             }
 
             return;
@@ -665,7 +664,7 @@ public sealed class MainForm : StyledForm
         await RunScriptAsync("window.tv.setChats([])");
         await RunScriptAsync("window.tv.setSongs([])");
         await RunScriptAsync("window.tv.setConnected(false)");
-        await SetStatusAsync(wipeConfig ? "Zugangsdaten gelöscht." : "Abgemeldet.");
+        await SetStatusAsync(wipeConfig ? "Credentials deleted." : "Signed out.");
     }
 
     private static void TryDelete(string path)
@@ -679,20 +678,20 @@ public sealed class MainForm : StyledForm
         }
         catch
         {
-            // egal
+            // never mind
         }
     }
 
     private static void Trace(string message) => AppLog.Line("UI", message);
 
     private void ShowError(Exception ex) => StyledMessageBox.Show(
-        ex.Message, "Fehler", MessageBoxButtons.OK, MessageBoxIcon.Error, this);
+        ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, this);
 
     private static string JsStr(string value) => JsonSerializer.Serialize(value);
 
     private sealed record ChatDto(string Id, string Title, string Kind);
 
-    /// <summary>Was die HTML-Seite pro Song erwartet (camelCase im JSON).</summary>
+    /// <summary>What the HTML page expects per song (camelCase in JSON).</summary>
     private sealed record SongDto(
         string FileId,
         string DateIso,

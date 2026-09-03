@@ -5,9 +5,9 @@ using ViewerForTelegram.Data.Models;
 namespace ViewerForTelegram.Data;
 
 /// <summary>
-/// <see cref="IMediaCache"/> als flacher Ordner (Standard: <see cref="AppPaths.CacheDir"/>).
-/// Dateiname: <c>&lt;FileId&gt;__&lt;lesbarer Name&gt;.&lt;ext&gt;</c> - die FileId vorne
-/// macht ihn eindeutig, der Name hinten bleibt erkennbar.
+/// <see cref="IMediaCache"/> as a flat folder (default: <see cref="AppPaths.CacheDir"/>).
+/// File name: <c>&lt;FileId&gt;__&lt;readable name&gt;.&lt;ext&gt;</c> - the FileId in front
+/// makes it unique, the name at the back stays recognizable.
 /// </summary>
 public sealed class FileMediaCache : IMediaCache
 {
@@ -45,7 +45,7 @@ public sealed class FileMediaCache : IMediaCache
     public void PruneToLimit(long maxBytes)
     {
         FileInfo[] files = Files()
-            .OrderBy(f => f.LastWriteTimeUtc)   // älteste zuerst
+            .OrderBy(f => f.LastWriteTimeUtc)   // oldest first
             .ToArray();
 
         long total = files.Sum(f => f.Length);
@@ -80,7 +80,7 @@ public sealed class FileMediaCache : IMediaCache
         }
         catch
         {
-            return false; // z. B. gerade in Benutzung
+            return false; // e.g. currently in use
         }
     }
 

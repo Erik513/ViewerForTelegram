@@ -9,20 +9,20 @@
     <RootNamespace>ViewerForTelegram</RootNamespace>
     <AssemblyName>ViewerForTelegram</AssemblyName>
     <StartupObject>ViewerForTelegram.Program</StartupObject>
-    <!-- WebView2 bringt eine WPF-Variante mit, die WindowsBase 5.0 erwartet -
-         in einem reinen WinForms-Projekt harmlos, nur laut. -->
+    <!-- WebView2 ships a WPF flavor that expects WindowsBase 5.0 -
+         harmless in a pure WinForms project, just noisy. -->
     <MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
   </PropertyGroup>
 
-  <!-- Eine einzige Assembly. Die Schichten sind Ordner + Namespaces:
-         Data\   (Models, Interfaces, konkreter Zugriff: WTelegramClient, Cache)
-         Logic\  (Services - die Ablauflogik)
-         UI\     (Program.cs, Forms, Web\ = die WebView2-Oberflaeche)
-       Abhaengigkeitsrichtung nur per Konvention:  UI -> Logic -> Data -->
+  <!-- A single assembly. The layers are folders + namespaces:
+         Data\   (Models, Interfaces, concrete access: WTelegramClient, cache)
+         Logic\  (Services - the orchestration logic)
+         UI\     (Program.cs, Forms, Web\ = the WebView2 UI)
+       Dependency direction by convention only:  UI -> Logic -> Data -->
 
   <ItemGroup>
-    <!-- Die HTML-Oberflaeche wird nach bin\...\web\ kopiert und ueber ein
-         VirtualHostNameToFolderMapping in der WebView2 geladen. -->
+    <!-- The HTML UI is copied to bin\...\web\ and loaded via a
+         VirtualHostNameToFolderMapping in the WebView2. -->
     <None Remove="UI\Web\**\*" />
     <None Include="UI\Web\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -31,8 +31,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Geteilte UI-Bibliothek als feste DLLs aus lib\. ErikwnkCore muss mit
-         eingetragen werden (DLL-Referenzen ziehen keine Abhaengigkeiten mit). -->
+    <!-- Shared UI library as fixed DLLs from lib\. ErikwnkCore must be listed
+         explicitly (DLL references do not pull in dependencies). -->
     <Reference Include="ErikwnkWFUI">
       <HintPath>..\lib\ErikwnkWFUI\ErikwnkWFUI.dll</HintPath>
     </Reference>
@@ -46,8 +46,8 @@
     <PackageReference Include="WTelegramClient" Version="4.4.8" />
   </ItemGroup>
 
-  <!-- Im Release-Publish die IntelliSense-XMLs und die Lib-PDBs wegräumen -
-       reine Entwickler-Dateien, im Auslieferungsordner nur Ballast. -->
+  <!-- On a Release publish, remove the IntelliSense XMLs and the lib PDBs -
+       developer-only files, just ballast in the shipped folder. -->
   <Target Name="TrimPublishExtras" AfterTargets="Publish">
     <ItemGroup>
       <_PublishJunk Include="$(PublishDir)*.xml" />

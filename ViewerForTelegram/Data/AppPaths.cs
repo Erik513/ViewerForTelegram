@@ -1,14 +1,14 @@
 namespace ViewerForTelegram.Data;
 
 /// <summary>
-/// Zentrale Ablageorte der App, alle unter <c>%AppData%\ViewerForTelegram\</c>.
+/// Central storage locations of the app, all under <c>%AppData%\ViewerForTelegram\</c>.
 ///
-/// Bewusst NICHT neben der .exe: ein späteres Self-Update überschreibt den
-/// Programmordner, und Config / Session / Cache würden mitgerissen. Unter
-/// %AppData% überleben sie ein Update und sind pro Windows-Benutzer getrennt.
+/// Deliberately NOT next to the .exe: a future self-update overwrites the
+/// program folder, and config / session / cache would be swept away with it.
+/// Under %AppData% they survive an update and are per-Windows-user.
 ///
-/// Der statische Konstruktor legt <see cref="Root"/> und <see cref="CacheDir"/>
-/// beim ersten Zugriff an.
+/// The static constructor creates <see cref="Root"/> and <see cref="CacheDir"/>
+/// on first access.
 /// </summary>
 public static class AppPaths
 {
@@ -16,21 +16,21 @@ public static class AppPaths
     public static string Root { get; }
 
     /// <summary>
-    /// Nutzereingaben (api_id, api_hash, Telefonnummer). Enthält Geheimnisse -
-    /// liegt hier und NICHT im Repo (siehe .gitignore).
+    /// User input (api_id, api_hash, phone number). Contains secrets - lives
+    /// here and NOT in the repo (see .gitignore).
     /// </summary>
     public static string ConfigFile { get; }
 
     /// <summary>
-    /// WTelegramClient-Sitzung. Enthält den fertigen Login - wie ein Passwort
-    /// behandeln, niemals weitergeben.
+    /// WTelegramClient session. Contains the completed login - treat it like a
+    /// password, never share it.
     /// </summary>
     public static string SessionFile { get; }
 
-    /// <summary>Ordner für heruntergeladene Audiodateien.</summary>
+    /// <summary>Folder for downloaded audio files.</summary>
     public static string CacheDir { get; }
 
-    /// <summary>User-Data-Ordner der eingebetteten WebView2.</summary>
+    /// <summary>User-data folder of the embedded WebView2.</summary>
     public static string WebView2Dir { get; }
 
     static AppPaths()

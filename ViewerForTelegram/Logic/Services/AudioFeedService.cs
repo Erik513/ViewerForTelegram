@@ -4,14 +4,14 @@ using ViewerForTelegram.Data.Models;
 namespace ViewerForTelegram.Logic.Services;
 
 /// <summary>
-/// Ein Eintrag der Song-Liste: die Telegram-Metadaten plus die Info, ob die
-/// Datei schon vollständig im lokalen Cache liegt.
+/// One entry of the song list: the Telegram metadata plus whether the file is
+/// already present and complete in the local cache.
 /// </summary>
 public sealed record FeedItem(AudioMessage Audio, bool Cached);
 
 /// <summary>
-/// Stellt die Audioliste eines Chats für ein rollierendes Zeitfenster zusammen.
-/// Kennt weder UI noch WebView - nur die Telegram-Quelle und den Cache.
+/// Assembles the audio list of a chat for a rolling time window. Knows neither
+/// the UI nor the WebView - only the Telegram source and the cache.
 /// </summary>
 public sealed class AudioFeedService
 {
@@ -25,10 +25,9 @@ public sealed class AudioFeedService
     }
 
     /// <summary>
-    /// Alle Audios aus <paramref name="chatId"/> der letzten
-    /// <paramref name="days"/> Tage - exakt ab "jetzt minus n Tage", nicht auf
-    /// Mitternacht gerundet. Reihenfolge wie von der Quelle geliefert
-    /// (neueste zuerst).
+    /// All audios from <paramref name="chatId"/> of the last
+    /// <paramref name="days"/> days - exactly "now minus n days", not rounded to
+    /// midnight. Order as delivered by the source (newest first).
     /// </summary>
     public async Task<IReadOnlyList<FeedItem>> LoadAsync(
         long chatId, int days, CancellationToken ct)

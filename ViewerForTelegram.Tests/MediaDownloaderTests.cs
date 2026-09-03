@@ -13,7 +13,7 @@ public class MediaDownloaderTests
             Duration: null, SizeBytes: size, FileName: $"{fileId}.mp3", DateUtc: DateTime.UtcNow);
 
     [Fact]
-    public async Task EnsureLocalAsync_LaedtWennNichtImCache()
+    public async Task EnsureLocalAsync_DownloadsWhenNotCached()
     {
         var tg = new FakeTelegramSource();
         using var dir = TempPath.Dir();
@@ -29,7 +29,7 @@ public class MediaDownloaderTests
     }
 
     [Fact]
-    public async Task EnsureLocalAsync_LaedtNichtWennBereitsImCache()
+    public async Task EnsureLocalAsync_DoesNotDownloadWhenAlreadyCached()
     {
         var tg = new FakeTelegramSource();
         using var dir = TempPath.Dir();
@@ -45,7 +45,7 @@ public class MediaDownloaderTests
     }
 
     [Fact]
-    public async Task EnsureLocalAsync_ParalleleAufrufeAufDieselbeDatei_LadenNurEinmal()
+    public async Task EnsureLocalAsync_ParallelCallsForSameFile_DownloadOnce()
     {
         var gate = new TaskCompletionSource();
         var tg = new FakeTelegramSource
@@ -71,7 +71,7 @@ public class MediaDownloaderTests
     }
 
     [Fact]
-    public async Task Cancel_BrichtLaufendenDownloadAb()
+    public async Task Cancel_AbortsRunningDownload()
     {
         var started = new TaskCompletionSource();
         var tg = new FakeTelegramSource
@@ -96,7 +96,7 @@ public class MediaDownloaderTests
     }
 
     [Fact]
-    public async Task EnsureLocalAsync_StutztCacheNachDownloadAufDieGrenze()
+    public async Task EnsureLocalAsync_TrimsCacheToLimitAfterDownload()
     {
         var tg = new FakeTelegramSource();
         using var dir = TempPath.Dir();
@@ -111,7 +111,7 @@ public class MediaDownloaderTests
 
         await dl.EnsureLocalAsync(fresh, null, CancellationToken.None);
 
-        Assert.True(cache.Contains(fresh)); // die neue bleibt
-        Assert.False(cache.Contains(old));  // die alte fällt raus
+        Assert.True(cache.Contains(fresh)); // the new one stays
+        Assert.False(cache.Contains(old));  // the old one is trimmed away
     }
 }

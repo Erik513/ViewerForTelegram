@@ -1,10 +1,10 @@
 namespace ViewerForTelegram.Data;
 
 /// <summary>
-/// Schlanker Datei-Logger für die Fehlersuche. Schreibt nur im Debug-Build
-/// (oder wenn <see cref="Verbose"/> zur Laufzeit gesetzt wird) nach
-/// <c>%AppData%\ViewerForTelegram\app.log</c> – im Release bleibt nur die
-/// Ausgabe im Visual-Studio-Fenster.
+/// Lightweight file logger for troubleshooting. Writes to
+/// <c>%AppData%\ViewerForTelegram\app.log</c> only in a Debug build (or when
+/// <see cref="Verbose"/> is set at runtime); in Release only the Visual Studio
+/// debug output remains.
 /// </summary>
 public static class AppLog
 {
@@ -36,7 +36,7 @@ public static class AppLog
             }
             catch
             {
-                // Logging darf nie den Ablauf stören.
+                // Logging must never disrupt the flow.
             }
         }
     }

@@ -1,26 +1,25 @@
 namespace ViewerForTelegram.Data.Models;
 
 /// <summary>
-/// Eine Telegram-Gruppe oder ein Kanal, den der angemeldete Account sehen kann.
-/// Reiner Datencontainer: wird von der Data-Schicht erzeugt und nach oben
-/// (Logic, UI) durchgereicht. Kein Verhalten, keine Telegram-Interna.
+/// A Telegram group or channel the signed-in account can see. Pure data
+/// container: created by the Data layer and passed up (Logic, UI). No behavior,
+/// no Telegram internals.
 /// </summary>
 /// <param name="Id">
-/// Telegram-interne ID des Chats. Für die UI nur ein undurchsichtiger
-/// Schlüssel; wie daraus wieder ein ansprechbarer Telegram-Peer wird, ist
-/// allein Sache der Data-Implementierung.
+/// Telegram-internal chat ID. To the UI just an opaque key; how it turns back
+/// into an addressable Telegram peer is the Data implementation's concern alone.
 /// </param>
-/// <param name="Title">Angezeigter Name der Gruppe / des Kanals.</param>
-/// <param name="Kind">Grobe Einordnung für Anzeige/Icon.</param>
+/// <param name="Title">Display name of the group / channel.</param>
+/// <param name="Kind">Rough classification for display/icon.</param>
 public sealed record TelegramChat(
     long Id,
     string Title,
     TelegramChatKind Kind);
 
 /// <summary>
-/// Telegram kennt mehrere Untertypen (Basisgruppe, Supergruppe/Megagroup,
-/// Broadcast-Kanal). Für diese App reicht die Unterscheidung
-/// "kann jeder schreiben" (Gruppe) vs. "nur Betreiber posten" (Kanal).
+/// Telegram has several subtypes (basic group, supergroup/megagroup, broadcast
+/// channel). For this app the distinction "anyone can post" (group) vs. "only
+/// admins post" (channel) is enough.
 /// </summary>
 public enum TelegramChatKind
 {

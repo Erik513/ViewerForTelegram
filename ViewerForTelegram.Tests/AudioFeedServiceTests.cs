@@ -11,11 +11,11 @@ public class AudioFeedServiceTests
             Duration: null, SizeBytes: size, FileName: $"{fileId}.mp3", DateUtc: dateUtc);
 
     [Fact]
-    public async Task LoadAsync_NimmtNurAudiosImZeitfenster()
+    public async Task LoadAsync_TakesOnlyAudiosInsideTheWindow()
     {
         var tg = new FakeTelegramSource();
-        tg.Audios.Add(Audio(1, DateTime.UtcNow.AddDays(-2)));   // im Fenster
-        tg.Audios.Add(Audio(2, DateTime.UtcNow.AddDays(-10)));  // zu alt
+        tg.Audios.Add(Audio(1, DateTime.UtcNow.AddDays(-2)));   // inside the window
+        tg.Audios.Add(Audio(2, DateTime.UtcNow.AddDays(-10)));  // too old
 
         using var dir = TempPath.Dir();
         var svc = new AudioFeedService(tg, new FileMediaCache(dir.Path));
@@ -27,7 +27,7 @@ public class AudioFeedServiceTests
     }
 
     [Fact]
-    public async Task LoadAsync_SetztCachedFlagProDatei()
+    public async Task LoadAsync_SetsCachedFlagPerFile()
     {
         var tg = new FakeTelegramSource();
         AudioMessage cached = Audio(1, DateTime.UtcNow.AddDays(-1), size: 100);
@@ -47,7 +47,7 @@ public class AudioFeedServiceTests
     }
 
     [Fact]
-    public async Task LoadAsync_NegativeTage_LiefernLeereListeOhneFehler()
+    public async Task LoadAsync_NegativeDays_ReturnEmptyListWithoutError()
     {
         var tg = new FakeTelegramSource();
         tg.Audios.Add(Audio(1, DateTime.UtcNow.AddDays(-1)));
@@ -61,12 +61,12 @@ public class AudioFeedServiceTests
     }
 
     [Fact]
-    public async Task LoadAsync_FensterIstAufDieStundeGenau_NichtAufMitternachtGerundet()
+    public async Task LoadAsync_WindowIsHourPrecise_NotRoundedToMidnight()
     {
         var tg = new FakeTelegramSource();
-        // Genau am Rand: 7 Tage minus/plus eine Stunde.
-        tg.Audios.Add(Audio(1, DateTime.UtcNow.AddDays(-7).AddHours(1)));   // gerade noch drin
-        tg.Audios.Add(Audio(2, DateTime.UtcNow.AddDays(-7).AddHours(-1)));  // gerade raus
+        // Right at the edge: 7 days minus/plus one hour.
+        tg.Audios.Add(Audio(1, DateTime.UtcNow.AddDays(-7).AddHours(1)));   // just inside
+        tg.Audios.Add(Audio(2, DateTime.UtcNow.AddDays(-7).AddHours(-1)));  // just outside
 
         using var dir = TempPath.Dir();
         var svc = new AudioFeedService(tg, new FileMediaCache(dir.Path));

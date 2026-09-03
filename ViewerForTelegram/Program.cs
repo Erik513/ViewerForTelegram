@@ -11,14 +11,14 @@ namespace ViewerForTelegram;
 static class Program
 {
     /// <summary>
-    ///  Composition Root: erzeugt die konkreten Data-Klassen und reicht sie
-    ///  als Interfaces in die UI.
+    ///  Composition root: creates the concrete Data classes and passes them
+    ///  into the UI as interfaces.
     /// </summary>
     [STAThread]
     static void Main()
     {
         ApplicationConfiguration.Initialize();
-        UIStyles.Language = UILanguage.German;
+        UIStyles.Language = UILanguage.English;
         HookCrashLogging();
 
         IConfigStore configStore = new JsonConfigStore();
@@ -28,7 +28,7 @@ static class Program
         var feed = new AudioFeedService(telegram, cache);
         var downloader = new MediaDownloader(telegram, cache, CachePolicy.LimitBytes);
 
-        // Cache-Aufräumen beim Start: entweder ganz leeren oder auf die Grenze stutzen.
+        // Cache housekeeping on start: either wipe it or trim it to the limit.
         if (configStore.Load().ClearCacheOnStart)
         {
             cache.Clear();
@@ -49,8 +49,8 @@ static class Program
     }
 
     /// <summary>
-    ///  Unerwartete Fehler landen in %AppData%\ViewerForTelegram\crash.log statt
-    ///  die App wortlos zu beenden. Debug-Hilfe, später entfernbar.
+    ///  Unexpected errors go to %AppData%\ViewerForTelegram\crash.log instead of
+    ///  the app quitting silently. A debugging aid, removable later.
     /// </summary>
     private static void HookCrashLogging()
     {
@@ -65,25 +65,25 @@ static class Program
             }
             catch
             {
-                // egal
+                // never mind
             }
         }
 
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
         Application.ThreadException += (_, e) =>
         {
-            Write("UI-Thread", e.Exception);
+            Write("UI thread", e.Exception);
             try
             {
                 ErikwnkWFUI.Forms.MessageBox.Show(
                     e.Exception.Message + "\r\n\r\n(Details in crash.log)",
-                    "Unerwarteter Fehler",
+                    "Unexpected error",
                     ErikwnkWFUI.Forms.MessageBoxButtons.OK,
                     ErikwnkWFUI.Forms.MessageBoxIcon.Error);
             }
             catch
             {
-                // der Fehlerdialog selbst darf nicht die App killen
+                // the error dialog itself must not kill the app
             }
         };
 

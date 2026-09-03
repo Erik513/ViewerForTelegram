@@ -11,26 +11,25 @@ using MessageBoxIcon = ErikwnkWFUI.Forms.MessageBoxIcon;
 
 namespace ViewerForTelegram.UI.Forms;
 
-/// <summary>Was der Nutzer beim Schließen der Einstellungen ausgelöst hat.</summary>
+/// <summary>What the user triggered when closing the settings.</summary>
 public enum SettingsAction
 {
-    /// <summary>Nur Änderungen übernehmen.</summary>
+    /// <summary>Just apply the changes.</summary>
     None,
 
-    /// <summary>Anmelden (mit den aktuellen Zugangsdaten).</summary>
+    /// <summary>Sign in (with the current credentials).</summary>
     Connect,
 
-    /// <summary>Abmelden – nur die gespeicherte Sitzung löschen.</summary>
+    /// <summary>Sign out - only delete the stored session.</summary>
     Logout,
 
-    /// <summary>Zugangsdaten und Sitzung komplett löschen.</summary>
+    /// <summary>Delete credentials and session entirely.</summary>
     Wipe
 }
 
 /// <summary>
-/// Einstellungen: Zugangsdaten (schreibgeschützt, per Stift entsperrbar),
-/// Anmeldung, Download-Ordner, Cache. Kein Speichern-Knopf – beim Schließen
-/// wird automatisch übernommen.
+/// Settings: credentials (read-only, unlockable via the pencil), sign-in,
+/// download folder, cache. No save button - applied automatically on close.
 /// </summary>
 public sealed class SettingsForm : StyledForm
 {
@@ -55,14 +54,14 @@ public sealed class SettingsForm : StyledForm
     private readonly Button _clearCacheButton;
     private readonly bool _isConnected;
 
-    /// <summary>Aktueller Stand – wird beim Schließen aus den Feldern befüllt.</summary>
+    /// <summary>Current state - filled from the fields on close.</summary>
     public TelegramConfig Result { get; private set; }
 
-    /// <summary>Was beim Schließen ausgelöst wurde.</summary>
+    /// <summary>What was triggered on close.</summary>
     public SettingsAction Action { get; private set; } = SettingsAction.None;
 
     public SettingsForm(TelegramConfig current, IMediaCache cache, bool isConnected)
-        : base(StyledFormOptions.CreateDialog("Einstellungen"))
+        : base(StyledFormOptions.CreateDialog("Settings"))
     {
         _cache = cache;
         _isConnected = isConnected;
@@ -72,18 +71,18 @@ public sealed class SettingsForm : StyledForm
         _toolTip = UIStyles.ToolTips.CreateToolTip();
         Disposed += (_, _) => _toolTip.Dispose();
 
-        // Hintergrund einen Tick heller als die PropertyTable (die auf
-        // BackgroundMedium sitzt) - so hebt sie sich als "Karte" ab.
+        // Background a touch lighter than the PropertyTable (which sits on
+        // BackgroundMedium) - so it stands out as a "card".
         ContentPanel.BackColor = UIStyles.Colors.BackgroundMediumElevated;
 
-        // ---- Hilfe-Leiste oben ----
+        // ---- help bar on top ----
         Panel top = UIStyles.Panels.CreateMedium();
         top.BackColor = UIStyles.Colors.BackgroundMediumElevated;
         top.Dock = DockStyle.Top;
         top.Height = 46;
 
         Button help = UIStyles.Buttons.CreateStandard(
-            "?  Anleitung", "Wie komme ich an api_id / api_hash?", ButtonSize);
+            "?  Guide", "How do I get api_id / api_hash?", ButtonSize);
         help.TabStop = false;
         help.Anchor = AnchorStyles.Top | AnchorStyles.Right;
         help.Location = new Point(top.Width - ButtonSize.Width - 16, 8);
@@ -109,37 +108,37 @@ public sealed class SettingsForm : StyledForm
 
         _useDownloadFolder = UIStyles.ToggleSwitches.CreateStandard(
             current.UseDownloadFolder,
-            "Downloads gehen ohne Nachfrage in diesen Ordner",
-            "Bei jedem Download den Ordner wählen");
+            "Downloads go to this folder without asking",
+            "Pick the folder on every download");
         _useDownloadFolder.TabStop = false;
 
         _clearCacheOnStart = UIStyles.ToggleSwitches.CreateStandard(
             current.ClearCacheOnStart,
-            "Cache wird bei jedem Programmstart geleert",
-            "Cache bleibt zwischen Sitzungen (nur Obergrenze greift)");
+            "Cache is wiped on every startup",
+            "Cache is kept between sessions (only the size limit applies)");
         _clearCacheOnStart.TabStop = false;
 
-        Button browse = UIStyles.Buttons.CreateBrowse("Ordner wählen");
+        Button browse = UIStyles.Buttons.CreateBrowse("Choose folder");
         browse.TabStop = false;
         browse.Click += (_, _) => Browse();
 
         _cacheSizeLabel = UIStyles.Labels.CreateNormal("");
-        _clearCacheButton = UIStyles.Buttons.CreateRed("Cache leeren", size: ButtonSize);
+        _clearCacheButton = UIStyles.Buttons.CreateRed("Clear cache", size: ButtonSize);
         _clearCacheButton.TabStop = false;
         _clearCacheButton.Click += (_, _) => ClearCache();
 
         Button loginBtn = _isConnected
-            ? UIStyles.Buttons.CreateStandard("Abmelden", "", ButtonSize)
-            : UIStyles.Buttons.CreatePrimary("Anmelden", "", ButtonSize);
+            ? UIStyles.Buttons.CreateStandard("Sign out", "", ButtonSize)
+            : UIStyles.Buttons.CreatePrimary("Sign in", "", ButtonSize);
         loginBtn.TabStop = false;
         loginBtn.Click += (_, _) =>
         {
             if (_isConnected)
             {
                 if (MessageBox.Show(
-                        "Abmelden? Die gespeicherte Anmeldung wird gelöscht.\r\n" +
-                        "Die Zugangsdaten bleiben erhalten.",
-                        "Abmelden", MessageBoxButtons.YesNo, MessageBoxIcon.Question, this)
+                        "Sign out? The stored login is deleted.\r\n" +
+                        "The credentials are kept.",
+                        "Sign out", MessageBoxButtons.YesNo, MessageBoxIcon.Question, this)
                     != DialogResult.Yes)
                 {
                     return;
@@ -153,48 +152,48 @@ public sealed class SettingsForm : StyledForm
             Close();
         };
 
-        Button wipe = UIStyles.Buttons.CreateRed("Löschen", size: ButtonSize);
+        Button wipe = UIStyles.Buttons.CreateRed("Delete", size: ButtonSize);
         wipe.TabStop = false;
         wipe.Click += (_, _) => Wipe();
 
-        // ---- Aufbau ----
-        _table.AddSection("Telegram-API");
+        // ---- layout ----
+        _table.AddSection("Telegram API");
         AddLockedRow("api_id", _apiId);
         AddLockedRow("api_hash", _apiHash);
-        AddLockedRow("Telefon", _phone);
+        AddLockedRow("Phone", _phone);
 
-        _table.AddSection("Anmeldung");
+        _table.AddSection("Sign-in");
         _table.AddRow(
             "Status", RowH,
-            UIColumn.Percent(Desc(_isConnected ? "angemeldet" : "nicht angemeldet"), 100),
+            UIColumn.Percent(Desc(_isConnected ? "signed in" : "not signed in"), 100),
             UIColumn.Absolute(loginBtn, ButtonColumn));
 
         _table.AddSection("Downloads");
         _table.AddRow(
-            "Ordner", RowH,
+            "Folder", RowH,
             UIColumn.Percent(_downloadFolder, 100),
             UIColumn.Absolute(browse, 44),
             UIColumn.Absolute(_useDownloadFolder, 56));
 
         _table.AddSection("Cache");
         _table.AddRow(
-            "Belegt", RowH,
+            "Used", RowH,
             UIColumn.Percent(_cacheSizeLabel, 100),
             UIColumn.Absolute(_clearCacheOnStart, 56),
             UIColumn.Absolute(_clearCacheButton, ButtonColumn));
 
-        _table.AddSection("Zugangsdaten");
+        _table.AddSection("Credentials");
         _table.AddRow(
-            "Zurücksetzen", RowH,
-            UIColumn.Percent(Desc("Daten löschen und abmelden"), 100),
+            "Reset", RowH,
+            UIColumn.Percent(Desc("Delete data and sign out"), 100),
             UIColumn.Absolute(wipe, ButtonColumn));
 
         _toolTip.SetToolTip(_downloadFolder, current.DownloadFolder);
         UpdateCacheLabel();
 
-        // Tabelle einmal messen, dann auf feste Größe fixieren und in einem
-        // helleren Bereich zentrieren - so gibt ein breiteres Fenster nur mehr
-        // Freiraum, die Tabelle bleibt gleich groß.
+        // Measure the table once, then fix it to a static size and center it in
+        // a lighter area - so a wider window only adds whitespace, the table
+        // stays the same size.
         _table.PerformLayout();
         Size tableSize = _table.PreferredSize;
 
@@ -235,15 +234,14 @@ public sealed class SettingsForm : StyledForm
         field.ReadOnly = true;
         field.TabStop = false;
 
-        Button lockBtn = UIStyles.Buttons.CreateStandard(Pencil, "Bearbeiten", new Size(40, 28));
+        Button lockBtn = UIStyles.Buttons.CreateStandard(Pencil, "Edit", new Size(40, 28));
         lockBtn.TabStop = false;
 
-        // Solange angemeldet, dürfen die Zugangsdaten nicht geändert werden -
-        // erst abmelden.
+        // While signed in, the credentials must not be changed - sign out first.
         if (_isConnected)
         {
             lockBtn.Enabled = false;
-            _toolTip.SetToolTip(lockBtn, "Zum Ändern zuerst abmelden");
+            _toolTip.SetToolTip(lockBtn, "Sign out first to change this");
         }
 
         lockBtn.Click += (_, _) =>
@@ -286,8 +284,8 @@ public sealed class SettingsForm : StyledForm
         }
 
         if (MessageBox.Show(
-                $"{count} Dateien ({Mb(bytes)}) aus dem Cache löschen?",
-                "Cache leeren", MessageBoxButtons.YesNo, MessageBoxIcon.Question, this)
+                $"Delete {count} files ({Mb(bytes)}) from the cache?",
+                "Clear cache", MessageBoxButtons.YesNo, MessageBoxIcon.Question, this)
             == DialogResult.Yes)
         {
             _cache.Clear();
@@ -298,7 +296,7 @@ public sealed class SettingsForm : StyledForm
     private void UpdateCacheLabel()
     {
         (int count, long bytes) = _cache.GetStats();
-        string text = $"{Mb(bytes)} / {Mb(CachePolicy.LimitBytes)} ({count} Dateien)";
+        string text = $"{Mb(bytes)} / {Mb(CachePolicy.LimitBytes)} ({count} files)";
         _cacheSizeLabel.Text = text;
         _toolTip.SetToolTip(_cacheSizeLabel, text);
         _clearCacheButton.Enabled = count > 0;
@@ -307,8 +305,8 @@ public sealed class SettingsForm : StyledForm
     private void Wipe()
     {
         if (MessageBox.Show(
-                "Wirklich api_id, api_hash und Telefonnummer löschen und abmelden?",
-                "Zugangsdaten löschen", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, this)
+                "Really delete api_id, api_hash and phone number and sign out?",
+                "Delete credentials", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, this)
             == DialogResult.Yes)
         {
             Action = SettingsAction.Wipe;
@@ -334,8 +332,8 @@ public sealed class SettingsForm : StyledForm
     }
 
     /// <summary>
-    /// Borderless-Textfeld ohne Platzhalter (der Platzhalter-Mechanismus der
-    /// Factory überschreibt sonst einen vorbelegten Wert).
+    /// Borderless text field without a placeholder (the factory's placeholder
+    /// mechanism would otherwise overwrite a pre-filled value).
     /// </summary>
     private static TextBox Field(string value)
     {
@@ -345,8 +343,8 @@ public sealed class SettingsForm : StyledForm
     }
 
     /// <summary>
-    /// Beschreibungs-Label links neben einem Bedienelement – mit Tooltip auf
-    /// den vollen Text, falls die Zelle ihn abschneidet.
+    /// Description label to the left of a control - with a tooltip on the full
+    /// text in case the cell truncates it.
     /// </summary>
     private Label Desc(string text)
     {

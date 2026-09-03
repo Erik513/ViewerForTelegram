@@ -3,33 +3,32 @@ using ViewerForTelegram.Data.Models;
 namespace ViewerForTelegram.Data.Interfaces;
 
 /// <summary>
-/// Der einzige Zugang zu Telegram. Nur die Data-Implementierung dieses
-/// Interfaces spricht mit WTelegramClient - Logic und UI kennen ausschließlich
-/// diesen Vertrag. Dadurch lässt sich die Quelle austauschen (später z. B.
-/// Bot-API) oder im Test durch einen Fake ersetzen.
+/// The single entry point to Telegram. Only the Data implementation of this
+/// interface talks to WTelegramClient - Logic and UI know nothing but this
+/// contract. That keeps the source swappable (later e.g. the Bot API) and
+/// replaceable by a fake in tests.
 /// </summary>
 public interface ITelegramSource : IAsyncDisposable
 {
     /// <summary>
-    /// Baut die Verbindung auf und meldet den Account an. Beim ersten Start
-    /// ruft die Implementierung <paramref name="requestVerificationCode"/> auf,
-    /// um den per SMS/Telegram zugestellten Login-Code abzufragen. Danach
-    /// übernimmt die gespeicherte Session-Datei, ohne erneute Abfrage.
+    /// Opens the connection and signs the account in. On the first run the
+    /// implementation calls <paramref name="requestVerificationCode"/> to obtain
+    /// the login code delivered by SMS/Telegram. After that the stored session
+    /// file takes over, without another prompt.
     /// </summary>
     /// <param name="requestVerificationCode">
-    /// Callback, den die UI mit einem Eingabedialog füllt und den Code
-    /// zurückgibt.
+    /// Callback the UI backs with an input dialog and that returns the code.
     /// </param>
     Task ConnectAsync(
         Func<Task<string>> requestVerificationCode,
         CancellationToken ct);
 
-    /// <summary>Alle Gruppen und Kanäle, die der angemeldete Account sehen kann.</summary>
+    /// <summary>All groups and channels the signed-in account can see.</summary>
     Task<IReadOnlyList<TelegramChat>> GetChatsAsync(CancellationToken ct);
 
     /// <summary>
-    /// Alle Audio-Nachrichten aus <paramref name="chatId"/>, die am oder nach
-    /// <paramref name="sinceUtc"/> gepostet wurden - neueste zuerst.
+    /// All audio messages from <paramref name="chatId"/> posted on or after
+    /// <paramref name="sinceUtc"/> - newest first.
     /// </summary>
     Task<IReadOnlyList<AudioMessage>> GetAudioMessagesSinceAsync(
         long chatId,
@@ -37,10 +36,11 @@ public interface ITelegramSource : IAsyncDisposable
         CancellationToken ct);
 
     /// <summary>
-    /// Lädt die Bytes der zu <paramref name="message"/> gehörenden Audiodatei
-    /// herunter und schreibt sie nach <paramref name="targetPath"/>.
+    /// Downloads the bytes of the audio file belonging to
+    /// <paramref name="message"/> and writes them to
+    /// <paramref name="targetPath"/>.
     /// </summary>
-    /// <param name="progress">Fortschritt 0..100, optional.</param>
+    /// <param name="progress">Progress 0..100, optional.</param>
     Task DownloadAsync(
         AudioMessage message,
         string targetPath,

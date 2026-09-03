@@ -4,9 +4,9 @@ using ViewerForTelegram.Data.Models;
 namespace ViewerForTelegram.Logic.Services;
 
 /// <summary>
-/// Sorgt dafür, dass eine Audiodatei lokal im Cache liegt. Bündelt parallele
-/// Anfragen auf dieselbe Datei, erlaubt Abbruch pro Datei und stutzt den Cache
-/// nach jedem Download auf die Obergrenze.
+/// Makes sure an audio file is present locally in the cache. Coalesces parallel
+/// requests for the same file, allows per-file cancellation, and trims the
+/// cache to the size limit after every download.
 /// </summary>
 public sealed class MediaDownloader
 {
@@ -26,15 +26,14 @@ public sealed class MediaDownloader
     }
 
     /// <summary>
-    /// Gibt den lokalen Pfad zurück und lädt die Datei vorher herunter, falls
-    /// sie noch nicht vollständig im Cache liegt. Ein zweiter Aufruf für
-    /// dieselbe Datei wartet auf den laufenden Download, statt ihn erneut zu
-    /// starten.
+    /// Returns the local path, downloading the file first if it is not yet fully
+    /// in the cache. A second call for the same file waits for the running
+    /// download instead of starting it again.
     /// </summary>
-    /// <param name="progress">Fortschritt 0..100, optional.</param>
+    /// <param name="progress">Progress 0..100, optional.</param>
     /// <exception cref="OperationCanceledException">
-    /// Abgebrochen (per <see cref="Cancel"/> / <see cref="CancelAll"/>) oder ein
-    /// paralleler Download derselben Datei lief in die Zeitüberschreitung.
+    /// Cancelled (via <see cref="Cancel"/> / <see cref="CancelAll"/>) or a
+    /// parallel download of the same file ran into the timeout.
     /// </exception>
     public async Task<string> EnsureLocalAsync(
         AudioMessage audio, IProgress<int>? progress, CancellationToken ct)
@@ -53,8 +52,8 @@ public sealed class MediaDownloader
 
         if (!mine)
         {
-            // Läuft schon woanders - warten (mit Obergrenze, damit ein hängender
-            // Download nicht ewig einen wartenden Aufrufer blockiert).
+            // Already running elsewhere - wait (with an upper bound so a hung
+            // download does not block a waiting caller forever).
             for (int i = 0; i < 600; i++)
             {
                 lock (_gate)
@@ -68,7 +67,7 @@ public sealed class MediaDownloader
             }
             if (!_cache.Contains(audio))
             {
-                throw new OperationCanceledException(); // abgebrochen oder Zeitüberschreitung
+                throw new OperationCanceledException(); // cancelled or timed out
             }
             return path;
         }
@@ -92,11 +91,11 @@ public sealed class MediaDownloader
                 _cts.Remove(audio.FileId);
             }
             linked.Dispose();
-            _cache.PruneToLimit(_cacheLimitBytes); // Sicherheitsnetz innerhalb der Sitzung
+            _cache.PruneToLimit(_cacheLimitBytes); // safety net within the session
         }
     }
 
-    /// <summary>Bricht einen laufenden Download für diese Datei ab.</summary>
+    /// <summary>Cancels a running download for this file.</summary>
     public void Cancel(long fileId)
     {
         lock (_gate)
@@ -108,7 +107,7 @@ public sealed class MediaDownloader
         }
     }
 
-    /// <summary>Bricht alle laufenden Downloads ab (z. B. beim Abmelden).</summary>
+    /// <summary>Cancels all running downloads (e.g. on logout).</summary>
     public void CancelAll()
     {
         lock (_gate)

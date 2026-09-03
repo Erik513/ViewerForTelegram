@@ -25,10 +25,10 @@ rangeEl.value = localStorage.getItem("rangeDays") || "7";
 const savedVol = parseInt(localStorage.getItem("volume"), 10);
 volumeEl.value = String(isNaN(savedVol) ? 40 : Math.min(100, Math.max(0, savedVol)));
 
-// ---- von C# aufgerufen ----
+// ---- called from C# ----
 window.tv = {
   setConnected(ok) {
-    if (!ok) statusEl.textContent = "Nicht angemeldet – Einstellungen öffnen.";
+    if (!ok) statusEl.textContent = "Not signed in – open Settings.";
   },
   setChats(list) {
     groupEl.innerHTML = "";
@@ -80,7 +80,7 @@ function cssEscape(v) {
   return String(v).replace(/"/g, '\\"');
 }
 
-// ---- Auslöser ----
+// ---- triggers ----
 settingsEl.addEventListener("click", () => host({ type: "settings" }));
 
 groupEl.addEventListener("change", () => {
@@ -106,12 +106,12 @@ function currentVolume() {
 
 function requestLoad() {
   if (!groupEl.value) return;
-  statusEl.textContent = "Lade ...";
+  statusEl.textContent = "Loading ...";
   host({ type: "load", chatId: groupEl.value, days: parseInt(rangeEl.value, 10) });
 }
 
-// ---- Rendering ----
-// Voller Neuaufbau - nur bei neuen Daten (setSongs).
+// ---- rendering ----
+// Full rebuild - only on new data (setSongs).
 function render() {
   const sorted = [...songs].sort(compare);
   rowsBody.innerHTML = "";
@@ -121,14 +121,14 @@ function render() {
   updateSortIndicators();
 }
 
-// Nur umsortieren - vorhandene <tr> (und damit laufende Wiedergabe) bleiben
-// erhalten, es werden keine <audio> neu gebaut.
+// Reorder only - existing <tr> (and thus ongoing playback) are kept, no <audio>
+// is rebuilt.
 function applySort() {
   const byId = new Map(
     [...rowsBody.querySelectorAll("tr")].map((r) => [r.dataset.fileId, r]));
   for (const s of [...songs].sort(compare)) {
     const r = byId.get(String(s.fileId));
-    if (r) rowsBody.appendChild(r); // ans Ende verschieben -> Zielreihenfolge
+    if (r) rowsBody.appendChild(r); // move to the end -> target order
   }
   updateSortIndicators();
 }
@@ -167,11 +167,11 @@ function buildRow(s) {
   bar.max = 100;
   bar.value = 0;
   bar.hidden = true;
-  bar.title = "Klicken: Laden abbrechen";
+  bar.title = "Click to cancel the download";
   bar.style.cursor = "pointer";
 
-  // Abbruch NUR per Klick auf den Balken - audio-Events (pause/abort/suspend)
-  // feuern bei großen Dateien auch ungewollt und würden den Download killen.
+  // Cancel ONLY by clicking the bar - audio events (pause/abort/suspend) also
+  // fire unintentionally for large files and would kill the download.
   bar.addEventListener("click", () => {
     if (bar.hidden) return;
     bar.hidden = true;
@@ -196,8 +196,8 @@ function buildRow(s) {
     dur.textContent = "– · " + s.sizeDisplay + (fmt ? " · " + fmt : "");
   }
 
-  // Nur EINMAL nachtragen, wenn Telegram keine Dauer kannte - sonst
-  // flackert die Anzeige bei kopflosen VBR-Dateien.
+  // Backfill ONCE when Telegram had no duration - otherwise the display
+  // flickers for headerless VBR files.
   audio.addEventListener("loadedmetadata", () => {
     if (!durSet && isFinite(audio.duration) && audio.duration > 0) {
       setMeta(audio.duration);
@@ -228,7 +228,7 @@ function pauseOthers(current) {
   });
 }
 
-// ---- Sortierung ----
+// ---- sorting ----
 document.querySelectorAll("th[data-key]").forEach((th) => {
   if (th.dataset.key === "none") return;
   th.addEventListener("click", () => {
@@ -257,7 +257,7 @@ function updateSortIndicators() {
   });
 }
 
-// ---- Suche ----
+// ---- search ----
 searchEl.addEventListener("input", applySearch);
 
 function applySearch() {
@@ -269,11 +269,11 @@ function applySearch() {
     if (match) shown++;
   });
   if (songs.length === 0) {
-    statusEl.textContent = "Keine Audios im Zeitraum.";
+    statusEl.textContent = "No audios in this time range.";
   } else if (q === "") {
-    statusEl.textContent = songs.length + " Audios";
+    statusEl.textContent = songs.length + " audios";
   } else {
-    statusEl.textContent = shown + " von " + songs.length + " Audios";
+    statusEl.textContent = shown + " of " + songs.length + " audios";
   }
 }
 

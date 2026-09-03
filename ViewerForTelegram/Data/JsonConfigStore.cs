@@ -5,8 +5,8 @@ using ViewerForTelegram.Data.Models;
 namespace ViewerForTelegram.Data;
 
 /// <summary>
-/// <see cref="IConfigStore"/> als eine JSON-Datei. Standardpfad ist
-/// <see cref="AppPaths.ConfigFile"/>; die Pfad-Überladung dient Tests.
+/// <see cref="IConfigStore"/> as a single JSON file. The default path is
+/// <see cref="AppPaths.ConfigFile"/>; the path overload is for tests.
 /// </summary>
 public sealed class JsonConfigStore : IConfigStore
 {
@@ -44,8 +44,8 @@ public sealed class JsonConfigStore : IConfigStore
         catch (Exception ex) when (
             ex is IOException or JsonException or UnauthorizedAccessException)
         {
-            // Kaputte/gesperrte Datei soll den Start nicht verhindern -
-            // die App behandelt es wie "noch nicht konfiguriert".
+            // A broken/locked file must not block startup -
+            // the app treats it like "not configured yet".
             return TelegramConfig.Empty;
         }
     }

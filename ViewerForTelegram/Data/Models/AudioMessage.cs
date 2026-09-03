@@ -1,27 +1,27 @@
 namespace ViewerForTelegram.Data.Models;
 
 /// <summary>
-/// Eine einzelne Audiodatei aus einem Chat - nur die Metadaten.
-/// Die eigentlichen Bytes werden erst bei Bedarf (Abspielen / Download)
-/// über <see cref="Interfaces.ITelegramSource"/> geholt und über
-/// <see cref="Interfaces.IMediaCache"/> lokal abgelegt.
+/// A single audio file from a chat - metadata only.
+/// The actual bytes are fetched on demand (playback / download) via
+/// <see cref="Interfaces.ITelegramSource"/> and stored locally via
+/// <see cref="Interfaces.IMediaCache"/>.
 /// </summary>
-/// <param name="ChatId">Zu welchem Chat die Nachricht gehört (<see cref="TelegramChat.Id"/>).</param>
-/// <param name="MessageId">Laufende Nachrichtennummer innerhalb des Chats.</param>
+/// <param name="ChatId">Which chat the message belongs to (<see cref="TelegramChat.Id"/>).</param>
+/// <param name="MessageId">Running message number within the chat.</param>
 /// <param name="FileId">
-/// Telegram-Dokument-ID der Audiodatei. Stabiler Schlüssel für den Cache:
-/// dieselbe Datei mehrfach gepostet -> gleiche FileId -> nur einmal laden.
+/// Telegram document ID of the audio file. A stable key for the cache: the same
+/// file posted multiple times -> same FileId -> downloaded only once.
 /// </param>
-/// <param name="Title">Titel-Tag der Datei, sonst der Dateiname ohne Endung.</param>
-/// <param name="Performer">Interpret-Tag der Datei (kann leer sein).</param>
+/// <param name="Title">Title tag of the file, otherwise the file name without extension.</param>
+/// <param name="Performer">Performer tag of the file (may be empty).</param>
 /// <param name="Duration">
-/// Länge des Stücks, oder <c>null</c> wenn Telegram sie nicht kennt (Datei
-/// wurde "als Datei" statt "als Musik" gepostet). Wird nach dem Download aus
-/// dem Datei-Inhalt nachgetragen.
+/// Length of the track, or <c>null</c> when Telegram does not know it (the file
+/// was posted "as a file" instead of "as music"). Backfilled from the file
+/// contents after download.
 /// </param>
-/// <param name="SizeBytes">Dateigröße in Byte.</param>
-/// <param name="FileName">Originaldateiname inkl. Endung (z. B. "track.mp3").</param>
-/// <param name="DateUtc">Zeitpunkt des Posts, in UTC.</param>
+/// <param name="SizeBytes">File size in bytes.</param>
+/// <param name="FileName">Original file name incl. extension (e.g. "track.mp3").</param>
+/// <param name="DateUtc">Time of the post, in UTC.</param>
 public sealed record AudioMessage(
     long ChatId,
     int MessageId,
@@ -34,9 +34,9 @@ public sealed record AudioMessage(
     DateTime DateUtc)
 {
     /// <summary>
-    /// "Interpret - Titel", oder nur der Titel, wenn kein Interpret bekannt ist.
-    /// Reine Anzeigelogik - darf im Modell stehen, weil sie nur eigene Felder
-    /// zusammensetzt und keine fremde Schicht braucht.
+    /// "Performer - Title", or just the title when no performer is known.
+    /// Pure display logic - allowed in the model because it only composes its
+    /// own fields and needs no other layer.
     /// </summary>
     public string DisplayName =>
         string.IsNullOrWhiteSpace(Performer) ? Title : $"{Performer} - {Title}";

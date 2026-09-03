@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,18 +8,18 @@
 </head>
 <body>
   <div class="bar">
-    <button id="settings" title="Einstellungen">&#9881;</button>
+    <button id="settings" title="Settings">&#9881;</button>
 
-    <label>Gruppe / Kanal
+    <label>Group / channel
       <select id="group" disabled></select>
     </label>
 
-    <label>Zeitraum
+    <label>Time range
       <select id="range">
-        <option value="3">Letzte 3 Tage</option>
-        <option value="7">Letzte 7 Tage</option>
-        <option value="14">Letzte 14 Tage</option>
-        <option value="30">Letzte 30 Tage</option>
+        <option value="3">Last 3 days</option>
+        <option value="7">Last 7 days</option>
+        <option value="14">Last 14 days</option>
+        <option value="30">Last 30 days</option>
       </select>
     </label>
 
@@ -27,9 +27,9 @@
       <input id="volume" type="range" min="0" max="100">
     </label>
 
-    <input id="search" type="search" placeholder="Filtern ...">
+    <input id="search" type="search" placeholder="Filter ...">
     <span id="cache">Cache: –</span>
-    <span id="status">Verbinde ...</span>
+    <span id="status">Connecting ...</span>
   </div>
 
   <div class="table-wrap">
@@ -41,14 +41,14 @@
       </colgroup>
       <thead>
         <tr>
-          <th data-key="date">Datum</th>
+          <th data-key="date">Date</th>
           <th data-key="title">Song</th>
-          <th data-key="none" class="no-sort">Datei</th>
+          <th data-key="none" class="no-sort">File</th>
         </tr>
       </thead>
       <tbody id="rows"></tbody>
     </table>
-    <p id="empty" class="empty" hidden>Keine Audiodateien im Zeitraum.</p>
+    <p id="empty" class="empty" hidden>No audio files in this time range.</p>
   </div>
 
   <script src="app.js"></script>

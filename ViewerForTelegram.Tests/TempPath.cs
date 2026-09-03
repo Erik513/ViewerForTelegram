@@ -1,6 +1,6 @@
 namespace ViewerForTelegram.Tests;
 
-/// <summary>Ein eindeutiger Pfad im Temp-Ordner, der beim Dispose weggeräumt wird.</summary>
+/// <summary>A unique path in the temp folder, cleaned up on dispose.</summary>
 internal sealed class TempPath : IDisposable
 {
     public string Path { get; }
@@ -10,13 +10,13 @@ internal sealed class TempPath : IDisposable
     public static TempPath File() =>
         new(System.IO.Path.Combine(
             System.IO.Path.GetTempPath(),
-            "tv-test-" + Guid.NewGuid().ToString("N") + ".json"));
+            "vft-test-" + Guid.NewGuid().ToString("N") + ".json"));
 
     public static TempPath Dir()
     {
         string dir = System.IO.Path.Combine(
             System.IO.Path.GetTempPath(),
-            "tv-test-" + Guid.NewGuid().ToString("N"));
+            "vft-test-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         return new TempPath(dir);
     }
@@ -36,7 +36,7 @@ internal sealed class TempPath : IDisposable
         }
         catch
         {
-            // Aufräumen im Test ist best effort.
+            // Cleanup in tests is best effort.
         }
     }
 }

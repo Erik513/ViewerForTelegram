@@ -40,7 +40,12 @@ public sealed class AudioFeedService
         var items = new List<FeedItem>(audios.Count);
         foreach (AudioMessage a in audios)
         {
-            items.Add(new FeedItem(a, _cache.Contains(a)));
+            // Telegram often gives no duration for files posted "as a file" - fill
+            // it in from a length the cache decoded on an earlier playback.
+            AudioMessage enriched = a.Duration is null
+                ? a with { Duration = _cache.GetKnownDuration(a) }
+                : a;
+            items.Add(new FeedItem(enriched, _cache.Contains(enriched)));
         }
         return items;
     }

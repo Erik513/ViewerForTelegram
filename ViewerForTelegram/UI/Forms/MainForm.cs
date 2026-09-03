@@ -646,7 +646,7 @@ public sealed class MainForm : StyledForm
     /// <summary>
     /// Telegram sometimes doesn't report a track's length (posted "as a file").
     /// Once the audio engine has decoded it we know the real duration - write it
-    /// back into the model and the list so the Length column stops showing "–".
+    /// back into the model, the list and the cache so it survives a reload.
     /// </summary>
     private void BackfillDuration(long fileId, TimeSpan duration)
     {
@@ -659,6 +659,7 @@ public sealed class MainForm : StyledForm
 
         AudioMessage updated = a with { Duration = duration };
         _byFileId[fileId] = updated;
+        _cache.RememberDuration(updated, duration);
 
         for (int i = 0; i < _items.Count; i++)
         {

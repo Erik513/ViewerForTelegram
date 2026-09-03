@@ -116,4 +116,40 @@ public class FileMediaCacheTests
 
         Assert.Equal(1, cache.GetStats().Count);
     }
+
+    [Fact]
+    public void RememberedDuration_RoundTrips_AndPersistsToDisk()
+    {
+        using var dir = TempPath.Dir();
+        AudioMessage a = Audio(42, size: 10);
+
+        var cache = new FileMediaCache(dir.Path);
+        Assert.Null(cache.GetKnownDuration(a));
+
+        cache.RememberDuration(a, TimeSpan.FromSeconds(184));
+        Assert.Equal(TimeSpan.FromSeconds(184), cache.GetKnownDuration(a));
+
+        // a fresh instance reads it back from durations.json
+        Assert.Equal(TimeSpan.FromSeconds(184),
+            new FileMediaCache(dir.Path).GetKnownDuration(a));
+    }
+
+    [Fact]
+    public void RememberedDuration_SurvivesClearAndPrune_AndIsNotCounted()
+    {
+        using var dir = TempPath.Dir();
+        var cache = new FileMediaCache(dir.Path);
+        AudioMessage a = Audio(7, size: 100);
+
+        File.WriteAllBytes(cache.GetPath(a), new byte[100]);
+        cache.RememberDuration(a, TimeSpan.FromMinutes(3));
+
+        Assert.Equal((1, 100L), cache.GetStats());   // durations.json not counted
+
+        cache.Clear();
+        cache.PruneToLimit(0);
+
+        Assert.Equal((0, 0L), cache.GetStats());
+        Assert.Equal(TimeSpan.FromMinutes(3), cache.GetKnownDuration(a));
+    }
 }

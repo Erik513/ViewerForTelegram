@@ -47,6 +47,23 @@ public class AudioFeedServiceTests
     }
 
     [Fact]
+    public async Task LoadAsync_FillsMissingDurationFromTheCache()
+    {
+        var tg = new FakeTelegramSource();
+        AudioMessage noDuration = Audio(1, DateTime.UtcNow.AddDays(-1));   // Duration == null
+        tg.Audios.Add(noDuration);
+
+        using var dir = TempPath.Dir();
+        var cache = new FileMediaCache(dir.Path);
+        cache.RememberDuration(noDuration, TimeSpan.FromSeconds(200));
+
+        var svc = new AudioFeedService(tg, cache);
+        IReadOnlyList<FeedItem> items = await svc.LoadAsync(1, 7, CancellationToken.None);
+
+        Assert.Equal(TimeSpan.FromSeconds(200), items.Single().Audio.Duration);
+    }
+
+    [Fact]
     public async Task LoadAsync_NegativeDays_ReturnEmptyListWithoutError()
     {
         var tg = new FakeTelegramSource();

@@ -30,4 +30,14 @@ public interface IMediaCache
     /// <paramref name="maxBytes"/>. No effect if it is already below.
     /// </summary>
     void PruneToLimit(long maxBytes);
+
+    /// <summary>
+    /// A track length learned earlier by decoding the actual file (Telegram
+    /// often does not report one for files posted "as a file"). <c>null</c> if
+    /// nothing is remembered. Survives clearing the audio files themselves.
+    /// </summary>
+    TimeSpan? GetKnownDuration(AudioMessage message);
+
+    /// <summary>Stores a duration read from the decoded file for later loads.</summary>
+    void RememberDuration(AudioMessage message, TimeSpan duration);
 }

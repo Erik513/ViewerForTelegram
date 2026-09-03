@@ -50,7 +50,6 @@ public sealed class MainForm : StyledForm
     private int _lastProgress;
     private CancellationTokenSource? _playCts;
     private bool _suppressListEvents;
-    private readonly ToolStripItem _saveMenuItem;
 
     private bool _started;
     private bool _connecting;
@@ -162,25 +161,12 @@ public sealed class MainForm : StyledForm
         AddColumn("Size", width: 90, alignRight: true);
         // The list only shows info. The player's one button does the work:
         // download / cancel / play / pause on the selected row.
+        // ShowCellToolTips (WinForms default) shows a tooltip only for a cell
+        // whose text is clipped - no explicit ToolTipText, so nothing else.
+        _list.ShowCellToolTips = true;
         _list.SelectionChanged += (_, _) => ShowSelected();
         _list.CellMouseDoubleClick += (_, _) => OnMainButton();
         _list.KeyDown += OnListKeyDown;
-
-        // WinForms leaves a DataGridView cell tooltip stuck on screen when the
-        // grid scrolls, reloads its rows or the window loses focus while one is
-        // visible. Toggling ShowCellToolTips tears the current one down.
-        _list.CellMouseLeave += (_, _) => HideListToolTip();
-        _list.MouseLeave += (_, _) => HideListToolTip();
-        _list.Leave += (_, _) => HideListToolTip();
-        _list.Scroll += (_, _) => HideListToolTip();
-        _list.RowsRemoved += (_, _) => HideListToolTip();
-        Deactivate += (_, _) => HideListToolTip();
-
-        // context menu: save a copy to disk
-        var menu = new ContextMenuStrip();
-        _saveMenuItem = menu.Items.Add("Save a copy…", null, (_, _) => SaveSelected());
-        menu.Opening += (_, e) => { _saveMenuItem.Enabled = SelectedAudio is not null; };
-        _list.ContextMenuStrip = menu;
 
         // ---- player ----
         _player = new PlayerPanel();
@@ -474,22 +460,16 @@ public sealed class MainForm : StyledForm
         }
     }
 
-    /// <summary>
-    /// Kills a DataGridView cell tooltip that WinForms would otherwise leave
-    /// hanging on screen. Cheap no-op when none is showing.
-    /// </summary>
-    private void HideListToolTip()
+    private void RenderList()
     {
+        // Dismiss a truncation tooltip still showing over a row we're about to
+        // remove (WinForms would otherwise leave it hanging).
         if (_list.ShowCellToolTips)
         {
             _list.ShowCellToolTips = false;
             _list.ShowCellToolTips = true;
         }
-    }
 
-    private void RenderList()
-    {
-        HideListToolTip();
         string query = _searchBox.Text.Trim();
         var filtered = _items
             .Where(i => query.Length == 0 || Matches(i.Audio, query))

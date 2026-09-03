@@ -101,8 +101,7 @@ public sealed class MainForm : StyledForm
 
         var topRow = new TableLayoutPanel
         {
-            Dock = DockStyle.Top,
-            Height = 40,
+            Dock = DockStyle.Fill,
             ColumnCount = 5,
             RowCount = 1,
             Padding = new Padding(10, 6, 10, 4),
@@ -120,10 +119,10 @@ public sealed class MainForm : StyledForm
         topRow.Controls.Add(_cacheLabel, 4, 0);
 
         _statusLabel = UIStyles.Labels.CreateMuted("");
-        _statusLabel.Dock = DockStyle.Top;
-        _statusLabel.Height = 20;
+        _statusLabel.Dock = DockStyle.Fill;
         _statusLabel.Padding = new Padding(12, 0, 12, 0);
         _statusLabel.AutoSize = false;
+        _statusLabel.TextAlign = ContentAlignment.MiddleLeft;
         _statusLabel.BackColor = UIStyles.Colors.BackgroundDarkElevated;
 
         // ---- list ----
@@ -185,11 +184,29 @@ public sealed class MainForm : StyledForm
             Status("Playback failed: " + ex.Message);
         };
 
-        // Docking: add edge controls first, the fill control last.
-        ContentPanel.Controls.Add(_player);
-        ContentPanel.Controls.Add(_list);
-        ContentPanel.Controls.Add(_statusLabel);
-        ContentPanel.Controls.Add(topRow);
+        // A 4-row grid so nothing can overlap regardless of window size.
+        var listHost = new Panel { Dock = DockStyle.Fill };
+        listHost.Controls.Add(_list);
+
+        _player.Dock = DockStyle.Fill;
+
+        var root = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 4,
+            BackColor = UIStyles.Colors.BackgroundMedium
+        };
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 22));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, PlayerPanel.PanelHeight));
+        root.Controls.Add(topRow, 0, 0);
+        root.Controls.Add(_statusLabel, 0, 1);
+        root.Controls.Add(listHost, 0, 2);
+        root.Controls.Add(_player, 0, 3);
+
+        ContentPanel.Controls.Add(root);
 
         Shown += async (_, _) =>
         {
@@ -432,8 +449,9 @@ public sealed class MainForm : StyledForm
         _currentFileId = audio.FileId;
 
         string title = audio.DisplayName;
-        _player.SetDownloading(title, 0);
-        var progress = new Progress<int>(p => _player.SetDownloading(title, p));
+        _player.SetDownloading(0);
+        Status($"Downloading: {title}");
+        var progress = new Progress<int>(p => _player.SetDownloading(p));
 
         string path;
         try
@@ -480,7 +498,7 @@ public sealed class MainForm : StyledForm
             return;
         }
 
-        _player.SetLoaded(title, _audio.Duration);
+        _player.SetLoaded(_audio.Duration);
         _audio.Play();
         _player.SetPlaying(true);
         _positionTimer.Start();

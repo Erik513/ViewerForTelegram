@@ -1,4 +1,5 @@
 using ErikwnkWFUI;
+using ErikwnkWFUI.Controls;
 using ViewerForTelegram.Data.Models;
 
 namespace ViewerForTelegram.UI.Controls;
@@ -29,10 +30,13 @@ public sealed class PlayerPanel : Panel
     private readonly Label _performer;
     private readonly Label _fileInfo;
     private readonly SliderBar _seek;
+    private readonly SlimProgressBar _downloadBar;
+    private readonly TableLayoutPanel _seekRow;
     private readonly Label _time;
     private readonly SliderBar _volume;
 
     private TimeSpan _duration;
+    private bool _showingDownloadBar;
 
     public PlayerPanel()
     {
@@ -64,6 +68,11 @@ public sealed class PlayerPanel : Panel
             }
         };
 
+        // Shown in place of the seek bar while a download runs - red→yellow→green.
+        _downloadBar = UIStyles.SlimProgressBars.CreateStatus();
+        _downloadBar.BackColor = UIStyles.Colors.BorderMedium;
+        _downloadBar.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+
         _time = MakeLabel(UIStyles.Labels.CreateMuted("–:– / –:–"));
         _time.TextAlign = ContentAlignment.MiddleCenter;
 
@@ -84,20 +93,20 @@ public sealed class PlayerPanel : Panel
         fileRow.Controls.Add(_saveButton, 0, 0);
         fileRow.Controls.Add(_fileInfo, 1, 0);
 
-        // Row: seek  time  Vol  volume
-        var seekRow = new TableLayoutPanel
+        // Row: seek (or download bar)  time  Vol  volume
+        _seekRow = new TableLayoutPanel
         {
             Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 1,
             Margin = new Padding(0), BackColor = Color.Transparent
         };
-        seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
-        seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));
-        seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
-        seekRow.Controls.Add(_seek, 0, 0);
-        seekRow.Controls.Add(_time, 1, 0);
-        seekRow.Controls.Add(volLabel, 2, 0);
-        seekRow.Controls.Add(_volume, 3, 0);
+        _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
+        _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));
+        _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
+        _seekRow.Controls.Add(_seek, 0, 0);
+        _seekRow.Controls.Add(_time, 1, 0);
+        _seekRow.Controls.Add(volLabel, 2, 0);
+        _seekRow.Controls.Add(_volume, 3, 0);
 
         var stack = new TableLayoutPanel
         {
@@ -111,7 +120,7 @@ public sealed class PlayerPanel : Panel
         stack.Controls.Add(_title, 0, 0);
         stack.Controls.Add(_performer, 0, 1);
         stack.Controls.Add(fileRow, 0, 2);
-        stack.Controls.Add(seekRow, 0, 3);
+        stack.Controls.Add(_seekRow, 0, 3);
 
         var root = new TableLayoutPanel
         {
@@ -150,6 +159,7 @@ public sealed class PlayerPanel : Panel
         _seek.Enabled = false;
         _seek.Value = 0;
         _time.Text = "–:– / –:–";
+        ShowDownloadBar(false);
     }
 
     /// <summary>Show a track's details and set the button to <paramref name="button"/>.</summary>
@@ -165,6 +175,7 @@ public sealed class PlayerPanel : Panel
 
         if (button != PlayerButton.Cancel)
         {
+            ShowDownloadBar(false);
             _seek.Enabled = false;
             _seek.Value = 0;
             _duration = a.Duration ?? TimeSpan.Zero;
@@ -179,7 +190,7 @@ public sealed class PlayerPanel : Panel
         {
             PlayerButton.Cancel => "✕",
             PlayerButton.Play => "▶",
-            PlayerButton.Pause => "⏸",
+            PlayerButton.Pause => "‖",
             _ => ""
         };
     }
@@ -189,18 +200,34 @@ public sealed class PlayerPanel : Panel
         SetButton(PlayerButton.Cancel);
         _saveButton.Enabled = false;
         _seek.Enabled = false;
+        ShowDownloadBar(true);
+        _downloadBar.Value = Math.Clamp(percent, 0, 100);
         _time.Text = $"↓ {Math.Clamp(percent, 0, 100)}%";
     }
 
     /// <summary>The track is now loaded in the audio player - enable the seek bar.</summary>
     public void SetLoaded(TimeSpan duration)
     {
+        ShowDownloadBar(false);
         _duration = duration;
         _saveButton.Enabled = true;
         _seek.Enabled = duration > TimeSpan.Zero;
         _seek.Maximum = Math.Max(1, duration.TotalSeconds);
         _seek.Value = 0;
         UpdateTime(TimeSpan.Zero);
+    }
+
+    private void ShowDownloadBar(bool show)
+    {
+        if (show == _showingDownloadBar)
+        {
+            return;
+        }
+        _showingDownloadBar = show;
+        _seekRow.SuspendLayout();
+        _seekRow.Controls.Remove(show ? _seek : (Control)_downloadBar);
+        _seekRow.Controls.Add(show ? _downloadBar : (Control)_seek, 0, 0);
+        _seekRow.ResumeLayout();
     }
 
     public void SetPosition(TimeSpan pos)

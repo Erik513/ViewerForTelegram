@@ -87,10 +87,12 @@ public sealed class MainForm : StyledForm
         settingsButton.Click += async (_, _) => await OpenSettingsAsync(isStartup: false);
 
         _groupCombo = UIStyles.ComboBoxes.CreateStandard();
+        StylePrimaryCombo(_groupCombo);
         _groupCombo.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _groupCombo.SelectedIndexChanged += (_, _) => OnFilterChanged();
 
         _rangeCombo = UIStyles.ComboBoxes.CreateStandard();
+        StylePrimaryCombo(_rangeCombo);
         _rangeCombo.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _rangeCombo.Items.AddRange(new object[]
         {
@@ -402,6 +404,32 @@ public sealed class MainForm : StyledForm
         }
 
         RenderList();
+    }
+
+    /// <summary>
+    /// ErikwnkWFUI has no "primary" ComboBox factory. This repaints the closed
+    /// box (the display area) in the accent so the combos match the primary
+    /// buttons; it runs after the factory's own DrawItem handler and overpaints.
+    /// Rows in the open dropdown are left to the factory.
+    /// </summary>
+    private static void StylePrimaryCombo(ComboBox combo)
+    {
+        combo.BackColor = UIStyles.Colors.PrimaryDark;   // the drop-arrow area
+        combo.DrawItem += (s, e) =>
+        {
+            if (e.Index < 0 || (e.State & DrawItemState.ComboBoxEdit) == 0)
+            {
+                return;
+            }
+
+            var c = (ComboBox)s!;
+            using var brush = new SolidBrush(UIStyles.Colors.PrimaryDark);
+            e.Graphics.FillRectangle(brush, e.Bounds);
+            TextRenderer.DrawText(
+                e.Graphics, c.GetItemText(c.Items[e.Index]), c.Font, e.Bounds,
+                UIStyles.Colors.White,
+                TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.NoPrefix);
+        };
     }
 
     /// <summary>Add a column: pass <paramref name="fill"/> for a stretchy column, or <paramref name="width"/> for a fixed one.</summary>

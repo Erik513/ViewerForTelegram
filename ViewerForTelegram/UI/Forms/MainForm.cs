@@ -20,7 +20,7 @@ namespace ViewerForTelegram.UI.Forms;
 /// </summary>
 public sealed class MainForm : StyledForm
 {
-    private static readonly int[] RangeDayOptions = { 3, 7, 14, 30 };
+    private static readonly int[] RangeDayOptions = { 3, 7, 14, 30, 60 };
 
     private readonly ITelegramSource _telegram;
     private readonly IConfigStore _configStore;
@@ -93,9 +93,15 @@ public sealed class MainForm : StyledForm
         _rangeCombo.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _rangeCombo.Items.AddRange(new object[]
         {
-            "Last 3 days", "Last 7 days", "Last 14 days", "Last 30 days"
+            "Last 3 days", "Last 7 days", "Last 14 days", "Last 30 days", "Last 60 days"
         });
         _rangeCombo.SelectedIndexChanged += (_, _) => OnFilterChanged();
+
+        var refreshButton = UIStyles.Buttons.CreatePrimary("", "Reload chats and list", new Size(30, 30));
+        refreshButton.Anchor = AnchorStyles.None;
+        refreshButton.Paint += (s, e) => GlyphIcons.DrawRefresh(
+            e.Graphics, ((Control)s!).ClientRectangle, ((Control)s).ForeColor);
+        refreshButton.Click += async (_, _) => await RefreshAsync();
 
         // No factory placeholder - that variant writes the placeholder string
         // into .Text, which would then be read as a filter. Use the native one.
@@ -122,7 +128,7 @@ public sealed class MainForm : StyledForm
         var topRow = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            ColumnCount = 5,
+            ColumnCount = 6,
             RowCount = 1,
             Padding = new Padding(10, 6, 10, 4),
             BackColor = UIStyles.Colors.BackgroundDarkElevated
@@ -130,13 +136,15 @@ public sealed class MainForm : StyledForm
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 42));
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 46));
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 118));
+        topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40));
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 54));
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200));
         topRow.Controls.Add(settingsButton, 0, 0);
         topRow.Controls.Add(_groupCombo, 1, 0);
         topRow.Controls.Add(_rangeCombo, 2, 0);
-        topRow.Controls.Add(_searchBox, 3, 0);
-        topRow.Controls.Add(_cacheLabel, 4, 0);
+        topRow.Controls.Add(refreshButton, 3, 0);
+        topRow.Controls.Add(_searchBox, 4, 0);
+        topRow.Controls.Add(_cacheLabel, 5, 0);
 
         // ---- list ----
         _list = new StyledGrid
@@ -359,6 +367,16 @@ public sealed class MainForm : StyledForm
 
         Status("Connecting …");
         await _telegram.ConnectAsync(AskForCodeAsync, CancellationToken.None);
+        await ListChatsAndLoadAsync();
+    }
+
+    /// <summary>
+    /// (Re)fetches the chat list into the combo and reloads the feed for the
+    /// current (or remembered) chat. Assumes the client is already connected.
+    /// </summary>
+    private async Task ListChatsAndLoadAsync()
+    {
+        long keepChatId = SelectedChat?.Id ?? _uiStateStore.Load().LastChatId;
 
         _chats = (await _telegram.GetChatsAsync(CancellationToken.None))
             .OrderBy(c => c.Title)
@@ -370,9 +388,7 @@ public sealed class MainForm : StyledForm
         {
             _groupCombo.Items.Add(new ChatChoice(chat));
         }
-
-        long lastId = _uiStateStore.Load().LastChatId;
-        int idx = _chats.FindIndex(c => c.Id == lastId);
+        int idx = _chats.FindIndex(c => c.Id == keepChatId);
         _groupCombo.SelectedIndex = idx >= 0 ? idx : (_chats.Count > 0 ? 0 : -1);
         _suppressComboEvents = false;
 
@@ -381,6 +397,36 @@ public sealed class MainForm : StyledForm
         if (_groupCombo.SelectedIndex >= 0)
         {
             await LoadFeedAsync();
+        }
+    }
+
+    /// <summary>Refresh button: reload the chat list and the feed (connect first if needed).</summary>
+    private async Task RefreshAsync()
+    {
+        if (_connecting)
+        {
+            return;
+        }
+        if (!_connected)
+        {
+            await ConnectAsync();
+            return;
+        }
+
+        _connecting = true;
+        try
+        {
+            Status("Refreshing …");
+            await RunWithRetryAsync("Refresh", ListChatsAndLoadAsync);
+        }
+        catch (Exception ex)
+        {
+            _connected = false;
+            Status(DescribeFailure("Refresh", ex));
+        }
+        finally
+        {
+            _connecting = false;
         }
     }
 

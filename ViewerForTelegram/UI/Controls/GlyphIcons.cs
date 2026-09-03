@@ -45,6 +45,38 @@ internal static class GlyphIcons
         g.FillPath(brush, path);
     }
 
+    public static void DrawRefresh(Graphics g, Rectangle bounds, Color color)
+    {
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        float s = Math.Min(bounds.Width, bounds.Height);
+        float cx = bounds.Left + bounds.Width / 2f;
+        float cy = bounds.Top + bounds.Height / 2f;
+        float r = s * 0.28f;
+        float thick = Math.Max(2f, s * 0.11f);
+
+        const float startDeg = -35f, sweepDeg = 280f;
+        using (var pen = new Pen(color, thick) { StartCap = LineCap.Round, EndCap = LineCap.Flat })
+        {
+            g.DrawArc(pen, cx - r, cy - r, r * 2, r * 2, startDeg, sweepDeg);
+        }
+
+        // filled arrowhead at the far end of the arc, pointing along the sweep
+        float endRad = (startDeg + sweepDeg) * (float)Math.PI / 180f;
+        var end = new PointF(cx + r * (float)Math.Cos(endRad), cy + r * (float)Math.Sin(endRad));
+        float tanRad = endRad + (float)Math.PI / 2f;   // clockwise tangent
+        float ah = s * 0.20f;
+        var tip = new PointF(end.X + ah * (float)Math.Cos(tanRad), end.Y + ah * (float)Math.Sin(tanRad));
+        float baseRad = tanRad + (float)Math.PI / 2f;
+        float bw = ah * 0.9f;
+        using var brush = new SolidBrush(color);
+        g.FillPolygon(brush, new[]
+        {
+            tip,
+            new PointF(end.X + bw * (float)Math.Cos(baseRad), end.Y + bw * (float)Math.Sin(baseRad)),
+            new PointF(end.X - bw * (float)Math.Cos(baseRad), end.Y - bw * (float)Math.Sin(baseRad)),
+        });
+    }
+
     public static void DrawDownload(Graphics g, Rectangle bounds, Color color)
     {
         g.SmoothingMode = SmoothingMode.AntiAlias;

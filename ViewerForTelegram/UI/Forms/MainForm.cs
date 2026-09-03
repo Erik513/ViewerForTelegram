@@ -47,8 +47,10 @@ public sealed class MainForm : StyledForm
     private long _pendingFileId;    // a track being downloaded right now
     private long _lastTrackId;    // last track put in the player (persisted; drives the row tint before playback)
     private int _playSeq;           // bumped per download so a superseded one bails out
+    private int _feedSeq;           // bumped per feed load so a superseded one bails out
     private int _lastProgress;
     private CancellationTokenSource? _playCts;
+    private CancellationTokenSource? _feedCts;
     private bool _suppressListEvents;
 
     private bool _started;
@@ -242,6 +244,7 @@ public sealed class MainForm : StyledForm
         FormClosing += (_, _) =>
         {
             _playCts?.Cancel();
+            _feedCts?.Cancel();
             _positionTimer.Stop();
             _audio.Stop();
             SaveUiState();
@@ -325,7 +328,9 @@ public sealed class MainForm : StyledForm
     }
 
     private static bool IsTransient(Exception ex) =>
-        !IsRateLimit(ex, out _) && ex is not NotSupportedException and not InvalidOperationException;
+        ex is not OperationCanceledException
+        && !IsRateLimit(ex, out _)
+        && ex is not NotSupportedException and not InvalidOperationException;
 
     /// <summary>Matches WTelegramClient's "FLOOD_WAIT_&lt;seconds&gt;" rate-limit error.</summary>
     private static bool IsRateLimit(Exception ex, out int seconds)
@@ -475,18 +480,41 @@ public sealed class MainForm : StyledForm
             return;
         }
 
+        // Switching chat/range mid-load must not let the earlier (slower) load
+        // win the render. Cancel the previous one and tag this with a sequence.
+        _feedCts?.Cancel();
+        _feedCts?.Dispose();
+        CancellationToken token = (_feedCts = new CancellationTokenSource()).Token;
+        int seq = ++_feedSeq;
+        long chatId = chat.Id;
+        int days = SelectedDays;
+
         Status("Loading …");
+        List<FeedItem>? loaded = null;
         try
         {
             await RunWithRetryAsync("Loading", async () =>
-                _items = (await _feed.LoadAsync(chat.Id, SelectedDays, CancellationToken.None)).ToList());
+                loaded = (await _feed.LoadAsync(chatId, days, token)).ToList());
+        }
+        catch (OperationCanceledException)
+        {
+            return;   // superseded by a newer load
         }
         catch (Exception ex)
         {
-            Status(DescribeFailure("Loading", ex));
+            if (seq == _feedSeq)
+            {
+                Status(DescribeFailure("Loading", ex));
+            }
             return;
         }
 
+        if (seq != _feedSeq || token.IsCancellationRequested || loaded is null)
+        {
+            return;   // a newer load started while this one ran
+        }
+
+        _items = loaded;
         _byFileId.Clear();
         foreach (FeedItem item in _items)
         {
@@ -1059,8 +1087,10 @@ public sealed class MainForm : StyledForm
     private async Task LogoutAsync(bool wipeConfig)
     {
         _playCts?.Cancel();
+        _feedCts?.Cancel();
         _downloader.CancelAll();
         _playSeq++;              // abandon any in-flight PlayAsync
+        _feedSeq++;              // and any in-flight feed load
         _pendingFileId = 0;
         StopCurrent();
 

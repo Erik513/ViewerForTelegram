@@ -80,8 +80,8 @@ public sealed class MainForm : StyledForm
         StartPosition = FormStartPosition.CenterScreen;
 
         // ---- top bar ----
-        var settingsButton = UIStyles.Buttons.CreatePrimary("", "Settings", new Size(40, 34));
-        settingsButton.Anchor = AnchorStyles.Left;
+        var settingsButton = UIStyles.Buttons.CreatePrimary("", "Settings", new Size(38, 30));
+        settingsButton.Anchor = AnchorStyles.None;   // centred in its cell, no clipping
         settingsButton.Paint += (s, e) => GlyphIcons.DrawGear(
             e.Graphics, ((Control)s!).ClientRectangle, ((Control)s).ForeColor);
         settingsButton.Click += async (_, _) => await OpenSettingsAsync(isStartup: false);

@@ -18,22 +18,27 @@ internal static class GlyphIcons
         float cy = bounds.Top + bounds.Height / 2f;
 
         const int teeth = 8;
-        float outer = s * 0.36f;
-        float root = s * 0.27f;
-        float hole = s * 0.12f;
+        float outer = s * 0.38f;
+        float root = s * 0.29f;
+        float hole = s * 0.145f;
         float step = (float)(Math.PI * 2 / teeth);
+        const float tipHalf = 0.13f;   // fraction of one tooth period
+        const float rootHalf = 0.20f;
+        var rootRect = new RectangleF(cx - root, cy - root, root * 2, root * 2);
 
         using var path = new GraphicsPath { FillMode = FillMode.Alternate };
-        var pts = new List<PointF>(teeth * 4);
         for (int i = 0; i < teeth; i++)
         {
             float a = i * step;
-            pts.Add(Polar(cx, cy, root, a - step * 0.19f));
-            pts.Add(Polar(cx, cy, outer, a - step * 0.13f));
-            pts.Add(Polar(cx, cy, outer, a + step * 0.13f));
-            pts.Add(Polar(cx, cy, root, a + step * 0.19f));
+            path.AddLine(Polar(cx, cy, root, a - step * rootHalf), Polar(cx, cy, outer, a - step * tipHalf));
+            path.AddLine(Polar(cx, cy, outer, a - step * tipHalf), Polar(cx, cy, outer, a + step * tipHalf));
+            path.AddLine(Polar(cx, cy, outer, a + step * tipHalf), Polar(cx, cy, root, a + step * rootHalf));
+            // rounded valley along the root circle to the next tooth
+            float v0 = a + step * rootHalf;
+            float v1 = a + step * (1f - rootHalf);
+            path.AddArc(rootRect, Deg(v0), Deg(v1 - v0));
         }
-        path.AddPolygon(pts.ToArray());
+        path.CloseFigure();
         path.AddEllipse(cx - hole, cy - hole, hole * 2, hole * 2);
 
         using var brush = new SolidBrush(color);
@@ -135,6 +140,8 @@ internal static class GlyphIcons
         g.DrawLine(pen, cx - d, cy - d, cx + d, cy + d);
         g.DrawLine(pen, cx - d, cy + d, cx + d, cy - d);
     }
+
+    private static float Deg(float radians) => radians * 180f / (float)Math.PI;
 
     private static PointF Polar(float cx, float cy, float r, float angle) =>
         new((float)(cx + r * Math.Cos(angle)), (float)(cy + r * Math.Sin(angle)));

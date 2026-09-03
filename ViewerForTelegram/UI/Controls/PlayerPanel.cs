@@ -60,7 +60,9 @@ public sealed class PlayerPanel : Panel
         // and one consistent weight - symbol-font glyphs are not.
         _mainButton.Paint += OnMainButtonPaint;
 
-        _saveButton = MakeIconButton(34, "Save a copy to disk");
+        // No factory tooltip - the tooltip (with the file name) is managed
+        // through _tips only, so the button doesn't end up with two.
+        _saveButton = MakeIconButton(34, "");
         _saveButton.Anchor = AnchorStyles.None;
         _saveButton.Click += (_, _) => Save?.Invoke();
         _saveButton.Paint += (s, e) => GlyphIcons.DrawDownload(
@@ -248,7 +250,7 @@ public sealed class PlayerPanel : Panel
         _performer.Text = "";
         _fileSize.Text = "";
         _fileFormat.Text = "";
-        _tips.SetToolTip(_saveButton, "Save a copy to disk");
+        _tips.SetToolTip(_saveButton, "Download");
         _seek.Enabled = false;
         _seek.Value = 0;
         _time.Text = "–:– / –:–";
@@ -262,7 +264,7 @@ public sealed class PlayerPanel : Panel
         _performer.Text = a.Performer;
         _fileSize.Text = $"{a.SizeBytes / 1024d / 1024d:0.0} MB";
         _fileFormat.Text = Path.GetExtension(a.FileName).TrimStart('.').ToUpperInvariant();
-        _tips.SetToolTip(_saveButton, $"Save a copy of \"{a.FileName}\"");
+        _tips.SetToolTip(_saveButton, $"Download: {a.FileName}");
 
         SetButton(button);
         _saveButton.Enabled = cached;

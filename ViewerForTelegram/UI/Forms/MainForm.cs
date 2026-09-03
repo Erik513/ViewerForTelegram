@@ -892,7 +892,7 @@ public sealed class MainForm : StyledForm
         }
         if (!_cache.Contains(audio))
         {
-            Status("Not downloaded yet - play it first.");
+            Toast("Download failed – play the track first so it is cached.");
             return;
         }
 
@@ -904,9 +904,8 @@ public sealed class MainForm : StyledForm
         {
             if (cfg.UseDownloadFolder && Directory.Exists(cfg.EffectiveDownloadFolder))
             {
-                string dest = Path.Combine(cfg.EffectiveDownloadFolder, name);
-                File.Copy(source, dest, overwrite: true);
-                Status($"Saved: {name}");
+                File.Copy(source, Path.Combine(cfg.EffectiveDownloadFolder, name), overwrite: true);
+                Toast($"Downloaded: {name}");
                 return;
             }
 
@@ -921,13 +920,22 @@ public sealed class MainForm : StyledForm
             if (dlg.ShowDialog(this) == DialogResult.OK)
             {
                 File.Copy(source, dlg.FileName, overwrite: true);
-                Status($"Saved: {Path.GetFileName(dlg.FileName)}");
+                Toast($"Downloaded: {Path.GetFileName(dlg.FileName)}");
             }
+            // dialog cancelled -> nothing happened, no toast
         }
         catch (Exception ex)
         {
-            Status("Save failed: " + ex.Message);
+            AppLog.Error("Download", $"{name}: {ex.Message}");
+            Toast($"Download failed: {ex.Message}");
         }
+    }
+
+    /// <summary>Bottom-of-player status line plus a brief pop-up toast.</summary>
+    private void Toast(string message)
+    {
+        Status(message);
+        ToastForm.ShowToast(message, this);
     }
 
     // ---------- settings ----------

@@ -17,7 +17,10 @@ namespace ViewerForTelegram.Data.Models;
 /// "just checking what's new" use case. Can be turned off, then the cache is
 /// kept and only trimmed to the size limit.
 /// </param>
-/// <param name="DownloadFolder">Default folder for "download" from the player.</param>
+/// <param name="DownloadFolder">
+/// Folder for "Save a copy". Blank means "follow the Windows Downloads folder" -
+/// see <see cref="EffectiveDownloadFolder"/>.
+/// </param>
 /// <param name="UseDownloadFolder">
 /// true: downloads go to <see cref="DownloadFolder"/> without asking.
 /// false: pick the folder on every download.
@@ -32,6 +35,15 @@ public sealed record TelegramConfig(
 {
     /// <summary>Empty state for "nothing entered yet".</summary>
     public static TelegramConfig Empty { get; } = new(0, "", "");
+
+    /// <summary>
+    /// The folder "Save a copy" actually uses: the user's chosen
+    /// <see cref="DownloadFolder"/>, or the Windows Downloads folder while it is
+    /// left blank.
+    /// </summary>
+    [JsonIgnore]
+    public string EffectiveDownloadFolder =>
+        string.IsNullOrWhiteSpace(DownloadFolder) ? AppPaths.DownloadsFolder : DownloadFolder;
 
     /// <summary>Are all required fields plausibly filled?</summary>
     [JsonIgnore]

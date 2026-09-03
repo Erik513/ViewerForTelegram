@@ -752,10 +752,9 @@ public sealed class MainForm : StyledForm
     private void OpenDownloadFolder()
     {
         TelegramConfig cfg = _configStore.Load();
-        string folder =
-            !string.IsNullOrWhiteSpace(cfg.DownloadFolder) && Directory.Exists(cfg.DownloadFolder)
-                ? cfg.DownloadFolder
-                : AppPaths.CacheDir;
+        string folder = Directory.Exists(cfg.EffectiveDownloadFolder)
+            ? cfg.EffectiveDownloadFolder
+            : AppPaths.CacheDir;
         try
         {
             System.Diagnostics.Process.Start(
@@ -792,11 +791,9 @@ public sealed class MainForm : StyledForm
 
         try
         {
-            if (cfg.UseDownloadFolder
-                && !string.IsNullOrWhiteSpace(cfg.DownloadFolder)
-                && Directory.Exists(cfg.DownloadFolder))
+            if (cfg.UseDownloadFolder && Directory.Exists(cfg.EffectiveDownloadFolder))
             {
-                string dest = Path.Combine(cfg.DownloadFolder, name);
+                string dest = Path.Combine(cfg.EffectiveDownloadFolder, name);
                 File.Copy(source, dest, overwrite: true);
                 Status($"Saved: {name}");
                 return;
@@ -805,8 +802,8 @@ public sealed class MainForm : StyledForm
             using var dlg = new SaveFileDialog
             {
                 FileName = name,
-                InitialDirectory = Directory.Exists(cfg.DownloadFolder)
-                    ? cfg.DownloadFolder
+                InitialDirectory = Directory.Exists(cfg.EffectiveDownloadFolder)
+                    ? cfg.EffectiveDownloadFolder
                     : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 Filter = "Audio file|*" + Path.GetExtension(name) + "|All files|*.*"
             };

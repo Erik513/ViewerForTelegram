@@ -102,7 +102,7 @@ public sealed class SettingsForm : StyledForm
         _apiHash = Field(current.ApiHash);
         _phone = Field(current.PhoneNumber);
 
-        _downloadFolder = Field(current.DownloadFolder);
+        _downloadFolder = Field(current.EffectiveDownloadFolder);
         _downloadFolder.ReadOnly = true;
         _downloadFolder.TabStop = false;
 
@@ -188,7 +188,7 @@ public sealed class SettingsForm : StyledForm
             UIColumn.Percent(Desc("Delete data and sign out"), 100),
             UIColumn.Absolute(wipe, ButtonColumn));
 
-        _toolTip.SetToolTip(_downloadFolder, current.DownloadFolder);
+        _toolTip.SetToolTip(_downloadFolder, current.EffectiveDownloadFolder);
         UpdateCacheLabel();
 
         // Measure the table once, then fix it to a static size and center it in
@@ -322,12 +322,21 @@ public sealed class SettingsForm : StyledForm
         }
 
         int.TryParse(_apiId.Text.Trim(), out int id);
+
+        // Store blank while the field still shows the OS Downloads folder, so a
+        // later move of that folder keeps being followed.
+        string folder = _downloadFolder.Text.Trim();
+        if (string.Equals(folder, AppPaths.DownloadsFolder, StringComparison.OrdinalIgnoreCase))
+        {
+            folder = "";
+        }
+
         Result = new TelegramConfig(
             id,
             _apiHash.Text.Trim(),
             PhoneNumbers.ToPlusForm(_phone.Text),
             _clearCacheOnStart.Checked,
-            _downloadFolder.Text.Trim(),
+            folder,
             _useDownloadFolder.Checked);
     }
 

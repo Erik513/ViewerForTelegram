@@ -1,3 +1,4 @@
+using ViewerForTelegram.Data;
 using ViewerForTelegram.Data.Models;
 
 namespace ViewerForTelegram.Tests;
@@ -37,6 +38,21 @@ public class TelegramConfigTests
         Assert.True(c.ClearCacheOnStart);
         Assert.False(c.UseDownloadFolder);
         Assert.Equal("", c.DownloadFolder);
+    }
+
+    [Fact]
+    public void EffectiveDownloadFolder_FallsBackToOsDownloads_WhenBlank()
+    {
+        var c = new TelegramConfig(1, "h", "+1");
+        Assert.Equal(AppPaths.DownloadsFolder, c.EffectiveDownloadFolder);
+        Assert.Equal(AppPaths.DownloadsFolder, (c with { DownloadFolder = "   " }).EffectiveDownloadFolder);
+    }
+
+    [Fact]
+    public void EffectiveDownloadFolder_UsesChosenFolder_WhenSet()
+    {
+        var c = new TelegramConfig(1, "h", "+1", DownloadFolder: @"D:\Songs");
+        Assert.Equal(@"D:\Songs", c.EffectiveDownloadFolder);
     }
 
     [Fact]

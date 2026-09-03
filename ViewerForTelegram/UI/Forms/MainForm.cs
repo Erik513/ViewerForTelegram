@@ -178,6 +178,12 @@ public sealed class MainForm : StyledForm
             await CoreWebView2Environment.CreateAsync(null, AppPaths.WebView2Dir);
         await _web.EnsureCoreWebView2Async(env);
 
+        // The WebView2 registers an OLE drop target on its window. That clashes
+        // with the OLE drag-and-drop init of FolderBrowserDialog / OpenFileDialog
+        // and makes WebView2 fail-fast the whole process when such a dialog opens.
+        // We never drop files onto the page, so turn it off.
+        _web.AllowExternalDrop = false;
+
         _web.CoreWebView2.SetVirtualHostNameToFolderMapping(
             WebHost,
             Path.Combine(AppContext.BaseDirectory, "web"),
@@ -190,9 +196,33 @@ public sealed class MainForm : StyledForm
         _web.CoreWebView2.Settings.AreDevToolsEnabled = AppLog.Verbose;
         _web.CoreWebView2.WebMessageReceived += OnWebMessage;
         _web.CoreWebView2.DownloadStarting += OnDownloadStarting;
+        _web.CoreWebView2.ProcessFailed += OnWebViewProcessFailed;
 
         _web.CoreWebView2.NavigationCompleted += (_, _) => _webReady.TrySetResult();
         _web.CoreWebView2.Navigate($"https://{WebHost}/index.html");
+
+        // Wait for the page to finish loading before startup does anything else
+        // (opening a modal dialog while the WebView2 is still navigating is
+        // another way to make it fall over).
+        await _webReady.Task;
+    }
+
+    private void OnWebViewProcessFailed(
+        object? sender, CoreWebView2ProcessFailedEventArgs e)
+    {
+        Trace($"WebView2 process failed: {e.ProcessFailedKind} / {e.Reason}");
+
+        // A dead render process can be recovered by reloading; a dead browser
+        // process means the WebView2 is gone for good.
+        if (e.ProcessFailedKind == CoreWebView2ProcessFailedKind.RenderProcessExited)
+        {
+            try { _web.CoreWebView2?.Reload(); } catch { }
+            _ = SetStatusAsync("The display crashed and was reloaded.");
+        }
+        else
+        {
+            _ = SetStatusAsync("WebView2 stopped working – please restart the app.");
+        }
     }
 
     private async Task RunScriptAsync(string js)

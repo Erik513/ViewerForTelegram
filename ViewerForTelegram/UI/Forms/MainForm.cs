@@ -45,6 +45,7 @@ public sealed class MainForm : StyledForm
     private long? _currentFileId;   // loaded in the audio player (playing / paused)
     private long? _selectedFileId;  // the row the player panel is showing
     private long _pendingFileId;    // a track being downloaded right now
+    private long _restoreFileId;    // track to re-select on the first feed load (from ui-state)
     private int _playSeq;           // bumped per download so a superseded one bails out
     private int _lastProgress;
     private CancellationTokenSource? _playCts;
@@ -156,7 +157,7 @@ public sealed class MainForm : StyledForm
         AddColumn("Title", fill: 62);
         AddColumn("Artist", fill: 38);
         AddColumn("Length", width: 64);
-        AddColumn("Size", width: 90);
+        AddColumn("Size", width: 90, alignRight: true);
         // The list only shows info. The player's one button does the work:
         // download / cancel / play / pause on the selected row.
         _list.SelectionChanged += (_, _) => ShowSelected();
@@ -266,6 +267,7 @@ public sealed class MainForm : StyledForm
         _suppressComboEvents = false;
         _player.Volume = Math.Clamp(state.VolumePercent, 0, 100) / 100f;
         _audio.Volume = _player.Volume;
+        _restoreFileId = state.LastPlayedFileId;   // re-select this row once the feed loads
 
         PushCacheInfo();
 
@@ -403,10 +405,10 @@ public sealed class MainForm : StyledForm
     }
 
     /// <summary>Add a column: pass <paramref name="fill"/> for a stretchy column, or <paramref name="width"/> for a fixed one.</summary>
-    private void AddColumn(string header, int fill = 0, int width = 0)
+    private void AddColumn(string header, int fill = 0, int width = 0, bool alignRight = false)
     {
         bool isFill = fill > 0;
-        _list.Columns.Add(new DataGridViewTextBoxColumn
+        var column = new DataGridViewTextBoxColumn
         {
             HeaderText = header,
             AutoSizeMode = isFill
@@ -417,7 +419,13 @@ public sealed class MainForm : StyledForm
             MinimumWidth = isFill ? 80 : width,
             SortMode = DataGridViewColumnSortMode.NotSortable,
             Resizable = DataGridViewTriState.False
-        });
+        };
+        if (alignRight)
+        {
+            column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            column.DefaultCellStyle.Padding = new Padding(0, 0, 8, 0);
+        }
+        _list.Columns.Add(column);
     }
 
     // Tint for the row of the track currently loaded in the player (playing or
@@ -474,8 +482,10 @@ public sealed class MainForm : StyledForm
         _list.ClearSelection();
         try { _list.CurrentCell = null; } catch { }   // no auto-selected row 0
 
-        // Keep the previously-selected (or playing) row selected across a re-render.
-        long? keep = _selectedFileId ?? _currentFileId;
+        // Keep the previously-selected (or playing) row selected across a
+        // re-render; on the first load fall back to the track from ui-state.
+        long? keep = _selectedFileId ?? _currentFileId
+            ?? (_restoreFileId != 0 ? _restoreFileId : (long?)null);
         if (keep is long fid)
         {
             foreach (DataGridViewRow row in _list.Rows)
@@ -992,7 +1002,8 @@ public sealed class MainForm : StyledForm
         _uiStateStore.Save(new UiState(
             LastChatId: SelectedChat?.Id ?? 0,
             RangeDays: SelectedDays,
-            VolumePercent: (int)Math.Round(_player.Volume * 100)));
+            VolumePercent: (int)Math.Round(_player.Volume * 100),
+            LastPlayedFileId: _currentFileId ?? _restoreFileId));
     }
 
     private void Status(string text) => _player.SetStatus(text);

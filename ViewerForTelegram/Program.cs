@@ -38,7 +38,7 @@ static class Program
         HookCrashLogging();
 
         IConfigStore configStore = new JsonConfigStore();
-        IMediaCache cache = new FileMediaCache(AppPaths.CacheDir);
+        IMediaCache cache = new FileMediaCache(AppPaths.CacheDir, AppPaths.DurationsFile);
         ITelegramSource telegram = new TelegramSource(configStore, AppPaths.SessionFile);
         IAudioPlayer audio = new AudioPlayer();
         var uiState = new JsonUiStateStore();

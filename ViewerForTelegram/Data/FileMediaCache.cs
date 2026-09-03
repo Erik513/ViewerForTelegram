@@ -10,10 +10,11 @@ namespace ViewerForTelegram.Data;
 /// File name: <c>&lt;FileId&gt;__&lt;readable name&gt;.&lt;ext&gt;</c> - the FileId in front
 /// makes it unique, the name at the back stays recognizable.
 ///
-/// Alongside the audio files it keeps <c>durations.json</c> - track lengths
-/// decoded from files that Telegram gave no duration for. That map is metadata,
-/// not part of the throwaway buffer: <see cref="Clear"/> / <see cref="PruneToLimit"/>
-/// leave it alone so a duration stays known across a cache wipe.
+/// The decoded-duration map (<see cref="GetKnownDuration"/>) lives in a separate
+/// <c>durations.json</c>. In the app that file is placed beside the cache folder
+/// (via the two-arg constructor with <see cref="AppPaths.DurationsFile"/>), not
+/// inside it, so wiping the cached songs - in the app or by hand in Explorer -
+/// does not take the metadata with it.
 /// </summary>
 public sealed class FileMediaCache : IMediaCache
 {
@@ -25,11 +26,31 @@ public sealed class FileMediaCache : IMediaCache
     private Dictionary<string, long>? _durations;   // FileId -> ticks, lazily loaded
 
     public FileMediaCache(string cacheDir)
+        : this(cacheDir, Path.Combine(cacheDir, DurationsFileName))
+    {
+    }
+
+    /// <param name="durationsPath">
+    /// Where to keep the decoded-duration map - pass a path outside
+    /// <paramref name="cacheDir"/> so it survives a manual folder wipe.
+    /// </param>
+    public FileMediaCache(string cacheDir, string durationsPath)
     {
         _dir = cacheDir;
         Directory.CreateDirectory(_dir);
-        _durationsPath = Path.Combine(_dir, DurationsFileName);
+        _durationsPath = durationsPath;
+
+        // Earlier builds kept durations.json inside the cache folder - move it out
+        // once so it stops getting wiped with the songs.
+        string legacy = Path.Combine(_dir, DurationsFileName);
+        if (!PathsEqual(legacy, _durationsPath) && File.Exists(legacy) && !File.Exists(_durationsPath))
+        {
+            try { File.Move(legacy, _durationsPath); } catch { /* not worth failing startup */ }
+        }
     }
+
+    private static bool PathsEqual(string a, string b) =>
+        string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.OrdinalIgnoreCase);
 
     public string GetPath(AudioMessage message) =>
         Path.Combine(_dir, BuildFileName(message));

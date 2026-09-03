@@ -36,6 +36,13 @@ public static class AppPaths
     public static string CacheDir { get; }
 
     /// <summary>
+    /// Track lengths decoded from files Telegram gave no duration for. Kept
+    /// beside the cache folder, not inside it, so wiping the cached songs (in
+    /// the app or by hand) does not take this metadata with it.
+    /// </summary>
+    public static string DurationsFile { get; }
+
+    /// <summary>
     /// The Windows "Downloads" folder of the current user - the default target
     /// for "Save a copy" until the user picks another folder in the settings.
     /// Resolved from the shell known folder (so a relocated Downloads folder is
@@ -53,6 +60,7 @@ public static class AppPaths
         SessionFile = Path.Combine(Root, "telegram.session");
         UiStateFile = Path.Combine(Root, "ui-state.json");
         CacheDir = Path.Combine(Root, "cache");
+        DurationsFile = Path.Combine(Root, "durations.json");
 
         Directory.CreateDirectory(Root);
         Directory.CreateDirectory(CacheDir);

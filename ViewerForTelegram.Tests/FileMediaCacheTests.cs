@@ -135,6 +135,23 @@ public class FileMediaCacheTests
     }
 
     [Fact]
+    public void RememberedDuration_CanLiveOutsideTheCacheFolder()
+    {
+        using var cacheDir = TempPath.Dir();
+        using var meta = TempPath.File();
+        AudioMessage a = Audio(5, size: 10);
+
+        var cache = new FileMediaCache(cacheDir.Path, meta.Path);
+        cache.RememberDuration(a, TimeSpan.FromSeconds(90));
+
+        Assert.True(File.Exists(meta.Path));
+        Assert.False(File.Exists(Path.Combine(cacheDir.Path, "durations.json")));
+        Assert.Equal((0, 0L), cache.GetStats());
+        Assert.Equal(TimeSpan.FromSeconds(90),
+            new FileMediaCache(cacheDir.Path, meta.Path).GetKnownDuration(a));
+    }
+
+    [Fact]
     public void RememberedDuration_SurvivesClearAndPrune_AndIsNotCounted()
     {
         using var dir = TempPath.Dir();

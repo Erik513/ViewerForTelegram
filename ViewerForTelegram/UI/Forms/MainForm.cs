@@ -525,22 +525,23 @@ public sealed class MainForm : StyledForm
         }
 
         _selectedFileId = audio.FileId;
+        bool cached = _cache.Contains(audio);
 
         if (_pendingFileId == audio.FileId)
         {
-            _player.ShowTrack(audio, PlayerButton.Cancel);
+            _player.ShowTrack(audio, PlayerButton.Cancel, cached: false);
             _player.SetDownloadProgress(_lastProgress);
         }
         else if (_currentFileId == audio.FileId)
         {
             bool playing = _audio.State == PlaybackState.Playing;
-            _player.ShowTrack(audio, playing ? PlayerButton.Pause : PlayerButton.Play);
+            _player.ShowTrack(audio, playing ? PlayerButton.Pause : PlayerButton.Play, cached);
             _player.SetLoaded(_audio.Duration);
             _player.SetPosition(_audio.Position);
         }
         else
         {
-            _player.ShowTrack(audio, _cache.Contains(audio) ? PlayerButton.Play : PlayerButton.Download);
+            _player.ShowTrack(audio, PlayerButton.Play, cached);
         }
     }
 
@@ -660,6 +661,7 @@ public sealed class MainForm : StyledForm
             {
                 _pendingFileId = 0;
                 Status("Download failed: " + ex.Message);
+                Toast("Download failed");
                 ShowSelected();
             }
             return;
@@ -672,6 +674,7 @@ public sealed class MainForm : StyledForm
 
         _pendingFileId = 0;
         PushCacheInfo();
+        Toast($"Downloaded: {(string.IsNullOrWhiteSpace(audio.Title) ? audio.FileName : audio.Title)}");
 
         StopCurrent();
         try
@@ -734,6 +737,7 @@ public sealed class MainForm : StyledForm
                 string dest = Path.Combine(cfg.DownloadFolder, name);
                 File.Copy(source, dest, overwrite: true);
                 Status($"Saved: {name}");
+                Toast($"Saved to {cfg.DownloadFolder}");
                 return;
             }
 
@@ -749,11 +753,13 @@ public sealed class MainForm : StyledForm
             {
                 File.Copy(source, dlg.FileName, overwrite: true);
                 Status($"Saved: {Path.GetFileName(dlg.FileName)}");
+                Toast($"Saved: {Path.GetFileName(dlg.FileName)}");
             }
         }
         catch (Exception ex)
         {
             Status("Save failed: " + ex.Message);
+            Toast("Save failed");
         }
     }
 
@@ -878,6 +884,9 @@ public sealed class MainForm : StyledForm
     }
 
     private void Status(string text) => _statusLabel.Text = text;
+
+    /// <summary>Brief self-dismissing confirmation popup (bottom-centre of the window).</summary>
+    private void Toast(string text) => ToastForm.ShowToast(text, this);
 
     private static void TryDelete(string path)
     {

@@ -209,6 +209,7 @@ public sealed class MainForm : StyledForm
         {
             _positionTimer.Stop();
             _currentFileId = null;
+            HighlightPlayingRow();
             ShowSelected();
             Status("Playback failed: " + ex.Message);
         };
@@ -419,6 +420,22 @@ public sealed class MainForm : StyledForm
         });
     }
 
+    // Tint for the row of the track currently loaded in the player (playing or
+    // paused) - a muted blue so it stands out without looking selected.
+    private static readonly Color PlayingRowBack = Color.FromArgb(26, 52, 78);
+    private static readonly Color PlayingRowFore = Color.FromArgb(156, 198, 242);
+
+    /// <summary>Colours the row of <see cref="_currentFileId"/>, clears the rest.</summary>
+    private void HighlightPlayingRow()
+    {
+        foreach (DataGridViewRow row in _list.Rows)
+        {
+            bool playing = row.Tag is long fid && _currentFileId is long cur && fid == cur;
+            row.DefaultCellStyle.BackColor = playing ? PlayingRowBack : Color.Empty;
+            row.DefaultCellStyle.ForeColor = playing ? PlayingRowFore : Color.Empty;
+        }
+    }
+
     /// <summary>
     /// Kills a DataGridView cell tooltip that WinForms would otherwise leave
     /// hanging on screen. Cheap no-op when none is showing.
@@ -473,6 +490,7 @@ public sealed class MainForm : StyledForm
         }
         _list.ResumeLayout();
         _suppressListEvents = false;
+        HighlightPlayingRow();
         ShowSelected();
 
         if (_items.Count == 0)
@@ -635,6 +653,7 @@ public sealed class MainForm : StyledForm
 
         _currentFileId = audio.FileId;
         BackfillDuration(audio.FileId, _audio.Duration);
+        HighlightPlayingRow();
         _player.SetLoaded(_audio.Duration);
         _audio.Play();
         _player.SetButton(PlayerButton.Pause);
@@ -757,6 +776,7 @@ public sealed class MainForm : StyledForm
 
         _currentFileId = audio.FileId;
         BackfillDuration(audio.FileId, _audio.Duration);
+        HighlightPlayingRow();
         _audio.Play();
         _positionTimer.Start();
         if (_selectedFileId == audio.FileId)
@@ -795,6 +815,7 @@ public sealed class MainForm : StyledForm
         _positionTimer.Stop();
         _audio.Stop();
         _currentFileId = null;
+        HighlightPlayingRow();
     }
 
     private void SaveSelected()

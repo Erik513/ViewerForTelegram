@@ -215,9 +215,7 @@ public sealed class PlayerPanel : Panel
     public void SetIdle()
     {
         _duration = TimeSpan.Zero;
-        _state = PlayerButton.None;
-        _mainButton.Enabled = false;   // still shows a greyed-out play icon (OnMainButtonPaint)
-        _mainButton.Invalidate();
+        SetButton(PlayerButton.None);   // greyed-out play icon
         _saveButton.Enabled = false;
         _title.Text = "Nothing selected";
         _performer.Text = "";
@@ -257,6 +255,13 @@ public sealed class PlayerPanel : Panel
         _state = button;
         _mainButton.Enabled = button != PlayerButton.None;
         _mainButton.Invalidate();
+        UIStyles.Buttons.UpdateTooltip(_mainButton, button switch
+        {
+            PlayerButton.Cancel => "Cancel download",
+            PlayerButton.Pause => "Pause",
+            PlayerButton.Play => "Play",
+            _ => "Nothing selected"
+        });
     }
 
     private void OnMainButtonPaint(object? sender, PaintEventArgs e)

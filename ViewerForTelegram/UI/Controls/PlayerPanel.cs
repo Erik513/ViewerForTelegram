@@ -23,15 +23,15 @@ public enum PlayerButton
 public sealed class PlayerPanel : Panel
 {
     /// <summary>Fixed height the host should give this panel.</summary>
-    public const int PanelHeight = 114;
+    public const int PanelHeight = 120;
 
     private const int StatusRowHeight = 18;
 
     private readonly Button _mainButton;
     private readonly Button _saveButton;
     private readonly Button _browseButton;
-    private readonly Label _title;
-    private readonly Label _performer;
+    private readonly TextBox _title;
+    private readonly TextBox _performer;
     private readonly Label _fileSize;
     private readonly Label _fileFormat;
     private readonly SliderBar _seek;
@@ -77,9 +77,11 @@ public sealed class PlayerPanel : Panel
         _browseButton.Paint += (s, e) => GlyphIcons.DrawFolder(
             e.Graphics, ((Control)s!).ClientRectangle, ((Control)s).ForeColor);
 
-        _title = MakeLabel(UIStyles.Labels.CreateNormal("Nothing selected"));
-        _title.Font = new Font(_title.Font, FontStyle.Bold);
-        _performer = MakeLabel(UIStyles.Labels.CreateMuted(""));
+        // Title / artist as read-only text boxes (white) so they can be selected
+        // and copied.
+        _title = MakeReadonlyText(bold: true);
+        _title.Text = "Nothing selected";
+        _performer = MakeReadonlyText(bold: false);
 
         _fileSize = MakeLabel(UIStyles.Labels.CreateMuted(""));
         _fileSize.TextAlign = ContentAlignment.BottomRight;
@@ -182,8 +184,8 @@ public sealed class PlayerPanel : Panel
             Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3,
             Margin = new Padding(12, 0, 0, 0), BackColor = Color.Transparent
         };
-        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
-        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 15));
+        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 22));   // artist text box
         stack.RowStyles.Add(new RowStyle(SizeType.Percent, 100));   // seek row absorbs the rest
         stack.Controls.Add(titleRow, 0, 0);
         stack.Controls.Add(_performer, 0, 1);
@@ -374,6 +376,21 @@ public sealed class PlayerPanel : Panel
         l.Dock = DockStyle.Fill;
         l.TextAlign = ContentAlignment.MiddleLeft;
         return l;
+    }
+
+    private TextBox MakeReadonlyText(bool bold)
+    {
+        TextBox tb = UIStyles.TextBoxes.CreateBorderstyleNone();
+        tb.ReadOnly = true;
+        tb.TabStop = false;
+        tb.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        tb.BackColor = BackColor;                 // blend into the panel
+        tb.ForeColor = UIStyles.Colors.White;
+        if (bold)
+        {
+            tb.Font = new Font(tb.Font, FontStyle.Bold);
+        }
+        return tb;
     }
 
     private static string Fmt(TimeSpan t) =>

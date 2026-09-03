@@ -18,9 +18,9 @@ internal static class GlyphIcons
         float cy = bounds.Top + bounds.Height / 2f;
 
         const int teeth = 8;
-        float outer = s * 0.46f;
-        float root = s * 0.34f;
-        float hole = s * 0.16f;
+        float outer = s * 0.36f;
+        float root = s * 0.27f;
+        float hole = s * 0.12f;
         float step = (float)(Math.PI * 2 / teeth);
 
         using var path = new GraphicsPath { FillMode = FillMode.Alternate };

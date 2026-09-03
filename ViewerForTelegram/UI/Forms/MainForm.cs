@@ -154,7 +154,7 @@ public sealed class MainForm : StyledForm
         _list.RowTemplate.Height = 26;
         AddColumn("Date", width: 84);
         AddColumn("Title", fill: 62);
-        AddColumn("Performer", fill: 38);
+        AddColumn("Artist", fill: 38);
         AddColumn("Length", width: 64);
         AddColumn("Size", width: 90);
         // The list only shows info. The player's one button does the work:

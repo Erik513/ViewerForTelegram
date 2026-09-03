@@ -139,7 +139,7 @@ public sealed class SliderBar : Control
             return;
         }
 
-        double step = _maximum / 20.0;
+        double step = _maximum / 20.0;   // ~5% per arrow press
         switch (e.KeyCode)
         {
             case Keys.Left: SetValueFromUser(_value - step); e.Handled = true; break;

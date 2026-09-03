@@ -5,7 +5,7 @@ using ViewerForTelegram.Data.Interfaces;
 using ViewerForTelegram.Data.Models;
 using ViewerForTelegram.Logic.Services;
 using ViewerForTelegram.UI.Controls;
-using StyledListView = ErikwnkWFUI.Controls.ListView;
+using StyledGrid = ErikwnkWFUI.Controls.DataGridView;
 using StyledMessageBox = ErikwnkWFUI.Forms.MessageBox;
 using MessageBoxButtons = ErikwnkWFUI.Forms.MessageBoxButtons;
 using MessageBoxIcon = ErikwnkWFUI.Forms.MessageBoxIcon;
@@ -34,7 +34,7 @@ public sealed class MainForm : StyledForm
     private readonly TextBox _searchBox;
     private readonly Label _cacheLabel;
     private readonly Label _statusLabel;
-    private readonly StyledListView _list;
+    private readonly StyledGrid _list;
     private readonly PlayerPanel _player;
     private readonly System.Windows.Forms.Timer _positionTimer;
 
@@ -44,6 +44,8 @@ public sealed class MainForm : StyledForm
     private long? _currentFileId;
     private long _pendingFileId;   // a track PlayAsync is currently loading
     private int _playSeq;          // bumped per PlayAsync so a superseded one bails out
+    private CancellationTokenSource? _playCts;
+    private bool _suppressListEvents;
 
     private bool _started;
     private bool _connecting;
@@ -128,36 +130,29 @@ public sealed class MainForm : StyledForm
         _statusLabel.BackColor = UIStyles.Colors.BackgroundDarkElevated;
 
         // ---- list ----
-        _list = new StyledListView
+        _list = new StyledGrid
         {
             Dock = DockStyle.Fill,
-            View = View.Details,
-            FullRowSelect = true,
+            ReadOnly = true,
             MultiSelect = false,
-            HideSelection = false,
-            AllowColumnResizing = false,
-            AllowColumnReordering = false,
-            RowHeight = 28
+            AllowUserToResizeColumns = false,
+            AllowUserToOrderColumns = false,
+            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+            ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
+            ScrollBars = ScrollBars.Vertical,   // no horizontal scrollbar, ever
         };
-        _list.Columns.Add("Date", 96);
-        _list.Columns.Add("Title", 320);
-        _list.Columns.Add("Performer", 220);
-        _list.Columns.Add("Length", 70);
-        _list.Columns.Add("Size", 90);
-        _list.FillColumnIndex = 1;
+        _list.RowTemplate.Height = 26;
+        AddColumn("Date", DataGridViewAutoSizeColumnMode.AllCells);
+        AddColumn("Title", DataGridViewAutoSizeColumnMode.Fill, fillWeight: 62);
+        AddColumn("Performer", DataGridViewAutoSizeColumnMode.Fill, fillWeight: 38);
+        AddColumn("Length", DataGridViewAutoSizeColumnMode.AllCells);
+        AddColumn("Size", DataGridViewAutoSizeColumnMode.AllCells);
         // Selecting a row loads and plays it; double-click / Enter on the
-        // already-playing row toggles play/pause.
-        _list.SelectedIndexChanged += (_, _) => LoadSelected();
-        _list.MouseDoubleClick += (_, _) => PlaySelected();
-        _list.KeyDown += (_, e) =>
-        {
-            if (e.KeyCode == Keys.Enter)
-            {
-                PlaySelected();
-                e.Handled = true;
-            }
-        };
-        _list.ClientSizeChanged += (_, _) => FitColumns();
+        // already-playing row toggles play/pause; Left/Right seek +-10s.
+        _list.SelectionChanged += (_, _) => LoadSelected();
+        _list.CellMouseDoubleClick += (_, _) => PlaySelected();
+        _list.KeyDown += OnListKeyDown;
 
         // ---- player ----
         _player = new PlayerPanel();
@@ -165,13 +160,7 @@ public sealed class MainForm : StyledForm
         _player.Seek += seconds => _audio.Position = TimeSpan.FromSeconds(seconds);
         _player.VolumeChanged += OnVolumeChanged;
         _player.Save += SaveCurrent;
-        _player.CancelDownload += () =>
-        {
-            if (_currentFileId is long fid)
-            {
-                _downloader.Cancel(fid);
-            }
-        };
+        _player.CancelDownload += () => _playCts?.Cancel();
 
         _positionTimer = new System.Windows.Forms.Timer { Interval = 250 };
         _positionTimer.Tick += (_, _) => _player.SetPosition(_audio.Position);
@@ -191,9 +180,6 @@ public sealed class MainForm : StyledForm
         };
 
         // A 4-row grid so nothing can overlap regardless of window size.
-        var listHost = new Panel { Dock = DockStyle.Fill };
-        listHost.Controls.Add(_list);
-
         _player.Dock = DockStyle.Fill;
 
         var root = new TableLayoutPanel
@@ -209,7 +195,7 @@ public sealed class MainForm : StyledForm
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, PlayerPanel.PanelHeight));
         root.Controls.Add(topRow, 0, 0);
         root.Controls.Add(_statusLabel, 0, 1);
-        root.Controls.Add(listHost, 0, 2);
+        root.Controls.Add(_list, 0, 2);
         root.Controls.Add(_player, 0, 3);
 
         ContentPanel.Controls.Add(root);
@@ -225,6 +211,7 @@ public sealed class MainForm : StyledForm
         };
         FormClosing += (_, _) =>
         {
+            _playCts?.Cancel();
             _positionTimer.Stop();
             _audio.Stop();
             SaveUiState();
@@ -380,6 +367,19 @@ public sealed class MainForm : StyledForm
         RenderList();
     }
 
+    private void AddColumn(string header, DataGridViewAutoSizeColumnMode mode, int fillWeight = 100)
+    {
+        _list.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            HeaderText = header,
+            AutoSizeMode = mode,
+            FillWeight = fillWeight,
+            MinimumWidth = 46,
+            SortMode = DataGridViewColumnSortMode.NotSortable,
+            Resizable = DataGridViewTriState.False
+        });
+    }
+
     private void RenderList()
     {
         string query = _searchBox.Text.Trim();
@@ -387,26 +387,29 @@ public sealed class MainForm : StyledForm
             .Where(i => query.Length == 0 || Matches(i.Audio, query))
             .ToList();
 
-        _list.BeginUpdate();
-        _list.Items.Clear();
+        _suppressListEvents = true;
+        _list.SuspendLayout();
+        _list.Rows.Clear();
         foreach (FeedItem item in filtered)
         {
             AudioMessage a = item.Audio;
-            var row = new ListViewItem(new[]
-            {
+            int i = _list.Rows.Add(
                 a.DateUtc.ToLocalTime().ToString("yyyy-MM-dd"),
                 a.Title,
                 a.Performer,
                 a.Duration is { } d ? $"{(int)d.TotalMinutes}:{d.Seconds:00}" : "–",
-                $"{a.SizeBytes / 1024d / 1024d:0.0} MB"
-            })
-            {
-                Tag = a.FileId
-            };
-            _list.Items.Add(row);
+                $"{a.SizeBytes / 1024d / 1024d:0.0} MB");
+            _list.Rows[i].Tag = a.FileId;
         }
-        _list.EndUpdate();
-        FitColumns();
+        _list.ClearSelection();
+        try { _list.CurrentCell = null; } catch { }   // no auto-selected row 0
+        _list.ResumeLayout();
+        _suppressListEvents = false;
+
+        if (_currentFileId is long fid)
+        {
+            SelectRow(fid);
+        }
 
         if (_items.Count == 0)
         {
@@ -427,15 +430,49 @@ public sealed class MainForm : StyledForm
 
     // ---------- playback ----------
     private AudioMessage? SelectedAudio =>
-        _list.SelectedItems.Count > 0
-        && _list.SelectedItems[0].Tag is long fid
+        _list.SelectedRows.Count > 0
+        && _list.SelectedRows[0].Tag is long fid
         && _byFileId.TryGetValue(fid, out AudioMessage? a)
             ? a
             : null;
 
+    private void OnListKeyDown(object? sender, KeyEventArgs e)
+    {
+        switch (e.KeyCode)
+        {
+            case Keys.Enter:
+                PlaySelected();
+                e.Handled = true;
+                break;
+            case Keys.Right:
+                SeekBy(TimeSpan.FromSeconds(10));
+                e.Handled = e.SuppressKeyPress = true;
+                break;
+            case Keys.Left:
+                SeekBy(TimeSpan.FromSeconds(-10));
+                e.Handled = e.SuppressKeyPress = true;
+                break;
+            // Up/Down stay native so they move the selection (which plays the row).
+        }
+    }
+
+    private void SeekBy(TimeSpan delta)
+    {
+        if (_currentFileId is null || _audio.Duration <= TimeSpan.Zero)
+        {
+            return;
+        }
+        _audio.Position += delta;
+        _player.SetPosition(_audio.Position);
+    }
+
     /// <summary>Row selected: load + play it, unless it is already the current / loading track.</summary>
     private void LoadSelected()
     {
+        if (_suppressListEvents)
+        {
+            return;
+        }
         if (SelectedAudio is { } audio
             && audio.FileId != _currentFileId
             && audio.FileId != _pendingFileId)
@@ -466,18 +503,22 @@ public sealed class MainForm : StyledForm
 
     private async Task PlayAsync(AudioMessage audio)
     {
-        int seq = ++_playSeq;   // any later PlayAsync makes this one a no-op from here on
+        // Cancel whatever the previous PlayAsync was doing, hard.
+        _playCts?.Cancel();
+        _playCts?.Dispose();
+        var cts = _playCts = new CancellationTokenSource();
+        CancellationToken token = cts.Token;
+
+        int seq = ++_playSeq;
         _pendingFileId = audio.FileId;
 
         StopCurrent();
         _currentFileId = audio.FileId;
+        SelectRow(audio.FileId);
 
         string title = audio.DisplayName;
         _player.SetDownloading(audio, 0);
         Status($"Downloading: {title}");
-        // Progress<T> posts asynchronously, so a trailing 100% report can land
-        // after the track has already loaded - only apply it while this file is
-        // still the one being loaded.
         var progress = new Progress<int>(p =>
         {
             if (seq == _playSeq && _pendingFileId == audio.FileId)
@@ -489,15 +530,18 @@ public sealed class MainForm : StyledForm
         string path;
         try
         {
-            path = await _downloader.EnsureLocalAsync(audio, progress, CancellationToken.None);
+            path = await _downloader.EnsureLocalAsync(audio, progress, token);
         }
         catch (OperationCanceledException)
         {
+            // Superseded by a newer PlayAsync, or the user pressed the cancel
+            // button. Only the latter (still the current request) resets the UI.
             if (seq == _playSeq)
             {
                 _player.SetIdle();
                 _currentFileId = null;
                 _pendingFileId = 0;
+                Status("Cancelled.");
             }
             return;
         }
@@ -513,7 +557,7 @@ public sealed class MainForm : StyledForm
             return;
         }
 
-        if (seq != _playSeq)   // superseded by a newer selection
+        if (seq != _playSeq || token.IsCancellationRequested)
         {
             return;
         }
@@ -538,7 +582,27 @@ public sealed class MainForm : StyledForm
         _audio.Play();
         _player.SetPlaying(true);
         _positionTimer.Start();
+        SelectRow(audio.FileId);
         Status($"Playing: {title}");
+    }
+
+    /// <summary>Select (and keep the keyboard focus on) the row for this file.</summary>
+    private void SelectRow(long fileId)
+    {
+        foreach (DataGridViewRow row in _list.Rows)
+        {
+            if (row.Tag is long fid && fid == fileId)
+            {
+                if (!row.Selected || _list.CurrentCell?.RowIndex != row.Index)
+                {
+                    _suppressListEvents = true;
+                    _list.CurrentCell = row.Cells[0]; // scrolls it into view
+                    row.Selected = true;
+                    _suppressListEvents = false;
+                }
+                break;
+            }
+        }
     }
 
     private void OnPlayPause()
@@ -568,27 +632,9 @@ public sealed class MainForm : StyledForm
     private void StopCurrent()
     {
         _positionTimer.Stop();
-        if (_currentFileId is long prev)
-        {
-            _downloader.Cancel(prev); // a still-running download for the old track
-        }
         _audio.Stop();
         _player.SetIdle();
         _currentFileId = null;
-    }
-
-    /// <summary>Keep the Title column filling exactly, so no horizontal scrollbar appears.</summary>
-    private void FitColumns()
-    {
-        if (!_list.IsHandleCreated || _list.Columns.Count < 5)
-        {
-            return;
-        }
-
-        int others = _list.Columns[0].Width + _list.Columns[2].Width
-                     + _list.Columns[3].Width + _list.Columns[4].Width;
-        int titleWidth = _list.ClientSize.Width - others - 4;
-        _list.Columns[1].Width = Math.Max(140, titleWidth);
     }
 
     private void SaveCurrent()
@@ -713,6 +759,7 @@ public sealed class MainForm : StyledForm
 
     private async Task LogoutAsync(bool wipeConfig)
     {
+        _playCts?.Cancel();
         _downloader.CancelAll();
         _playSeq++;              // abandon any in-flight PlayAsync
         _pendingFileId = 0;
@@ -732,7 +779,9 @@ public sealed class MainForm : StyledForm
         _suppressComboEvents = true;
         _groupCombo.Items.Clear();
         _suppressComboEvents = false;
-        _list.Items.Clear();
+        _suppressListEvents = true;
+        _list.Rows.Clear();
+        _suppressListEvents = false;
         Status(wipeConfig ? "Credentials deleted." : "Signed out.");
     }
 

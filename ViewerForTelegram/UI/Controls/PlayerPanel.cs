@@ -12,7 +12,7 @@ namespace ViewerForTelegram.UI.Controls;
 public sealed class PlayerPanel : Panel
 {
     /// <summary>Fixed height the host should give this panel.</summary>
-    public const int PanelHeight = 106;
+    public const int PanelHeight = 118;
 
     private enum Mode { Idle, Downloading, Loaded }
 
@@ -42,18 +42,25 @@ public sealed class PlayerPanel : Panel
 
         _title = UIStyles.Labels.CreateNormal("Nothing playing");
         _title.Font = new Font(_title.Font, FontStyle.Bold);
+        _title.AutoSize = false;
         _title.AutoEllipsis = true;
         _title.Dock = DockStyle.Fill;
+        _title.TextAlign = ContentAlignment.MiddleLeft;
 
         _performer = UIStyles.Labels.CreateMuted("");
+        _performer.AutoSize = false;
         _performer.AutoEllipsis = true;
         _performer.Dock = DockStyle.Fill;
+        _performer.TextAlign = ContentAlignment.MiddleLeft;
 
         _meta = UIStyles.Labels.CreateMuted("");
+        _meta.AutoSize = false;
         _meta.AutoEllipsis = true;
         _meta.Dock = DockStyle.Fill;
+        _meta.TextAlign = ContentAlignment.MiddleLeft;
 
-        _playButton = UIStyles.Buttons.CreateStandard(GlyphPlay, "Play / pause", new Size(34, 30));
+        _playButton = UIStyles.Buttons.CreateStandard(GlyphPlay, "Play / pause", new Size(38, 32));
+        _playButton.Font = new Font(_playButton.Font.FontFamily, 13f);
         _playButton.Enabled = false;
         _playButton.Anchor = AnchorStyles.Left;
         _playButton.Click += (_, _) =>
@@ -80,10 +87,11 @@ public sealed class PlayerPanel : Panel
         volLabel.Dock = DockStyle.Fill;
         volLabel.TextAlign = ContentAlignment.MiddleRight;
 
-        _volume = new SliderBar { Maximum = 1.0, Value = 0.4, Anchor = AnchorStyles.Left | AnchorStyles.Right };
+        _volume = new SliderBar { Maximum = 1.0, Value = 0.1, Anchor = AnchorStyles.Left | AnchorStyles.Right };
         _volume.ValueChanged += (_, _) => VolumeChanged?.Invoke((float)_volume.Value);
 
-        _downloadButton = UIStyles.Buttons.CreateStandard(GlyphDownload, "Save a copy of this track", new Size(34, 30));
+        _downloadButton = UIStyles.Buttons.CreateStandard(GlyphDownload, "Save a copy of this track", new Size(38, 32));
+        _downloadButton.Font = new Font(_downloadButton.Font.FontFamily, 14f);
         _downloadButton.Enabled = false;
         _downloadButton.Anchor = AnchorStyles.Right;
         _downloadButton.Click += (_, _) => Save?.Invoke();
@@ -116,10 +124,10 @@ public sealed class PlayerPanel : Panel
             RowCount = 4,
             BackColor = Color.Transparent
         };
+        grid.RowStyles.Add(new RowStyle(SizeType.Absolute, 22));
         grid.RowStyles.Add(new RowStyle(SizeType.Absolute, 20));
-        grid.RowStyles.Add(new RowStyle(SizeType.Absolute, 17));
-        grid.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
-        grid.RowStyles.Add(new RowStyle(SizeType.Absolute, 17));
+        grid.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
+        grid.RowStyles.Add(new RowStyle(SizeType.Absolute, 20));
         grid.Controls.Add(_title, 0, 0);
         grid.Controls.Add(_performer, 0, 1);
         grid.Controls.Add(controls, 0, 2);

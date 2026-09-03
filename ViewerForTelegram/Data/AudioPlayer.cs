@@ -16,7 +16,7 @@ public sealed class AudioPlayer : IAudioPlayer
     private SynchronizationContext _sync = new();
     private WaveOutEvent? _output;
     private AudioFileReader? _reader;
-    private float _volume = 0.4f;
+    private float _volume = 0.1f;
     private bool _stopIsIntentional;
 
     public PlaybackState State { get; private set; } = PlaybackState.Stopped;

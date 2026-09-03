@@ -1,0 +1,141 @@
+using System.Drawing.Drawing2D;
+
+namespace ViewerForTelegram.UI.Controls;
+
+/// <summary>
+/// Small vector icons drawn straight onto a control with GDI+ so they sit
+/// pixel-centred and share one visual weight - font glyphs (⚙ ⭳ …) render
+/// off-centre and inconsistently across the symbol fonts Windows falls back to.
+/// Every method centres its drawing inside <paramref name="bounds"/>.
+/// </summary>
+internal static class GlyphIcons
+{
+    public static void DrawGear(Graphics g, Rectangle bounds, Color color)
+    {
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        float s = Math.Min(bounds.Width, bounds.Height);
+        float cx = bounds.Left + bounds.Width / 2f;
+        float cy = bounds.Top + bounds.Height / 2f;
+
+        const int teeth = 8;
+        float outer = s * 0.46f;
+        float root = s * 0.34f;
+        float hole = s * 0.16f;
+        float step = (float)(Math.PI * 2 / teeth);
+
+        using var path = new GraphicsPath { FillMode = FillMode.Alternate };
+        var pts = new List<PointF>(teeth * 4);
+        for (int i = 0; i < teeth; i++)
+        {
+            float a = i * step;
+            pts.Add(Polar(cx, cy, root, a - step * 0.19f));
+            pts.Add(Polar(cx, cy, outer, a - step * 0.13f));
+            pts.Add(Polar(cx, cy, outer, a + step * 0.13f));
+            pts.Add(Polar(cx, cy, root, a + step * 0.19f));
+        }
+        path.AddPolygon(pts.ToArray());
+        path.AddEllipse(cx - hole, cy - hole, hole * 2, hole * 2);
+
+        using var brush = new SolidBrush(color);
+        g.FillPath(brush, path);
+    }
+
+    public static void DrawDownload(Graphics g, Rectangle bounds, Color color)
+    {
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        float s = Math.Min(bounds.Width, bounds.Height);
+        float cx = bounds.Left + bounds.Width / 2f;
+        float cy = bounds.Top + bounds.Height / 2f;
+
+        float shaftHalf = Math.Max(1.2f, s * 0.07f);
+        float shaftTop = cy - s * 0.30f;
+        float headTopY = cy - s * 0.06f;
+        float headHalf = s * 0.19f;
+        float tipY = cy + s * 0.16f;
+
+        using var brush = new SolidBrush(color);
+
+        // shaft + arrow head
+        g.FillRectangle(brush, cx - shaftHalf, shaftTop, shaftHalf * 2, headTopY - shaftTop);
+        g.FillPolygon(brush, new[]
+        {
+            new PointF(cx - headHalf, headTopY),
+            new PointF(cx + headHalf, headTopY),
+            new PointF(cx, tipY),
+        });
+
+        // tray under it
+        float barHalf = s * 0.28f;
+        float barH = Math.Max(2f, s * 0.09f);
+        g.FillRectangle(brush, cx - barHalf, cy + s * 0.26f, barHalf * 2, barH);
+    }
+
+    public static void DrawFolder(Graphics g, Rectangle bounds, Color color)
+    {
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        float s = Math.Min(bounds.Width, bounds.Height);
+        float cx = bounds.Left + bounds.Width / 2f;
+        float cy = bounds.Top + bounds.Height / 2f;
+
+        float w = s * 0.62f;
+        float h = s * 0.46f;
+        float tabH = s * 0.11f;
+        float left = cx - w / 2f;
+        float top = cy - h / 2f;
+
+        using var brush = new SolidBrush(color);
+        // back tab
+        g.FillRectangle(brush, left, top, w * 0.44f, tabH * 2f);
+        // body
+        var body = new RectangleF(left, top + tabH, w, h - tabH);
+        g.FillRectangle(brush, body);
+    }
+
+    public static void DrawPlay(Graphics g, Rectangle bounds, Color color)
+    {
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        float s = Math.Min(bounds.Width, bounds.Height);
+        float cx = bounds.Left + bounds.Width / 2f;
+        float cy = bounds.Top + bounds.Height / 2f;
+
+        // base nudged left so the triangle's visual mass sits on the centre
+        using var brush = new SolidBrush(color);
+        g.FillPolygon(brush, new[]
+        {
+            new PointF(cx - s * 0.17f, cy - s * 0.26f),
+            new PointF(cx - s * 0.17f, cy + s * 0.26f),
+            new PointF(cx + s * 0.27f, cy),
+        });
+    }
+
+    public static void DrawPause(Graphics g, Rectangle bounds, Color color)
+    {
+        float s = Math.Min(bounds.Width, bounds.Height);
+        float cx = bounds.Left + bounds.Width / 2f;
+        float cy = bounds.Top + bounds.Height / 2f;
+
+        float barW = Math.Max(3f, s * 0.15f);
+        float barH = s * 0.52f;
+        float gap = s * 0.16f;
+
+        using var brush = new SolidBrush(color);
+        g.FillRectangle(brush, cx - gap / 2 - barW, cy - barH / 2, barW, barH);
+        g.FillRectangle(brush, cx + gap / 2, cy - barH / 2, barW, barH);
+    }
+
+    public static void DrawCancel(Graphics g, Rectangle bounds, Color color)
+    {
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        float s = Math.Min(bounds.Width, bounds.Height);
+        float cx = bounds.Left + bounds.Width / 2f;
+        float cy = bounds.Top + bounds.Height / 2f;
+        float d = s * 0.22f;
+
+        using var pen = new Pen(color, Math.Max(2f, s * 0.12f)) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+        g.DrawLine(pen, cx - d, cy - d, cx + d, cy + d);
+        g.DrawLine(pen, cx - d, cy + d, cx + d, cy - d);
+    }
+
+    private static PointF Polar(float cx, float cy, float r, float angle) =>
+        new((float)(cx + r * Math.Cos(angle)), (float)(cy + r * Math.Sin(angle)));
+}

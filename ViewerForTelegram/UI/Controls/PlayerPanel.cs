@@ -53,20 +53,24 @@ public sealed class PlayerPanel : Panel
         _mainButton = MakeIconButton(44, "Play / pause");
         _mainButton.Anchor = AnchorStyles.None;
         _mainButton.Click += (_, _) => MainButton?.Invoke();
-        // The pause icon is drawn by hand - no two-bar glyph renders cleanly in
-        // Segoe UI (they all collapse into one block).
+        // Every state is drawn by hand (GlyphIcons) so the icon is pixel-centred
+        // and one consistent weight - symbol-font glyphs are not.
         _mainButton.Paint += OnMainButtonPaint;
 
         _saveButton = MakeIconButton(34, "Save a copy to disk");
-        _saveButton.Text = "⭳";
-        _saveButton.Font = new Font(_saveButton.Font.FontFamily, 19f);
         _saveButton.Anchor = AnchorStyles.None;
         _saveButton.Click += (_, _) => Save?.Invoke();
+        _saveButton.Paint += (s, e) => GlyphIcons.DrawDownload(
+            e.Graphics, ((Control)s!).ClientRectangle, GlyphColor(_saveButton));
 
-        // The library's yellow folder button, kept as-is.
+        // The library's yellow browse button - kept yellow, but the folder icon
+        // is redrawn so it matches the weight/centring of the other icons.
         _browseButton = UIStyles.Buttons.CreateBrowse("Open the download folder", new Size(34, 34));
+        _browseButton.Text = "";
         _browseButton.Anchor = AnchorStyles.None;
         _browseButton.Click += (_, _) => BrowseFolder?.Invoke();
+        _browseButton.Paint += (s, e) => GlyphIcons.DrawFolder(
+            e.Graphics, ((Control)s!).ClientRectangle, ((Control)s).ForeColor);
 
         _title = MakeLabel(UIStyles.Labels.CreateNormal("Nothing selected"));
         _title.Font = new Font(_title.Font, FontStyle.Bold);
@@ -212,8 +216,7 @@ public sealed class PlayerPanel : Panel
     {
         _duration = TimeSpan.Zero;
         _state = PlayerButton.None;
-        _mainButton.Text = "▶";   // shown greyed-out so the button never looks empty
-        _mainButton.Enabled = false;
+        _mainButton.Enabled = false;   // still shows a greyed-out play icon (OnMainButtonPaint)
         _mainButton.Invalidate();
         _saveButton.Enabled = false;
         _title.Text = "Nothing selected";
@@ -253,29 +256,26 @@ public sealed class PlayerPanel : Panel
     {
         _state = button;
         _mainButton.Enabled = button != PlayerButton.None;
-        _mainButton.Text = button switch
-        {
-            PlayerButton.Cancel => "✕",
-            PlayerButton.Pause => "",   // drawn in OnMainButtonPaint
-            _ => "▶"                    // Play, and None (disabled)
-        };
         _mainButton.Invalidate();
     }
 
     private void OnMainButtonPaint(object? sender, PaintEventArgs e)
     {
-        if (_state != PlayerButton.Pause || sender is not Control b)
+        if (sender is not Control b)
         {
             return;
         }
-        const int barW = 5, barH = 16, gap = 6;
-        int cx = b.ClientSize.Width / 2;
-        int cy = b.ClientSize.Height / 2;
-        using var brush = new SolidBrush(
-            b.Enabled ? b.ForeColor : UIStyles.Colors.TextDisabled);
-        e.Graphics.FillRectangle(brush, cx - gap / 2 - barW, cy - barH / 2, barW, barH);
-        e.Graphics.FillRectangle(brush, cx + gap / 2, cy - barH / 2, barW, barH);
+        Color c = GlyphColor(b);
+        switch (_state)
+        {
+            case PlayerButton.Cancel: GlyphIcons.DrawCancel(e.Graphics, b.ClientRectangle, c); break;
+            case PlayerButton.Pause: GlyphIcons.DrawPause(e.Graphics, b.ClientRectangle, c); break;
+            default: GlyphIcons.DrawPlay(e.Graphics, b.ClientRectangle, c); break;  // Play + None
+        }
     }
+
+    private static Color GlyphColor(Control b) =>
+        b.Enabled ? b.ForeColor : UIStyles.Colors.TextDisabled;
 
     public void SetDownloadProgress(int percent)
     {
@@ -327,9 +327,8 @@ public sealed class PlayerPanel : Panel
 
     private static Button MakeIconButton(int size, string tooltip)
     {
+        // The icon itself is drawn in the button's Paint handler (GlyphIcons).
         Button b = UIStyles.Buttons.CreatePrimary("", tooltip, new Size(size, size));
-        b.Font = new Font(b.Font.FontFamily, size >= 40 ? 15f : 12f);
-        b.TextAlign = ContentAlignment.MiddleCenter;
         b.Enabled = false;
         return b;
     }

@@ -3,6 +3,7 @@ using ErikwnkWFUI.Forms;
 using ViewerForTelegram.Data;
 using ViewerForTelegram.Data.Interfaces;
 using ViewerForTelegram.Data.Models;
+using ViewerForTelegram.Logic;
 using ViewerForTelegram.Logic.Services;
 using ViewerForTelegram.UI.Controls;
 using StyledGrid = ErikwnkWFUI.Controls.DataGridView;
@@ -36,6 +37,7 @@ public sealed class MainForm : StyledForm
     private readonly Label _statusLabel;
     private readonly StyledGrid _list;
     private readonly PlayerPanel _player;
+    private readonly ToolTip _toolTip = new() { AutoPopDelay = 12000, InitialDelay = 400 };
     private readonly System.Windows.Forms.Timer _positionTimer;
 
     private List<TelegramChat> _chats = new();
@@ -148,7 +150,7 @@ public sealed class MainForm : StyledForm
             ScrollBars = ScrollBars.Vertical,   // no horizontal scrollbar, ever
         };
         _list.RowTemplate.Height = 26;
-        AddColumn("Date", width: 96);
+        AddColumn("Date", width: 84);
         AddColumn("Title", fill: 62);
         AddColumn("Performer", fill: 38);
         AddColumn("Length", width: 64);
@@ -169,6 +171,7 @@ public sealed class MainForm : StyledForm
         _player = new PlayerPanel();
         _player.MainButton += OnMainButton;
         _player.Save += SaveSelected;
+        _player.BrowseFolder += OpenDownloadFolder;
         _player.Seek += seconds => Seek(TimeSpan.FromSeconds(seconds));
         _player.VolumeChanged += OnVolumeChanged;
 
@@ -663,7 +666,6 @@ public sealed class MainForm : StyledForm
             {
                 _pendingFileId = 0;
                 Status("Download failed: " + ex.Message);
-                Toast("Download failed");
                 ShowSelected();
             }
             return;
@@ -676,7 +678,6 @@ public sealed class MainForm : StyledForm
 
         _pendingFileId = 0;
         PushCacheInfo();
-        Toast($"Downloaded: {(string.IsNullOrWhiteSpace(audio.Title) ? audio.FileName : audio.Title)}");
 
         StopCurrent();
         try
@@ -705,6 +706,24 @@ public sealed class MainForm : StyledForm
     {
         _audio.Volume = v;
         SaveUiState();
+    }
+
+    private void OpenDownloadFolder()
+    {
+        TelegramConfig cfg = _configStore.Load();
+        string folder =
+            !string.IsNullOrWhiteSpace(cfg.DownloadFolder) && Directory.Exists(cfg.DownloadFolder)
+                ? cfg.DownloadFolder
+                : AppPaths.CacheDir;
+        try
+        {
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo { FileName = folder, UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Status("Cannot open folder: " + ex.Message);
+        }
     }
 
     private void StopCurrent()
@@ -739,7 +758,6 @@ public sealed class MainForm : StyledForm
                 string dest = Path.Combine(cfg.DownloadFolder, name);
                 File.Copy(source, dest, overwrite: true);
                 Status($"Saved: {name}");
-                Toast($"Saved to {cfg.DownloadFolder}");
                 return;
             }
 
@@ -755,13 +773,11 @@ public sealed class MainForm : StyledForm
             {
                 File.Copy(source, dlg.FileName, overwrite: true);
                 Status($"Saved: {Path.GetFileName(dlg.FileName)}");
-                Toast($"Saved: {Path.GetFileName(dlg.FileName)}");
             }
         }
         catch (Exception ex)
         {
             Status("Save failed: " + ex.Message);
-            Toast("Save failed");
         }
     }
 
@@ -874,7 +890,11 @@ public sealed class MainForm : StyledForm
         string size = bytes >= 1024L * 1024 * 1024
             ? $"{bytes / 1024d / 1024d / 1024d:0.0} GB"
             : $"{bytes / 1024d / 1024d:0} MB";
+        long limitMb = CachePolicy.LimitBytes / 1024 / 1024;
         _cacheLabel.Text = $"Cache {size} · {count}";
+        _toolTip.SetToolTip(_cacheLabel,
+            $"Downloaded songs kept locally: {size} / {limitMb} MB ({count} files).\r\n" +
+            "The oldest are removed once the limit is reached.");
     }
 
     private void SaveUiState()
@@ -886,10 +906,6 @@ public sealed class MainForm : StyledForm
     }
 
     private void Status(string text) => _statusLabel.Text = text;
-
-    /// <summary>Brief self-dismissing confirmation popup (bottom-centre of the window).</summary>
-    private void Toast(string text) => ToastForm.ShowToast(text, this);
-
     private static void TryDelete(string path)
     {
         try

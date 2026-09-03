@@ -14,18 +14,20 @@ public enum PlayerButton
 }
 
 /// <summary>
-/// The player at the bottom of the main window. One button on the left plays /
-/// pauses / cancels the selected track (a download starts automatically the
-/// first time you press play). A separate button saves a copy to disk. Seek and
-/// volume sit below the file details.
+/// The player at the bottom of the main window. The big button on the left
+/// plays / pauses / cancels the selected track (a download starts on the first
+/// press). Top-right: a compact cluster with a save-to-disk button (its tooltip
+/// is the file name), the size / format, and a button to open the download
+/// folder. Seek and volume are on their own row.
 /// </summary>
 public sealed class PlayerPanel : Panel
 {
     /// <summary>Fixed height the host should give this panel.</summary>
-    public const int PanelHeight = 138;
+    public const int PanelHeight = 106;
 
     private readonly Button _mainButton;
     private readonly Button _saveButton;
+    private readonly Button _browseButton;
     private readonly Label _title;
     private readonly Label _performer;
     private readonly Label _fileInfo;
@@ -34,6 +36,7 @@ public sealed class PlayerPanel : Panel
     private readonly TableLayoutPanel _seekRow;
     private readonly Label _time;
     private readonly SliderBar _volume;
+    private readonly ToolTip _tips = new() { AutoPopDelay = 20000 };
 
     private TimeSpan _duration;
     private bool _showingDownloadBar;
@@ -43,25 +46,32 @@ public sealed class PlayerPanel : Panel
     {
         Dock = DockStyle.Bottom;
         Height = PanelHeight;
-        Padding = new Padding(12, 8, 14, 10);
+        Padding = new Padding(12, 6, 14, 8);
         BackColor = UIStyles.Colors.BackgroundDarkElevated;
 
-        _mainButton = MakeGlyphButton("Play / pause");
+        _mainButton = MakeIconButton(44, "Play / pause");
         _mainButton.Anchor = AnchorStyles.None;
         _mainButton.Click += (_, _) => MainButton?.Invoke();
-        // The pause icon is drawn by hand - no bar glyph renders as two clean
-        // strokes in Segoe UI (they all collapse into one block).
+        // The pause icon is drawn by hand - no two-bar glyph renders cleanly in
+        // Segoe UI (they all collapse into one block).
         _mainButton.Paint += OnMainButtonPaint;
 
-        _saveButton = MakeGlyphButton("Save a copy to disk");
+        _saveButton = MakeIconButton(30, "Save a copy to disk");
         _saveButton.Text = "⭳";
         _saveButton.Anchor = AnchorStyles.None;
         _saveButton.Click += (_, _) => Save?.Invoke();
 
+        _browseButton = MakeIconButton(30, "Open the download folder");
+        _browseButton.Text = "🗀";
+        _browseButton.Anchor = AnchorStyles.None;
+        _browseButton.Click += (_, _) => BrowseFolder?.Invoke();
+
         _title = MakeLabel(UIStyles.Labels.CreateNormal("Nothing selected"));
         _title.Font = new Font(_title.Font, FontStyle.Bold);
         _performer = MakeLabel(UIStyles.Labels.CreateMuted(""));
+
         _fileInfo = MakeLabel(UIStyles.Labels.CreateMuted(""));
+        _fileInfo.TextAlign = ContentAlignment.MiddleCenter;
 
         _seek = new SliderBar { Enabled = false, Anchor = AnchorStyles.Left | AnchorStyles.Right };
         _seek.ValueChanged += (_, _) =>
@@ -86,23 +96,39 @@ public sealed class PlayerPanel : Panel
         _volume = new SliderBar { Maximum = 1.0, Value = 0.1, Anchor = AnchorStyles.Left | AnchorStyles.Right };
         _volume.ValueChanged += (_, _) => VolumeChanged?.Invoke((float)_volume.Value);
 
-        // Row: [save]  filename · size · format
-        var fileRow = new TableLayoutPanel
+        // Top-right cluster: [save]  size·format  [open folder]
+        var cluster = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 1,
+            Margin = new Padding(0), BackColor = Color.Transparent
+        };
+        cluster.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        cluster.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));
+        cluster.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        cluster.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));
+        cluster.Controls.Add(_saveButton, 0, 0);
+        cluster.Controls.Add(_fileInfo, 1, 0);
+        cluster.Controls.Add(_browseButton, 2, 0);
+
+        // Row 0: title (fill) + the cluster
+        var titleRow = new TableLayoutPanel
         {
             Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1,
             Margin = new Padding(0), BackColor = Color.Transparent
         };
-        fileRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 54));
-        fileRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        fileRow.Controls.Add(_saveButton, 0, 0);
-        fileRow.Controls.Add(_fileInfo, 1, 0);
+        titleRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        titleRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        titleRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 190));
+        titleRow.Controls.Add(_title, 0, 0);
+        titleRow.Controls.Add(cluster, 1, 0);
 
-        // Row: seek (or download bar)  time  Vol  volume
+        // Row 2: seek (or download bar)  time  Vol  volume
         _seekRow = new TableLayoutPanel
         {
             Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 1,
             Margin = new Padding(0), BackColor = Color.Transparent
         };
+        _seekRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
         _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));
@@ -114,17 +140,15 @@ public sealed class PlayerPanel : Panel
 
         var stack = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4,
+            Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3,
             Margin = new Padding(12, 0, 0, 0), BackColor = Color.Transparent
         };
-        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 22));
-        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 18));
-        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
-        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
-        stack.Controls.Add(_title, 0, 0);
+        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 20));
+        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+        stack.Controls.Add(titleRow, 0, 0);
         stack.Controls.Add(_performer, 0, 1);
-        stack.Controls.Add(fileRow, 0, 2);
-        stack.Controls.Add(_seekRow, 0, 3);
+        stack.Controls.Add(_seekRow, 0, 2);
 
         var root = new TableLayoutPanel
         {
@@ -137,11 +161,13 @@ public sealed class PlayerPanel : Panel
         root.Controls.Add(stack, 1, 0);
 
         Controls.Add(root);
+        Disposed += (_, _) => _tips.Dispose();
         SetIdle();
     }
 
     public event Action? MainButton;
     public event Action? Save;                  // save a copy to disk
+    public event Action? BrowseFolder;          // open the download folder
     public event Action<double>? Seek;          // target position in seconds
     public event Action<float>? VolumeChanged;  // 0..1
 
@@ -160,6 +186,7 @@ public sealed class PlayerPanel : Panel
         _title.Text = "Nothing selected";
         _performer.Text = "";
         _fileInfo.Text = "";
+        _tips.SetToolTip(_saveButton, "Save a copy to disk");
         _seek.Enabled = false;
         _seek.Value = 0;
         _time.Text = "–:– / –:–";
@@ -172,8 +199,10 @@ public sealed class PlayerPanel : Panel
         _title.Text = string.IsNullOrWhiteSpace(a.Title) ? a.FileName : a.Title;
         _performer.Text = a.Performer;
         string ext = Path.GetExtension(a.FileName).TrimStart('.').ToUpperInvariant();
-        _fileInfo.Text = $"{a.FileName}   ·   {a.SizeBytes / 1024d / 1024d:0.0} MB"
-                         + (ext.Length > 0 ? $"   ·   {ext}" : "");
+        _fileInfo.Text = $"{a.SizeBytes / 1024d / 1024d:0.0} MB"
+                         + (ext.Length > 0 ? $"  ·  {ext}" : "");
+        _tips.SetToolTip(_saveButton, $"Save a copy of \"{a.FileName}\"");
+
         SetButton(button);
         _saveButton.Enabled = cached;
 
@@ -263,10 +292,10 @@ public sealed class PlayerPanel : Panel
     private void UpdateTime(TimeSpan pos) =>
         _time.Text = $"{Fmt(pos)} / {Fmt(_duration)}";
 
-    private static Button MakeGlyphButton(string tooltip)
+    private static Button MakeIconButton(int size, string tooltip)
     {
-        Button b = UIStyles.Buttons.CreateStandard("", tooltip, new Size(44, 44));
-        b.Font = new Font(b.Font.FontFamily, 15f);
+        Button b = UIStyles.Buttons.CreateStandard("", tooltip, new Size(size, size));
+        b.Font = new Font(b.Font.FontFamily, size >= 40 ? 15f : 12f);
         b.TextAlign = ContentAlignment.MiddleCenter;
         b.Enabled = false;
         return b;

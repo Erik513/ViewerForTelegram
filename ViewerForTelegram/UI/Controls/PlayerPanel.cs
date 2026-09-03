@@ -37,6 +37,7 @@ public sealed class PlayerPanel : Panel
 
     private TimeSpan _duration;
     private bool _showingDownloadBar;
+    private PlayerButton _state = PlayerButton.None;
 
     public PlayerPanel()
     {
@@ -48,6 +49,9 @@ public sealed class PlayerPanel : Panel
         _mainButton = MakeGlyphButton("Play / pause");
         _mainButton.Anchor = AnchorStyles.None;
         _mainButton.Click += (_, _) => MainButton?.Invoke();
+        // The pause icon is drawn by hand - no bar glyph renders as two clean
+        // strokes in Segoe UI (they all collapse into one block).
+        _mainButton.Paint += OnMainButtonPaint;
 
         _saveButton = MakeGlyphButton("Save a copy to disk");
         _saveButton.Text = "⭳";
@@ -185,14 +189,30 @@ public sealed class PlayerPanel : Panel
 
     public void SetButton(PlayerButton button)
     {
+        _state = button;
         _mainButton.Enabled = button != PlayerButton.None;
         _mainButton.Text = button switch
         {
             PlayerButton.Cancel => "✕",
             PlayerButton.Play => "▶",
-            PlayerButton.Pause => "‖",
-            _ => ""
+            _ => ""   // Pause is drawn in OnMainButtonPaint
         };
+        _mainButton.Invalidate();
+    }
+
+    private void OnMainButtonPaint(object? sender, PaintEventArgs e)
+    {
+        if (_state != PlayerButton.Pause || sender is not Control b)
+        {
+            return;
+        }
+        const int barW = 5, barH = 16, gap = 6;
+        int cx = b.ClientSize.Width / 2;
+        int cy = b.ClientSize.Height / 2;
+        using var brush = new SolidBrush(
+            b.Enabled ? b.ForeColor : UIStyles.Colors.TextDisabled);
+        e.Graphics.FillRectangle(brush, cx - gap / 2 - barW, cy - barH / 2, barW, barH);
+        e.Graphics.FillRectangle(brush, cx + gap / 2, cy - barH / 2, barW, barH);
     }
 
     public void SetDownloadProgress(int percent)

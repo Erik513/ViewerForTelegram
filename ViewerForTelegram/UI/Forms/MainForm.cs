@@ -102,9 +102,11 @@ public sealed class MainForm : StyledForm
         _searchBox.TextChanged += (_, _) => RenderList();
 
         _cacheLabel = UIStyles.Labels.CreateMuted("Cache: –");
-        _cacheLabel.Anchor = AnchorStyles.Right;
+        _cacheLabel.Dock = DockStyle.Fill;
         _cacheLabel.TextAlign = ContentAlignment.MiddleRight;
         _cacheLabel.AutoSize = false;
+        _cacheLabel.AutoEllipsis = false;
+        _cacheLabel.Margin = new Padding(6, 0, 0, 0);
 
         var topRow = new TableLayoutPanel
         {
@@ -116,9 +118,9 @@ public sealed class MainForm : StyledForm
         };
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 42));
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 46));
-        topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130));
+        topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 118));
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 54));
-        topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150));
+        topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200));
         topRow.Controls.Add(settingsButton, 0, 0);
         topRow.Controls.Add(_groupCombo, 1, 0);
         topRow.Controls.Add(_rangeCombo, 2, 0);
@@ -872,7 +874,7 @@ public sealed class MainForm : StyledForm
         string size = bytes >= 1024L * 1024 * 1024
             ? $"{bytes / 1024d / 1024d / 1024d:0.0} GB"
             : $"{bytes / 1024d / 1024d:0} MB";
-        _cacheLabel.Text = $"Cache: {size} ({count})";
+        _cacheLabel.Text = $"Cache {size} · {count}";
     }
 
     private void SaveUiState()

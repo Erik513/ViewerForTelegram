@@ -279,18 +279,77 @@ public sealed class MainForm : StyledForm
         _connecting = true;
         try
         {
-            await ConnectAndListChatsAsync();
+            await RunWithRetryAsync("Connecting", ConnectAndListChatsAsync);
             _connected = true;
         }
         catch (Exception ex)
         {
             _connected = false;
-            Status("Sign-in failed: " + ex.Message);
+            Status(DescribeFailure("Sign-in", ex));
         }
         finally
         {
             _connecting = false;
         }
+    }
+
+    private const int NetworkRetries = 3;
+
+    /// <summary>
+    /// Runs <paramref name="op"/>, retrying a few times on a transient network
+    /// error (with backoff). A rate limit (FLOOD_WAIT) or an unsupported account
+    /// is not retried - it is rethrown for the caller to report.
+    /// </summary>
+    private async Task RunWithRetryAsync(string what, Func<Task> op)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await op();
+                return;
+            }
+            catch (Exception ex) when (attempt < NetworkRetries && IsTransient(ex))
+            {
+                AppLog.Error(what, $"attempt {attempt}/{NetworkRetries}: {ex.GetType().Name}: {ex.Message}");
+                Status($"{what} failed, retrying ({attempt}/{NetworkRetries}) …");
+                await Task.Delay(TimeSpan.FromSeconds(2 * attempt));
+            }
+        }
+    }
+
+    private static bool IsTransient(Exception ex) =>
+        !IsRateLimit(ex, out _) && ex is not NotSupportedException and not InvalidOperationException;
+
+    /// <summary>Matches WTelegramClient's "FLOOD_WAIT_&lt;seconds&gt;" rate-limit error.</summary>
+    private static bool IsRateLimit(Exception ex, out int seconds)
+    {
+        seconds = 0;
+        for (Exception? e = ex; e is not null; e = e.InnerException)
+        {
+            System.Text.RegularExpressions.Match m =
+                System.Text.RegularExpressions.Regex.Match(e.Message ?? "", @"FLOOD_WAIT_(\d+)");
+            if (m.Success)
+            {
+                seconds = int.Parse(m.Groups[1].Value);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static string DescribeFailure(string what, Exception ex)
+    {
+        AppLog.Error(what, ex.ToString());
+        if (IsRateLimit(ex, out int seconds))
+        {
+            return $"Telegram rate limit – wait {seconds}s, then Settings › Sign in.";
+        }
+        if (ex is NotSupportedException)
+        {
+            return ex.Message;
+        }
+        return $"{what} failed ({ex.Message}). Settings › Sign in to retry.";
     }
 
     private async Task ConnectAndListChatsAsync()
@@ -375,11 +434,12 @@ public sealed class MainForm : StyledForm
         Status("Loading …");
         try
         {
-            _items = (await _feed.LoadAsync(chat.Id, SelectedDays, CancellationToken.None)).ToList();
+            await RunWithRetryAsync("Loading", async () =>
+                _items = (await _feed.LoadAsync(chat.Id, SelectedDays, CancellationToken.None)).ToList());
         }
         catch (Exception ex)
         {
-            Status("Loading failed: " + ex.Message);
+            Status(DescribeFailure("Loading", ex));
             return;
         }
 

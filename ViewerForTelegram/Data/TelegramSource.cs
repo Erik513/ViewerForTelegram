@@ -68,6 +68,14 @@ public sealed class TelegramSource : ITelegramSource
             ? $"Session file present: {_sessionPath} ({new FileInfo(_sessionPath).Length} bytes)"
             : $"No session file at {_sessionPath} - full login required.");
 
+        // A retry after a failed attempt calls this again - drop the old client
+        // first so we don't leak it or run two on the same session.
+        if (_client is not null)
+        {
+            try { _client.Dispose(); } catch { /* already broken */ }
+            _client = null;
+        }
+
         _client = new WTelegram.Client(ProvideConfigValue);
         User me = await _client.LoginUserIfNeeded();
 

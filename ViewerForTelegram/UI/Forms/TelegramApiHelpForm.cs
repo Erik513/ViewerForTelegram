@@ -11,32 +11,44 @@ public sealed class TelegramApiHelpForm : StyledForm
 {
     private const string Url = "https://my.telegram.org";
 
+    private const int Pad = 16;
+    private const int ButtonRow = 44;
+    private const int TextBottomMargin = 12;
+    private const int Width_ = 600;
+
+    private readonly TextBox _text;
+
     public TelegramApiHelpForm()
         : base(StyledFormOptions.CreateDialog("Create credentials"))
     {
         StartPosition = FormStartPosition.CenterParent;
-        ClientSize = new Size(600, 420);
-        MinimumSize = new Size(600, 420);
 
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             BackColor = UIStyles.Colors.BackgroundLight,
-            Padding = new Padding(16),
+            Padding = new Padding(Pad),
             ColumnCount = 1,
             RowCount = 2
         };
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, ButtonRow));
 
-        TextBox text = UIStyles.TextBoxes.CreateStandard();
-        text.Text = InstructionText();
-        text.Dock = DockStyle.Fill;
-        text.Multiline = true;
-        text.ReadOnly = true;
-        text.TabStop = false;
-        text.ScrollBars = ScrollBars.Vertical;
-        text.Margin = new Padding(0, 0, 0, 12);
+        _text = UIStyles.TextBoxes.CreateStandard();
+        _text.Text = InstructionText();
+        _text.Dock = DockStyle.Fill;
+        _text.Multiline = true;
+        _text.ReadOnly = true;
+        _text.TabStop = false;
+        _text.ScrollBars = ScrollBars.None; // form is sized (ctor estimate + OnLoad) to fit the whole text
+        _text.Margin = new Padding(0, 0, 0, TextBottomMargin);
+
+        // Generous first estimate; OnLoad measures the real layout and tops it up.
+        int estimate = _text.Text.Split('\n').Length * Math.Max(18, _text.Font.Height) + 28;
+        ClientSize = new Size(
+            Width_,
+            TitleBar.Height + Padding.Vertical
+                + 2 * Pad + estimate + TextBottomMargin + ButtonRow);
 
         var buttons = new FlowLayoutPanel
         {
@@ -58,16 +70,45 @@ public sealed class TelegramApiHelpForm : StyledForm
         buttons.Controls.Add(open);
         CancelButton = close;
 
-        layout.Controls.Add(text, 0, 0);
+        layout.Controls.Add(_text, 0, 0);
         layout.Controls.Add(buttons, 0, 1);
         ContentPanel.Controls.Add(layout);
 
         Shown += (_, _) =>
         {
-            text.SelectionStart = 0;
-            text.SelectionLength = 0;
+            _text.SelectionStart = 0;
+            _text.SelectionLength = 0;
             close.Focus();
         };
+    }
+
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+
+        // Layout has run - the TextBox now has its real width. If the wrapped
+        // text needs more vertical space than it got, grow the form (and
+        // re-center on the owner) so the full guide shows without a scrollbar.
+        int needed = TextRenderer.MeasureText(
+            _text.Text, _text.Font,
+            new Size(_text.ClientSize.Width, 0),
+            TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl).Height + 10;
+
+        int deficit = needed - _text.ClientSize.Height;
+        if (deficit <= 0)
+        {
+            return;
+        }
+
+        Height += deficit;
+        MinimumSize = Size;
+
+        if (Owner is { } owner)
+        {
+            Location = new Point(
+                owner.Left + (owner.Width - Width) / 2,
+                owner.Top + (owner.Height - Height) / 2);
+        }
     }
 
     private void OpenUrl()

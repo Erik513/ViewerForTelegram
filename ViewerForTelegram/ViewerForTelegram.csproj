@@ -31,6 +31,9 @@
 
   <ItemGroup>
     <PackageReference Include="NAudio" Version="2.2.1" />
+    <!-- NAudio has no FLAC decoder; this managed one reports duration and
+         seeks properly where Media Foundation's FLAC source does not. -->
+    <PackageReference Include="BunLabs.NAudio.Flac" Version="2.0.1" />
     <PackageReference Include="WTelegramClient" Version="4.4.8" />
   </ItemGroup>
 

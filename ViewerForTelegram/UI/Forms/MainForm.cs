@@ -45,7 +45,7 @@ public sealed class MainForm : StyledForm
     private long? _currentFileId;   // loaded in the audio player (playing / paused)
     private long? _selectedFileId;  // the row the player panel is showing
     private long _pendingFileId;    // a track being downloaded right now
-    private long _restoreFileId;    // track to re-select on the first feed load (from ui-state)
+    private long _lastTrackId;    // last track put in the player (persisted; drives the row tint before playback)
     private int _playSeq;           // bumped per download so a superseded one bails out
     private int _lastProgress;
     private CancellationTokenSource? _playCts;
@@ -269,7 +269,7 @@ public sealed class MainForm : StyledForm
         _suppressComboEvents = false;
         _player.Volume = Math.Clamp(state.VolumePercent, 0, 100) / 100f;
         _audio.Volume = _player.Volume;
-        _restoreFileId = state.LastPlayedFileId;   // re-select this row once the feed loads
+        _lastTrackId = state.LastPlayedFileId;   // select + tint this row once the feed loads
 
         PushCacheInfo();
 
@@ -456,17 +456,19 @@ public sealed class MainForm : StyledForm
         _list.Columns.Add(column);
     }
 
-    // Tint for the row of the track currently loaded in the player (playing or
-    // paused) - a muted blue so it stands out without looking selected.
+    // Tint for the row of the track in the player (playing / paused), and on a
+    // fresh launch the last track from ui-state - a muted blue so it stands out
+    // without looking selected.
     private static readonly Color PlayingRowBack = Color.FromArgb(26, 52, 78);
     private static readonly Color PlayingRowFore = Color.FromArgb(156, 198, 242);
 
-    /// <summary>Colours the row of <see cref="_currentFileId"/>, clears the rest.</summary>
+    /// <summary>Colours the current / last-played track's row, clears the rest.</summary>
     private void HighlightPlayingRow()
     {
+        long? mark = _currentFileId ?? (_lastTrackId != 0 ? _lastTrackId : (long?)null);
         foreach (DataGridViewRow row in _list.Rows)
         {
-            bool playing = row.Tag is long fid && _currentFileId is long cur && fid == cur;
+            bool playing = row.Tag is long fid && mark is long m && fid == m;
             row.DefaultCellStyle.BackColor = playing ? PlayingRowBack : Color.Empty;
             row.DefaultCellStyle.ForeColor = playing ? PlayingRowFore : Color.Empty;
         }
@@ -513,7 +515,7 @@ public sealed class MainForm : StyledForm
         // Keep the previously-selected (or playing) row selected across a
         // re-render; on the first load fall back to the track from ui-state.
         long? keep = _selectedFileId ?? _currentFileId
-            ?? (_restoreFileId != 0 ? _restoreFileId : (long?)null);
+            ?? (_lastTrackId != 0 ? _lastTrackId : (long?)null);
         DataGridViewRow? keptRow = null;
         if (keep is long fid)
         {
@@ -702,6 +704,7 @@ public sealed class MainForm : StyledForm
         }
 
         _currentFileId = audio.FileId;
+        _lastTrackId = audio.FileId;
         BackfillDuration(audio.FileId, _audio.Duration);
         HighlightPlayingRow();
         SaveUiState();   // remember this track for the next launch
@@ -826,6 +829,7 @@ public sealed class MainForm : StyledForm
         }
 
         _currentFileId = audio.FileId;
+        _lastTrackId = audio.FileId;
         BackfillDuration(audio.FileId, _audio.Duration);
         HighlightPlayingRow();
         SaveUiState();   // remember this track for the next launch
@@ -1045,7 +1049,7 @@ public sealed class MainForm : StyledForm
             LastChatId: SelectedChat?.Id ?? 0,
             RangeDays: SelectedDays,
             VolumePercent: (int)Math.Round(_player.Volume * 100),
-            LastPlayedFileId: _currentFileId ?? _restoreFileId));
+            LastPlayedFileId: _lastTrackId));
     }
 
     private void Status(string text) => _player.SetStatus(text);

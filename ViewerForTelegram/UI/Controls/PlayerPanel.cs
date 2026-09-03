@@ -61,8 +61,8 @@ public sealed class PlayerPanel : Panel
         _saveButton.Anchor = AnchorStyles.None;
         _saveButton.Click += (_, _) => Save?.Invoke();
 
-        _browseButton = MakeIconButton(30, "Open the download folder");
-        _browseButton.Text = "🗀";
+        // The library's yellow folder button, kept as-is.
+        _browseButton = UIStyles.Buttons.CreateBrowse("Open the download folder", new Size(30, 30));
         _browseButton.Anchor = AnchorStyles.None;
         _browseButton.Click += (_, _) => BrowseFolder?.Invoke();
 

@@ -2,8 +2,8 @@
 
 A small Windows desktop app that lists the **audio messages** posted in a
 Telegram group or channel you are a member of. Pick a chat, choose a rolling
-time window (last 3 / 7 / 14 / 30 days), and every track shows up as an inline
-player. Download the ones you want to keep straight from the player menu.
+time window (last 3 / 7 / 14 / 30 days), double-click a track to play it in the
+player at the bottom, and save the ones you want to keep.
 
 It signs in as **you** via Telegram's MTProto API (like the official clients),
 so it can see full history with no bot restrictions and no file-size limit.
@@ -14,22 +14,23 @@ so it can see full history with no bot restrictions and no file-size limit.
 
 ## Features
 
-- Inline HTML5 audio player per message (any format Chromium plays: mp3, m4a,
-  ogg/opus, flac, wav, …)
+- One player docked at the bottom: play/pause, seek, volume, "Save a copy"
+- Plays mp3, m4a/aac, wav, wma and (on Windows 10+) flac; ogg/opus can be saved
+  but not played in-app
 - Rolling time window, precise to the hour
-- Sortable list, live text filter
-- Global volume, remembered between sessions
-- Download to a fixed folder or via a save dialog, original file name preserved
+- Live text filter over performer / title / file name
+- Volume, last chat and time range remembered between sessions
+- Save to a fixed folder or via a save dialog, original file name preserved
 - Size-capped local cache (default 3000 MB) with a "clear now" button
 
 ## Requirements
 
 - Windows 10 or 11 (x64)
 - [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
-- [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) –
-  preinstalled on current Windows 11; the app offers a download link if it is
-  missing
 - Your own Telegram **api_id** and **api_hash** (see below)
+
+No browser runtime needed – the UI is plain WinForms and playback uses the
+Windows audio stack via [NAudio](https://github.com/naudio/NAudio).
 
 ## Getting your api_id / api_hash
 
@@ -56,6 +57,7 @@ The **api_hash is like a password** – do not share it, and never commit it.
    `+491701234567`), then click **Sign in**.
 3. Enter the login code Telegram sends you.
 4. Pick a group/channel and a time range – the list loads automatically.
+5. Double-click a row to download (if needed) and play it.
 
 After that the app signs in silently from the stored session; you only need the
 code again if you sign out.
@@ -71,8 +73,8 @@ Everything is under `%AppData%\ViewerForTelegram\`:
 |--------------------------|---------------------------------------------------|
 | `appsettings.local.json` | api_id, api_hash, phone number, options           |
 | `telegram.session`       | the completed login – treat like a password       |
+| `ui-state.json`          | remembered chat / time range / volume             |
 | `cache\`                 | downloaded audio files                            |
-| `WebView2\`              | the embedded browser's profile                    |
 
 Nothing leaves your machine except the traffic to Telegram itself. None of the
 above is part of this repository (see `.gitignore`).
@@ -95,9 +97,9 @@ One project, three folders, dependency direction `UI → Logic → Data`:
 
 | Folder   | Responsibility                                                       |
 |----------|---------------------------------------------------------------------|
-| `Data/`  | Telegram access (WTelegramClient), the file cache, JSON config, models |
+| `Data/`  | Telegram access (WTelegramClient), the file cache, the NAudio player, JSON config, models |
 | `Logic/` | `AudioFeedService` (time window + cache check), `MediaDownloader`   |
-| `UI/`    | `MainForm` = the embedded WebView2; the interface lives in `UI/Web/` (`index.html` / `app.js` / `app.css`). `SettingsForm` handles sign-in and options. |
+| `UI/`    | `MainForm` (top bar + list + player), `SettingsForm`, and `UI/Controls/` (`PlayerPanel`, `SliderBar`) |
 
 ## License
 

@@ -9,26 +9,14 @@
     <RootNamespace>ViewerForTelegram</RootNamespace>
     <AssemblyName>ViewerForTelegram</AssemblyName>
     <StartupObject>ViewerForTelegram.Program</StartupObject>
-    <!-- WebView2 ships a WPF flavor that expects WindowsBase 5.0 -
-         harmless in a pure WinForms project, just noisy. -->
     <MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
   </PropertyGroup>
 
   <!-- A single assembly. The layers are folders + namespaces:
-         Data\   (Models, Interfaces, concrete access: WTelegramClient, cache)
+         Data\   (Models, Interfaces, concrete access: WTelegramClient, cache, audio)
          Logic\  (Services - the orchestration logic)
-         UI\     (Program.cs, Forms, Web\ = the WebView2 UI)
+         UI\     (Program.cs, Forms, Controls)
        Dependency direction by convention only:  UI -> Logic -> Data -->
-
-  <ItemGroup>
-    <!-- The HTML UI is copied to bin\...\web\ and loaded via a
-         VirtualHostNameToFolderMapping in the WebView2. -->
-    <None Remove="UI\Web\**\*" />
-    <None Include="UI\Web\**\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>web\%(RecursiveDir)%(Filename)%(Extension)</Link>
-    </None>
-  </ItemGroup>
 
   <ItemGroup>
     <!-- Shared UI library as fixed DLLs from lib\. ErikwnkCore must be listed
@@ -42,7 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4191.47" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="WTelegramClient" Version="4.4.8" />
   </ItemGroup>
 

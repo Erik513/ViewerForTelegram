@@ -1,3 +1,4 @@
+using System.Globalization;
 using ErikwnkWFUI;
 using ErikwnkWFUI.Styles;
 using ViewerForTelegram.Data;
@@ -17,6 +18,14 @@ static class Program
     [STAThread]
     static void Main()
     {
+        // The app is English-only - run everything in en-US so number/date
+        // formatting is consistent regardless of the user's Windows locale.
+        var culture = CultureInfo.GetCultureInfo("en-US");
+        CultureInfo.DefaultThreadCurrentCulture = culture;
+        CultureInfo.DefaultThreadCurrentUICulture = culture;
+        CultureInfo.CurrentCulture = culture;
+        CultureInfo.CurrentUICulture = culture;
+
         ApplicationConfiguration.Initialize();
         UIStyles.Language = UILanguage.English;
         HookCrashLogging();
@@ -24,6 +33,8 @@ static class Program
         IConfigStore configStore = new JsonConfigStore();
         IMediaCache cache = new FileMediaCache(AppPaths.CacheDir);
         ITelegramSource telegram = new TelegramSource(configStore, AppPaths.SessionFile);
+        IAudioPlayer audio = new AudioPlayer();
+        var uiState = new JsonUiStateStore();
 
         var feed = new AudioFeedService(telegram, cache);
         var downloader = new MediaDownloader(telegram, cache, CachePolicy.LimitBytes);
@@ -40,10 +51,12 @@ static class Program
 
         try
         {
-            Application.Run(new MainForm(telegram, configStore, cache, feed, downloader));
+            Application.Run(new MainForm(
+                telegram, configStore, cache, feed, downloader, audio, uiState));
         }
         finally
         {
+            audio.Dispose();
             telegram.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
     }

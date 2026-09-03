@@ -27,11 +27,11 @@ public static class AppPaths
     /// </summary>
     public static string SessionFile { get; }
 
+    /// <summary>Remembered UI preferences (open chat, time range, volume).</summary>
+    public static string UiStateFile { get; }
+
     /// <summary>Folder for downloaded audio files.</summary>
     public static string CacheDir { get; }
-
-    /// <summary>User-data folder of the embedded WebView2.</summary>
-    public static string WebView2Dir { get; }
 
     static AppPaths()
     {
@@ -41,11 +41,10 @@ public static class AppPaths
 
         ConfigFile = Path.Combine(Root, "appsettings.local.json");
         SessionFile = Path.Combine(Root, "telegram.session");
+        UiStateFile = Path.Combine(Root, "ui-state.json");
         CacheDir = Path.Combine(Root, "cache");
-        WebView2Dir = Path.Combine(Root, "WebView2");
 
         Directory.CreateDirectory(Root);
         Directory.CreateDirectory(CacheDir);
-        Directory.CreateDirectory(WebView2Dir);
     }
 }

@@ -81,7 +81,7 @@ public sealed class SettingsForm : StyledForm
         top.Dock = DockStyle.Top;
         top.Height = 46;
 
-        Button help = UIStyles.Buttons.CreateStandard(
+        Button help = UIStyles.Buttons.CreatePrimary(
             "?  Guide", "How do I get api_id / api_hash?", ButtonSize);
         help.TabStop = false;
         help.Anchor = AnchorStyles.Top | AnchorStyles.Right;
@@ -128,7 +128,7 @@ public sealed class SettingsForm : StyledForm
         _clearCacheButton.Click += (_, _) => ClearCache();
 
         Button loginBtn = _isConnected
-            ? UIStyles.Buttons.CreateStandard("Sign out", "", ButtonSize)
+            ? UIStyles.Buttons.CreatePrimary("Sign out", "", ButtonSize)
             : UIStyles.Buttons.CreatePrimary("Sign in", "", ButtonSize);
         loginBtn.TabStop = false;
         loginBtn.Click += (_, _) =>
@@ -234,7 +234,7 @@ public sealed class SettingsForm : StyledForm
         field.ReadOnly = true;
         field.TabStop = false;
 
-        Button lockBtn = UIStyles.Buttons.CreateStandard(Pencil, "Edit", new Size(40, 28));
+        Button lockBtn = UIStyles.Buttons.CreatePrimary(Pencil, "Edit", new Size(40, 28));
         lockBtn.TabStop = false;
 
         // While signed in, the credentials must not be changed - sign out first.

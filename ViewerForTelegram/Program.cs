@@ -28,6 +28,13 @@ static class Program
 
         ApplicationConfiguration.Initialize();
         UIStyles.Language = UILanguage.English;
+
+        // Dark theme with the library's default blue accent (UIColors.Primary).
+        // Both are the DLL defaults; applying them explicitly makes the choice
+        // visible here and survives any future change to the library default.
+        UIStyles.Colors.ApplyTheme(UIThemes.Dark);
+        UIStyles.Colors.SetAccent(UIColors.Primary);
+
         HookCrashLogging();
 
         IConfigStore configStore = new JsonConfigStore();

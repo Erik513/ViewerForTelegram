@@ -41,7 +41,7 @@ public sealed class MainForm : StyledForm
     private readonly System.Windows.Forms.Timer _positionTimer;
 
     private List<TelegramChat> _chats = new();
-    private IReadOnlyList<FeedItem> _items = Array.Empty<FeedItem>();
+    private List<FeedItem> _items = new();
     private readonly Dictionary<long, AudioMessage> _byFileId = new();
     private long? _currentFileId;   // loaded in the audio player (playing / paused)
     private long? _selectedFileId;  // the row the player panel is showing
@@ -80,7 +80,7 @@ public sealed class MainForm : StyledForm
         StartPosition = FormStartPosition.CenterScreen;
 
         // ---- top bar ----
-        var settingsButton = UIStyles.Buttons.CreateStandard("⚙", "Settings", new Size(34, 28));
+        var settingsButton = UIStyles.Buttons.CreatePrimary("⚙", "Settings", new Size(34, 28));
         settingsButton.Anchor = AnchorStyles.Left;
         settingsButton.Click += async (_, _) => await OpenSettingsAsync(isStartup: false);
 
@@ -373,7 +373,7 @@ public sealed class MainForm : StyledForm
         Status("Loading …");
         try
         {
-            _items = await _feed.LoadAsync(chat.Id, SelectedDays, CancellationToken.None);
+            _items = (await _feed.LoadAsync(chat.Id, SelectedDays, CancellationToken.None)).ToList();
         }
         catch (Exception ex)
         {
@@ -609,11 +609,48 @@ public sealed class MainForm : StyledForm
         }
 
         _currentFileId = audio.FileId;
+        BackfillDuration(audio.FileId, _audio.Duration);
         _player.SetLoaded(_audio.Duration);
         _audio.Play();
         _player.SetButton(PlayerButton.Pause);
         _positionTimer.Start();
         Status($"Playing: {audio.DisplayName}");
+    }
+
+    /// <summary>
+    /// Telegram sometimes doesn't report a track's length (posted "as a file").
+    /// Once the audio engine has decoded it we know the real duration - write it
+    /// back into the model and the list so the Length column stops showing "–".
+    /// </summary>
+    private void BackfillDuration(long fileId, TimeSpan duration)
+    {
+        if (duration <= TimeSpan.Zero
+            || !_byFileId.TryGetValue(fileId, out AudioMessage? a)
+            || (a.Duration is { } known && known > TimeSpan.Zero))
+        {
+            return;
+        }
+
+        AudioMessage updated = a with { Duration = duration };
+        _byFileId[fileId] = updated;
+
+        for (int i = 0; i < _items.Count; i++)
+        {
+            if (_items[i].Audio.FileId == fileId)
+            {
+                _items[i] = _items[i] with { Audio = updated };
+                break;
+            }
+        }
+
+        foreach (DataGridViewRow row in _list.Rows)
+        {
+            if (row.Tag is long rf && rf == fileId)
+            {
+                row.Cells[3].Value = $"{(int)duration.TotalMinutes}:{duration.Seconds:00}";
+                break;
+            }
+        }
     }
 
     private async Task DownloadAndPlayAsync(AudioMessage audio)
@@ -693,6 +730,7 @@ public sealed class MainForm : StyledForm
         }
 
         _currentFileId = audio.FileId;
+        BackfillDuration(audio.FileId, _audio.Duration);
         _audio.Play();
         _positionTimer.Start();
         if (_selectedFileId == audio.FileId)
@@ -871,7 +909,7 @@ public sealed class MainForm : StyledForm
 
         _connected = false;
         _chats.Clear();
-        _items = Array.Empty<FeedItem>();
+        _items = new();
         _byFileId.Clear();
         _suppressComboEvents = true;
         _groupCombo.Items.Clear();

@@ -57,13 +57,14 @@ public sealed class PlayerPanel : Panel
         // Segoe UI (they all collapse into one block).
         _mainButton.Paint += OnMainButtonPaint;
 
-        _saveButton = MakeIconButton(30, "Save a copy to disk");
+        _saveButton = MakeIconButton(32, "Save a copy to disk");
         _saveButton.Text = "⭳";
+        _saveButton.Font = new Font(_saveButton.Font.FontFamily, 16f);
         _saveButton.Anchor = AnchorStyles.None;
         _saveButton.Click += (_, _) => Save?.Invoke();
 
         // The library's yellow folder button, kept as-is.
-        _browseButton = UIStyles.Buttons.CreateBrowse("Open the download folder", new Size(30, 30));
+        _browseButton = UIStyles.Buttons.CreateBrowse("Open the download folder", new Size(32, 32));
         _browseButton.Anchor = AnchorStyles.None;
         _browseButton.Click += (_, _) => BrowseFolder?.Invoke();
 
@@ -123,8 +124,8 @@ public sealed class PlayerPanel : Panel
             Margin = new Padding(0), BackColor = Color.Transparent
         };
         clusterButtons.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        clusterButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));
-        clusterButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));
+        clusterButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 39));
+        clusterButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 39));
         clusterButtons.Controls.Add(_saveButton, 0, 0);
         clusterButtons.Controls.Add(_browseButton, 1, 0);
 
@@ -135,7 +136,7 @@ public sealed class PlayerPanel : Panel
         };
         cluster.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         cluster.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        cluster.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 74));
+        cluster.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 84));
         cluster.Controls.Add(fileInfoStack, 0, 0);
         cluster.Controls.Add(clusterButtons, 1, 0);
 
@@ -324,7 +325,7 @@ public sealed class PlayerPanel : Panel
 
     private static Button MakeIconButton(int size, string tooltip)
     {
-        Button b = UIStyles.Buttons.CreateStandard("", tooltip, new Size(size, size));
+        Button b = UIStyles.Buttons.CreatePrimary("", tooltip, new Size(size, size));
         b.Font = new Font(b.Font.FontFamily, size >= 40 ? 15f : 12f);
         b.TextAlign = ContentAlignment.MiddleCenter;
         b.Enabled = false;

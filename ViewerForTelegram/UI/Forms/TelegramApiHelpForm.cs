@@ -58,7 +58,7 @@ public sealed class TelegramApiHelpForm : StyledForm
             BackColor = Color.Transparent
         };
 
-        Button close = UIStyles.Buttons.CreateStandard("Close", "", new Size(110, 32));
+        Button close = UIStyles.Buttons.CreatePrimary("Close", "", new Size(110, 32));
         close.Margin = new Padding(8, 4, 0, 4);
         close.Click += (_, _) => Close();
 

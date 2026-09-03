@@ -57,14 +57,14 @@ public sealed class PlayerPanel : Panel
         // Segoe UI (they all collapse into one block).
         _mainButton.Paint += OnMainButtonPaint;
 
-        _saveButton = MakeIconButton(32, "Save a copy to disk");
+        _saveButton = MakeIconButton(34, "Save a copy to disk");
         _saveButton.Text = "⭳";
-        _saveButton.Font = new Font(_saveButton.Font.FontFamily, 16f);
+        _saveButton.Font = new Font(_saveButton.Font.FontFamily, 19f);
         _saveButton.Anchor = AnchorStyles.None;
         _saveButton.Click += (_, _) => Save?.Invoke();
 
         // The library's yellow folder button, kept as-is.
-        _browseButton = UIStyles.Buttons.CreateBrowse("Open the download folder", new Size(32, 32));
+        _browseButton = UIStyles.Buttons.CreateBrowse("Open the download folder", new Size(34, 34));
         _browseButton.Anchor = AnchorStyles.None;
         _browseButton.Click += (_, _) => BrowseFolder?.Invoke();
 
@@ -124,8 +124,8 @@ public sealed class PlayerPanel : Panel
             Margin = new Padding(0), BackColor = Color.Transparent
         };
         clusterButtons.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        clusterButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 39));
-        clusterButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 39));
+        clusterButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40));
+        clusterButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40));
         clusterButtons.Controls.Add(_saveButton, 0, 0);
         clusterButtons.Controls.Add(_browseButton, 1, 0);
 
@@ -136,7 +136,7 @@ public sealed class PlayerPanel : Panel
         };
         cluster.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         cluster.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        cluster.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 84));
+        cluster.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 86));
         cluster.Controls.Add(fileInfoStack, 0, 0);
         cluster.Controls.Add(clusterButtons, 1, 0);
 
@@ -173,8 +173,8 @@ public sealed class PlayerPanel : Panel
             Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3,
             Margin = new Padding(12, 0, 0, 0), BackColor = Color.Transparent
         };
-        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
-        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 16));
+        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 15));
         stack.RowStyles.Add(new RowStyle(SizeType.Percent, 100));   // seek row absorbs the rest
         stack.Controls.Add(titleRow, 0, 0);
         stack.Controls.Add(_performer, 0, 1);
@@ -211,8 +211,10 @@ public sealed class PlayerPanel : Panel
     public void SetIdle()
     {
         _duration = TimeSpan.Zero;
-        _mainButton.Text = "";
+        _state = PlayerButton.None;
+        _mainButton.Text = "▶";   // shown greyed-out so the button never looks empty
         _mainButton.Enabled = false;
+        _mainButton.Invalidate();
         _saveButton.Enabled = false;
         _title.Text = "Nothing selected";
         _performer.Text = "";
@@ -254,8 +256,8 @@ public sealed class PlayerPanel : Panel
         _mainButton.Text = button switch
         {
             PlayerButton.Cancel => "✕",
-            PlayerButton.Play => "▶",
-            _ => ""   // Pause is drawn in OnMainButtonPaint
+            PlayerButton.Pause => "",   // drawn in OnMainButtonPaint
+            _ => "▶"                    // Play, and None (disabled)
         };
         _mainButton.Invalidate();
     }

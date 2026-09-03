@@ -80,7 +80,8 @@ public sealed class MainForm : StyledForm
         StartPosition = FormStartPosition.CenterScreen;
 
         // ---- top bar ----
-        var settingsButton = UIStyles.Buttons.CreatePrimary("⚙", "Settings", new Size(34, 28));
+        var settingsButton = UIStyles.Buttons.CreatePrimary("⚙", "Settings", new Size(40, 34));
+        settingsButton.Font = new Font(settingsButton.Font.FontFamily, 15f);
         settingsButton.Anchor = AnchorStyles.Left;
         settingsButton.Click += async (_, _) => await OpenSettingsAsync(isStartup: false);
 

@@ -946,6 +946,10 @@ public sealed class MainForm : StyledForm
     }
 
     // ---------- helpers ----------
+
+    /// <summary>Cache size at which the top-bar label turns red as a warning.</summary>
+    private const long CacheWarnBytes = 2560L * 1024 * 1024;   // 2.5 GB
+
     private void PushCacheInfo()
     {
         (int count, long bytes) = _cache.GetStats();
@@ -954,6 +958,9 @@ public sealed class MainForm : StyledForm
             : $"{bytes / 1024d / 1024d:0} MB";
         long limitMb = CachePolicy.LimitBytes / 1024 / 1024;
         _cacheLabel.Text = $"Cache {size} · {count}";
+        _cacheLabel.ForeColor = bytes > CacheWarnBytes
+            ? UIStyles.Colors.RedLight
+            : UIStyles.Colors.TextMuted;
         _toolTip.SetToolTip(_cacheLabel,
             $"Downloaded songs kept locally: {size} / {limitMb} MB ({count} files).\r\n" +
             "The oldest are removed once the limit is reached.");

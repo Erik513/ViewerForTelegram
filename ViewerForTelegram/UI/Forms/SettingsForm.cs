@@ -127,6 +127,15 @@ public sealed class SettingsForm : StyledForm
         _clearCacheButton.TabStop = false;
         _clearCacheButton.Click += (_, _) => ClearCache();
 
+        TextBox cacheFolder = Field(AppPaths.CacheDir);
+        cacheFolder.ReadOnly = true;
+        cacheFolder.TabStop = false;
+        _toolTip.SetToolTip(cacheFolder, AppPaths.CacheDir);
+
+        Button cacheBrowse = UIStyles.Buttons.CreateBrowse("Open the cache folder");
+        cacheBrowse.TabStop = false;
+        cacheBrowse.Click += (_, _) => OpenCacheFolder();
+
         Button loginBtn = _isConnected
             ? UIStyles.Buttons.CreatePrimary("Sign out", "", ButtonSize)
             : UIStyles.Buttons.CreatePrimary("Sign in", "", ButtonSize);
@@ -179,7 +188,11 @@ public sealed class SettingsForm : StyledForm
         _table.AddRow(
             "Used", RowH,
             UIColumn.Percent(_cacheSizeLabel, 100),
-            UIColumn.Absolute(_clearCacheOnStart, 56),
+            UIColumn.Absolute(_clearCacheOnStart, 56));
+        _table.AddRow(
+            "Folder", RowH,
+            UIColumn.Percent(cacheFolder, 100),
+            UIColumn.Absolute(cacheBrowse, 44),
             UIColumn.Absolute(_clearCacheButton, ButtonColumn));
 
         _table.AddSection("Credentials");
@@ -272,6 +285,20 @@ public sealed class SettingsForm : StyledForm
         {
             _downloadFolder.Text = dlg.SelectedPath;
             _toolTip.SetToolTip(_downloadFolder, dlg.SelectedPath);
+        }
+    }
+
+    private void OpenCacheFolder()
+    {
+        try
+        {
+            Directory.CreateDirectory(AppPaths.CacheDir);
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo { FileName = AppPaths.CacheDir, UseShellExecute = true });
+        }
+        catch
+        {
+            // opening a folder is a convenience - never worth an error dialog
         }
     }
 

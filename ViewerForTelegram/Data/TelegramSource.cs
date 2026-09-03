@@ -291,10 +291,17 @@ public sealed class TelegramSource : ITelegramSource
 
         // Some documents report total = 0 in the callback - then take the known
         // size from the message, otherwise no progress would ever arrive.
+        // NOTE: the callback runs on WTelegramClient's own worker threads, so it
+        // must NOT throw (an OperationCanceledException there escapes the awaited
+        // task and crashes). Cancellation is done purely by disposing the
+        // FileStream below.
         long knownTotal = message.SizeBytes;
         WTelegram.Client.ProgressCallback? cb = (transmitted, total) =>
         {
-            ct.ThrowIfCancellationRequested();
+            if (ct.IsCancellationRequested)
+            {
+                return;
+            }
             long t = total > 0 ? total : knownTotal;
             if (t > 0)
             {
@@ -323,6 +330,8 @@ public sealed class TelegramSource : ITelegramSource
             TryDelete(partPath);
             throw;
         }
+
+        ct.ThrowIfCancellationRequested();   // safe here - we are back on our own await path
 
         if (File.Exists(targetPath))
         {

@@ -41,11 +41,14 @@ public sealed class MainForm : StyledForm
     private List<TelegramChat> _chats = new();
     private IReadOnlyList<FeedItem> _items = Array.Empty<FeedItem>();
     private readonly Dictionary<long, AudioMessage> _byFileId = new();
-    private long? _currentFileId;
-    private long _pendingFileId;   // a track PlayAsync is currently loading
-    private int _playSeq;          // bumped per PlayAsync so a superseded one bails out
+    private long? _currentFileId;   // loaded in the audio player (playing / paused)
+    private long? _selectedFileId;  // the row the player panel is showing
+    private long _pendingFileId;    // a track being downloaded right now
+    private int _playSeq;           // bumped per download so a superseded one bails out
+    private int _lastProgress;
     private CancellationTokenSource? _playCts;
     private bool _suppressListEvents;
+    private readonly ToolStripItem _saveMenuItem;
 
     private bool _started;
     private bool _connecting;
@@ -148,34 +151,47 @@ public sealed class MainForm : StyledForm
         AddColumn("Performer", DataGridViewAutoSizeColumnMode.Fill, fillWeight: 38);
         AddColumn("Length", DataGridViewAutoSizeColumnMode.AllCells);
         AddColumn("Size", DataGridViewAutoSizeColumnMode.AllCells);
-        // Selecting a row loads and plays it; double-click / Enter on the
-        // already-playing row toggles play/pause; Left/Right seek +-10s.
-        _list.SelectionChanged += (_, _) => LoadSelected();
-        _list.CellMouseDoubleClick += (_, _) => PlaySelected();
+        // The list only shows info. The player's one button does the work:
+        // download / cancel / play / pause on the selected row.
+        _list.SelectionChanged += (_, _) => ShowSelected();
+        _list.CellMouseDoubleClick += (_, _) => OnMainButton();
         _list.KeyDown += OnListKeyDown;
+
+        // context menu: save a copy to disk
+        var menu = new ContextMenuStrip();
+        _saveMenuItem = menu.Items.Add("Save a copy…", null, (_, _) => SaveSelected());
+        menu.Opening += (_, e) => { _saveMenuItem.Enabled = SelectedAudio is not null; };
+        _list.ContextMenuStrip = menu;
 
         // ---- player ----
         _player = new PlayerPanel();
-        _player.PlayPause += OnPlayPause;
-        _player.Seek += seconds => _audio.Position = TimeSpan.FromSeconds(seconds);
+        _player.MainButton += OnMainButton;
+        _player.Seek += seconds => Seek(TimeSpan.FromSeconds(seconds));
         _player.VolumeChanged += OnVolumeChanged;
-        _player.Save += SaveCurrent;
-        _player.CancelDownload += () => _playCts?.Cancel();
 
         _positionTimer = new System.Windows.Forms.Timer { Interval = 250 };
-        _positionTimer.Tick += (_, _) => _player.SetPosition(_audio.Position);
+        _positionTimer.Tick += (_, _) =>
+        {
+            if (_selectedFileId == _currentFileId)
+            {
+                _player.SetPosition(_audio.Position);
+            }
+        };
 
         _audio.PlaybackEnded += (_, _) =>
         {
             _positionTimer.Stop();
-            _player.SetPlaying(false);
-            _player.SetPosition(_audio.Duration);
+            if (_selectedFileId == _currentFileId)
+            {
+                _player.SetButton(PlayerButton.Play);
+                _player.SetPosition(_audio.Duration);
+            }
         };
         _audio.PlaybackFailed += (_, ex) =>
         {
             _positionTimer.Stop();
-            _player.SetIdle();
             _currentFileId = null;
+            ShowSelected();
             Status("Playback failed: " + ex.Message);
         };
 
@@ -403,13 +419,24 @@ public sealed class MainForm : StyledForm
         }
         _list.ClearSelection();
         try { _list.CurrentCell = null; } catch { }   // no auto-selected row 0
+
+        // Keep the previously-selected (or playing) row selected across a re-render.
+        long? keep = _selectedFileId ?? _currentFileId;
+        if (keep is long fid)
+        {
+            foreach (DataGridViewRow row in _list.Rows)
+            {
+                if (row.Tag is long rf && rf == fid)
+                {
+                    _list.CurrentCell = row.Cells[0];
+                    row.Selected = true;
+                    break;
+                }
+            }
+        }
         _list.ResumeLayout();
         _suppressListEvents = false;
-
-        if (_currentFileId is long fid)
-        {
-            SelectRow(fid);
-        }
+        ShowSelected();
 
         if (_items.Count == 0)
         {
@@ -441,7 +468,7 @@ public sealed class MainForm : StyledForm
         switch (e.KeyCode)
         {
             case Keys.Enter:
-                PlaySelected();
+                OnMainButton();
                 e.Handled = true;
                 break;
             case Keys.Right:
@@ -452,58 +479,132 @@ public sealed class MainForm : StyledForm
                 SeekBy(TimeSpan.FromSeconds(-10));
                 e.Handled = e.SuppressKeyPress = true;
                 break;
-            // Up/Down stay native so they move the selection (which plays the row).
+            // Up/Down stay native so they move the selection.
+        }
+    }
+
+    private void Seek(TimeSpan position)
+    {
+        if (_currentFileId is not null && _selectedFileId == _currentFileId)
+        {
+            _audio.Position = position;
+            _player.SetPosition(_audio.Position);
         }
     }
 
     private void SeekBy(TimeSpan delta)
     {
-        if (_currentFileId is null || _audio.Duration <= TimeSpan.Zero)
+        if (_currentFileId is not null
+            && _selectedFileId == _currentFileId
+            && _audio.Duration > TimeSpan.Zero)
         {
-            return;
+            _audio.Position += delta;
+            _player.SetPosition(_audio.Position);
         }
-        _audio.Position += delta;
-        _player.SetPosition(_audio.Position);
     }
 
-    /// <summary>Row selected: load + play it, unless it is already the current / loading track.</summary>
-    private void LoadSelected()
+    /// <summary>A row got selected - show it in the player (no download, no playback).</summary>
+    private void ShowSelected()
     {
         if (_suppressListEvents)
         {
             return;
         }
-        if (SelectedAudio is { } audio
-            && audio.FileId != _currentFileId
-            && audio.FileId != _pendingFileId)
+
+        if (SelectedAudio is not { } audio)
         {
-            _ = PlayAsync(audio);
+            _selectedFileId = null;
+            _player.SetIdle();
+            return;
+        }
+
+        _selectedFileId = audio.FileId;
+
+        if (_pendingFileId == audio.FileId)
+        {
+            _player.ShowTrack(audio, PlayerButton.Cancel);
+            _player.SetDownloadProgress(_lastProgress);
+        }
+        else if (_currentFileId == audio.FileId)
+        {
+            bool playing = _audio.State == PlaybackState.Playing;
+            _player.ShowTrack(audio, playing ? PlayerButton.Pause : PlayerButton.Play);
+            _player.SetLoaded(_audio.Duration);
+            _player.SetPosition(_audio.Position);
+        }
+        else
+        {
+            _player.ShowTrack(audio, _cache.Contains(audio) ? PlayerButton.Play : PlayerButton.Download);
         }
     }
 
-    /// <summary>Double-click / Enter: like select, but toggles play/pause on the current track.</summary>
-    private void PlaySelected()
+    /// <summary>The one player button: download / cancel / play / pause the selected track.</summary>
+    private void OnMainButton()
     {
         if (SelectedAudio is not { } audio)
         {
             return;
         }
 
-        if (_currentFileId == audio.FileId && _audio.State != PlaybackState.Stopped)
+        // Downloading this one -> cancel.
+        if (_pendingFileId == audio.FileId)
         {
-            OnPlayPause();
+            _playCts?.Cancel();
             return;
         }
 
-        if (audio.FileId != _pendingFileId)
+        // Loaded in the audio player -> toggle play/pause.
+        if (_currentFileId == audio.FileId)
         {
-            _ = PlayAsync(audio);
+            if (_audio.State == PlaybackState.Playing)
+            {
+                _audio.Pause();
+                _positionTimer.Stop();
+                _player.SetButton(PlayerButton.Play);
+            }
+            else
+            {
+                _audio.Play();
+                _positionTimer.Start();
+                _player.SetButton(PlayerButton.Pause);
+            }
+            return;
+        }
+
+        // Not loaded: play from cache if it's there, otherwise download first.
+        if (_cache.Contains(audio))
+        {
+            PlayFromCache(audio);
+        }
+        else
+        {
+            _ = DownloadAndPlayAsync(audio);
         }
     }
 
-    private async Task PlayAsync(AudioMessage audio)
+    private void PlayFromCache(AudioMessage audio)
     {
-        // Cancel whatever the previous PlayAsync was doing, hard.
+        StopCurrent();
+        try
+        {
+            _audio.Load(_cache.GetPath(audio));
+        }
+        catch (Exception ex)
+        {
+            Status($"Cannot play {Path.GetExtension(audio.FileName)}: {ex.Message}");
+            return;
+        }
+
+        _currentFileId = audio.FileId;
+        _player.SetLoaded(_audio.Duration);
+        _audio.Play();
+        _player.SetButton(PlayerButton.Pause);
+        _positionTimer.Start();
+        Status($"Playing: {audio.DisplayName}");
+    }
+
+    private async Task DownloadAndPlayAsync(AudioMessage audio)
+    {
         _playCts?.Cancel();
         _playCts?.Dispose();
         var cts = _playCts = new CancellationTokenSource();
@@ -511,19 +612,24 @@ public sealed class MainForm : StyledForm
 
         int seq = ++_playSeq;
         _pendingFileId = audio.FileId;
+        _lastProgress = 0;
 
-        StopCurrent();
-        _currentFileId = audio.FileId;
-        SelectRow(audio.FileId);
+        if (_selectedFileId == audio.FileId)
+        {
+            _player.SetDownloadProgress(0);
+        }
+        Status($"Downloading: {audio.DisplayName}");
 
-        string title = audio.DisplayName;
-        _player.SetDownloading(audio, 0);
-        Status($"Downloading: {title}");
         var progress = new Progress<int>(p =>
         {
-            if (seq == _playSeq && _pendingFileId == audio.FileId)
+            if (seq != _playSeq || _pendingFileId != audio.FileId)
             {
-                _player.SetDownloading(audio, p);
+                return;
+            }
+            _lastProgress = p;
+            if (_selectedFileId == audio.FileId)
+            {
+                _player.SetDownloadProgress(p);
             }
         });
 
@@ -534,14 +640,11 @@ public sealed class MainForm : StyledForm
         }
         catch (OperationCanceledException)
         {
-            // Superseded by a newer PlayAsync, or the user pressed the cancel
-            // button. Only the latter (still the current request) resets the UI.
             if (seq == _playSeq)
             {
-                _player.SetIdle();
-                _currentFileId = null;
                 _pendingFileId = 0;
                 Status("Cancelled.");
+                ShowSelected();
             }
             return;
         }
@@ -549,10 +652,9 @@ public sealed class MainForm : StyledForm
         {
             if (seq == _playSeq)
             {
-                _player.SetIdle();
-                _currentFileId = null;
                 _pendingFileId = 0;
                 Status("Download failed: " + ex.Message);
+                ShowSelected();
             }
             return;
         }
@@ -562,65 +664,30 @@ public sealed class MainForm : StyledForm
             return;
         }
 
+        _pendingFileId = 0;
         PushCacheInfo();
 
+        StopCurrent();
         try
         {
             _audio.Load(path);
         }
         catch (Exception ex)
         {
-            _player.SetIdle();
-            _currentFileId = null;
-            _pendingFileId = 0;
-            Status($"Cannot play {Path.GetExtension(audio.FileName)} – use the download button and open it elsewhere. ({ex.Message})");
+            Status($"Cannot play {Path.GetExtension(audio.FileName)} – open it elsewhere via \"Save a copy\". ({ex.Message})");
+            ShowSelected();
             return;
         }
 
-        _pendingFileId = 0;
-        _player.SetLoaded(audio, _audio.Duration);
+        _currentFileId = audio.FileId;
         _audio.Play();
-        _player.SetPlaying(true);
         _positionTimer.Start();
-        SelectRow(audio.FileId);
-        Status($"Playing: {title}");
-    }
-
-    /// <summary>Select (and keep the keyboard focus on) the row for this file.</summary>
-    private void SelectRow(long fileId)
-    {
-        foreach (DataGridViewRow row in _list.Rows)
+        if (_selectedFileId == audio.FileId)
         {
-            if (row.Tag is long fid && fid == fileId)
-            {
-                if (!row.Selected || _list.CurrentCell?.RowIndex != row.Index)
-                {
-                    _suppressListEvents = true;
-                    _list.CurrentCell = row.Cells[0]; // scrolls it into view
-                    row.Selected = true;
-                    _suppressListEvents = false;
-                }
-                break;
-            }
+            _player.SetLoaded(_audio.Duration);
+            _player.SetButton(PlayerButton.Pause);
         }
-    }
-
-    private void OnPlayPause()
-    {
-        switch (_audio.State)
-        {
-            case PlaybackState.Playing:
-                _audio.Pause();
-                _player.SetPlaying(false);
-                _positionTimer.Stop();
-                break;
-            case PlaybackState.Paused:
-            case PlaybackState.Stopped:
-                _audio.Play();
-                _player.SetPlaying(true);
-                _positionTimer.Start();
-                break;
-        }
+        Status($"Playing: {audio.DisplayName}");
     }
 
     private void OnVolumeChanged(float v)
@@ -633,19 +700,18 @@ public sealed class MainForm : StyledForm
     {
         _positionTimer.Stop();
         _audio.Stop();
-        _player.SetIdle();
         _currentFileId = null;
     }
 
-    private void SaveCurrent()
+    private void SaveSelected()
     {
-        if (_currentFileId is not long fid || !_byFileId.TryGetValue(fid, out AudioMessage? audio))
+        if (SelectedAudio is not { } audio)
         {
             return;
         }
         if (!_cache.Contains(audio))
         {
-            Status("Not downloaded yet.");
+            Status("Not downloaded yet - play it first.");
             return;
         }
 
@@ -782,6 +848,8 @@ public sealed class MainForm : StyledForm
         _suppressListEvents = true;
         _list.Rows.Clear();
         _suppressListEvents = false;
+        _selectedFileId = null;
+        _player.SetIdle();
         Status(wipeConfig ? "Credentials deleted." : "Signed out.");
     }
 

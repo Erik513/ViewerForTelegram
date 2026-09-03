@@ -146,11 +146,11 @@ public sealed class MainForm : StyledForm
             ScrollBars = ScrollBars.Vertical,   // no horizontal scrollbar, ever
         };
         _list.RowTemplate.Height = 26;
-        AddColumn("Date", DataGridViewAutoSizeColumnMode.AllCells);
-        AddColumn("Title", DataGridViewAutoSizeColumnMode.Fill, fillWeight: 62);
-        AddColumn("Performer", DataGridViewAutoSizeColumnMode.Fill, fillWeight: 38);
-        AddColumn("Length", DataGridViewAutoSizeColumnMode.AllCells);
-        AddColumn("Size", DataGridViewAutoSizeColumnMode.AllCells);
+        AddColumn("Date", width: 96);
+        AddColumn("Title", fill: 62);
+        AddColumn("Performer", fill: 38);
+        AddColumn("Length", width: 64);
+        AddColumn("Size", width: 90);
         // The list only shows info. The player's one button does the work:
         // download / cancel / play / pause on the selected row.
         _list.SelectionChanged += (_, _) => ShowSelected();
@@ -166,6 +166,7 @@ public sealed class MainForm : StyledForm
         // ---- player ----
         _player = new PlayerPanel();
         _player.MainButton += OnMainButton;
+        _player.Save += SaveSelected;
         _player.Seek += seconds => Seek(TimeSpan.FromSeconds(seconds));
         _player.VolumeChanged += OnVolumeChanged;
 
@@ -383,14 +384,19 @@ public sealed class MainForm : StyledForm
         RenderList();
     }
 
-    private void AddColumn(string header, DataGridViewAutoSizeColumnMode mode, int fillWeight = 100)
+    /// <summary>Add a column: pass <paramref name="fill"/> for a stretchy column, or <paramref name="width"/> for a fixed one.</summary>
+    private void AddColumn(string header, int fill = 0, int width = 0)
     {
+        bool isFill = fill > 0;
         _list.Columns.Add(new DataGridViewTextBoxColumn
         {
             HeaderText = header,
-            AutoSizeMode = mode,
-            FillWeight = fillWeight,
-            MinimumWidth = 46,
+            AutoSizeMode = isFill
+                ? DataGridViewAutoSizeColumnMode.Fill
+                : DataGridViewAutoSizeColumnMode.None,
+            FillWeight = isFill ? fill : 100,
+            Width = isFill ? 100 : width,
+            MinimumWidth = isFill ? 80 : width,
             SortMode = DataGridViewColumnSortMode.NotSortable,
             Resizable = DataGridViewTriState.False
         });

@@ -25,6 +25,7 @@ public sealed class PlayerPanel : Panel
     public const int PanelHeight = 118;
 
     private readonly Button _mainButton;
+    private readonly Button _saveButton;
     private readonly Label _title;
     private readonly Label _performer;
     private readonly Label _meta;
@@ -72,19 +73,27 @@ public sealed class PlayerPanel : Panel
         _volume = new SliderBar { Maximum = 1.0, Value = 0.1, Anchor = AnchorStyles.Left | AnchorStyles.Right };
         _volume.ValueChanged += (_, _) => VolumeChanged?.Invoke((float)_volume.Value);
 
+        _saveButton = UIStyles.Buttons.CreateStandard("⭳", "Save a copy to disk", new Size(34, 30));
+        _saveButton.Font = new Font(_saveButton.Font.FontFamily, 13f);
+        _saveButton.Enabled = false;
+        _saveButton.Anchor = AnchorStyles.Right;
+        _saveButton.Click += (_, _) => Save?.Invoke();
+
         var mid = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 1,
+            Dock = DockStyle.Fill, ColumnCount = 5, RowCount = 1,
             Margin = new Padding(0), BackColor = Color.Transparent
         };
         mid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        mid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
-        mid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));
         mid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
+        mid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));
+        mid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 84));
+        mid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 42));
         mid.Controls.Add(_seek, 0, 0);
         mid.Controls.Add(_time, 1, 0);
         mid.Controls.Add(volLabel, 2, 0);
         mid.Controls.Add(_volume, 3, 0);
+        mid.Controls.Add(_saveButton, 4, 0);
 
         var stack = new TableLayoutPanel
         {
@@ -115,6 +124,7 @@ public sealed class PlayerPanel : Panel
     }
 
     public event Action? MainButton;
+    public event Action? Save;                   // save a copy to disk
     public event Action<double>? Seek;          // target position in seconds
     public event Action<float>? VolumeChanged;  // 0..1
 
@@ -135,6 +145,7 @@ public sealed class PlayerPanel : Panel
         _meta.Text = "";
         _seek.Enabled = false;
         _seek.Value = 0;
+        _saveButton.Enabled = false;
         _time.Text = "–:– / –:–";
     }
 
@@ -168,6 +179,8 @@ public sealed class PlayerPanel : Panel
             PlayerButton.Pause => "⏸",
             _ => ""
         };
+        // "Save a copy" only makes sense once the file is in the cache.
+        _saveButton.Enabled = button is PlayerButton.Play or PlayerButton.Pause;
     }
 
     public void SetDownloadProgress(int percent)

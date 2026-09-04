@@ -334,7 +334,7 @@ public sealed class PlayerPanel : Panel
     }
 
     /// <summary>The track is now loaded in the audio player - enable the seek bar.</summary>
-    public void SetLoaded(TimeSpan duration)
+    public void SetLoaded(TimeSpan duration, int? bitrateKbps = null)
     {
         ShowDownloadBar(false);
         _duration = duration;
@@ -344,9 +344,13 @@ public sealed class PlayerPanel : Panel
         _seek.Value = 0;
         UpdateTime(TimeSpan.Zero);
 
-        // Telegram often gives no duration -> the bit rate stayed blank. Now
-        // that the decoder knows the real length, fill it in.
-        if (string.IsNullOrEmpty(_bitrate.Text) && _sizeBytes > 0 && duration.TotalSeconds > 0)
+        // Prefer the exact rate the decoder read from the file (mp3); otherwise
+        // fall back to file-size ÷ duration once we know the real length.
+        if (bitrateKbps is > 0)
+        {
+            _bitrate.Text = $"{bitrateKbps} kbps";
+        }
+        else if (string.IsNullOrEmpty(_bitrate.Text) && _sizeBytes > 0 && duration.TotalSeconds > 0)
         {
             _bitrate.Text = $"{(int)Math.Round(_sizeBytes * 8 / duration.TotalSeconds / 1000)} kbps";
         }

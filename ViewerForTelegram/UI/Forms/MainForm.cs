@@ -785,7 +785,7 @@ public sealed class MainForm : StyledForm
         {
             bool playing = _audio.State == PlaybackState.Playing;
             _player.ShowTrack(audio, playing ? PlayerButton.Pause : PlayerButton.Play, cached);
-            _player.SetLoaded(_audio.Duration);
+            _player.SetLoaded(_audio.Duration, _audio.BitrateKbps);
             _player.SetPosition(_audio.Position);
         }
         else
@@ -856,7 +856,7 @@ public sealed class MainForm : StyledForm
         BackfillDuration(audio.FileId, _audio.Duration);
         HighlightPlayingRow();
         SaveUiState();   // remember this track for the next launch
-        _player.SetLoaded(_audio.Duration);
+        _player.SetLoaded(_audio.Duration, _audio.BitrateKbps);
         _audio.Play();
         _player.SetButton(PlayerButton.Pause);
         _positionTimer.Start();
@@ -985,7 +985,7 @@ public sealed class MainForm : StyledForm
         _positionTimer.Start();
         if (_selectedFileId == audio.FileId)
         {
-            _player.SetLoaded(_audio.Duration);
+            _player.SetLoaded(_audio.Duration, _audio.BitrateKbps);
             _player.SetButton(PlayerButton.Pause);
         }
         Status($"Playing: {audio.DisplayName}");

@@ -31,6 +31,8 @@ public sealed class AudioPlayer : IAudioPlayer
 
     public TimeSpan Duration => _stream?.TotalTime ?? TimeSpan.Zero;
 
+    public int? BitrateKbps { get; private set; }
+
     public TimeSpan Position
     {
         get => _stream?.CurrentTime ?? TimeSpan.Zero;
@@ -109,10 +111,44 @@ public sealed class AudioPlayer : IAudioPlayer
             }
         }
 
+        BitrateKbps = ReadMp3BitrateKbps(filePath);
+
         _output = new WaveOutEvent();
         _output.PlaybackStopped += OnPlaybackStopped;
         _output.Init(output);
         State = PlaybackState.Stopped;
+    }
+
+    /// <summary>
+    /// The real MP3 audio bit rate from its frame / Xing header (so a file with
+    /// heavy cover art doesn't inflate it the way file-size ÷ duration does).
+    /// <c>null</c> for non-mp3 or if it can't be read.
+    /// </summary>
+    private static int? ReadMp3BitrateKbps(string filePath)
+    {
+        if (!filePath.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var reader = new Mp3FileReader(filePath);
+
+            // VBR file with a Xing/Info/VBRI header -> exact average from its counters.
+            if (reader.XingHeader is { } xing && xing.Bytes > 0 && reader.TotalTime.TotalSeconds > 0)
+            {
+                return (int)Math.Round(xing.Bytes * 8 / reader.TotalTime.TotalSeconds / 1000);
+            }
+
+            // CBR -> the frame-header bit rate is the real one.
+            int bytesPerSec = reader.Mp3WaveFormat.AverageBytesPerSecond;
+            return bytesPerSec > 0 ? (int)Math.Round(bytesPerSec * 8 / 1000d) : null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public void Play()

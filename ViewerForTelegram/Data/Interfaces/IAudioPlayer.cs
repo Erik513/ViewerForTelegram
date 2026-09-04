@@ -20,6 +20,13 @@ public interface IAudioPlayer : IDisposable
     /// <summary>Total length of the loaded file, or <see cref="TimeSpan.Zero"/> if nothing is loaded.</summary>
     TimeSpan Duration { get; }
 
+    /// <summary>
+    /// Encoded bit rate in kbit/s read from the loaded file's own headers when it
+    /// can be determined (currently .mp3), otherwise <c>null</c>. This is the
+    /// real audio rate - unlike file-size ÷ duration, it ignores cover art.
+    /// </summary>
+    int? BitrateKbps { get; }
+
     /// <summary>Current playback position; settable to seek.</summary>
     TimeSpan Position { get; set; }
 

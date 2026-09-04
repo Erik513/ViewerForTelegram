@@ -176,11 +176,10 @@ public class AudioFeedServiceTests
     }
 
     [Fact]
-    public async Task LoadAsync_IncrementalReuse_DoesNotReportBatches()
+    public async Task LoadAsync_IncrementalReuse_SameCount_DoesNotReportBatches()
     {
-        // onBatch is only wired for a fresh fetch - the incremental-reuse path
-        // (previous list reused) already renders instantly from what's kept,
-        // so there is nothing to progressively report.
+        // Nothing new to fetch when the count didn't grow - previous already
+        // covers it, so there is nothing to progressively report.
         var tg = new FakeTelegramSource();
         for (int id = 1; id <= 10; id++)
         {
@@ -196,6 +195,32 @@ public class AudioFeedServiceTests
             previous: first.Select(i => i.Audio).ToList(), onBatch: batches);
 
         Assert.Empty(batches.Batches);
+    }
+
+    [Fact]
+    public async Task LoadAsync_IncrementalReuse_Grown_ReportsTheExtraOlderBatch()
+    {
+        // Growing (e.g. Newest 5 -> Newest 10) fetches the extra older ones -
+        // that fetch must report batches too, not just a fresh (no-previous) load.
+        var tg = new FakeTelegramSource();
+        // Telegram-like: MessageId grows with time (id 10 = newest).
+        for (int id = 1; id <= 10; id++)
+        {
+            tg.Audios.Add(new(1, id, id, "T", "P", null, 10, $"{id}.mp3", DateTime.UtcNow.AddMinutes(-(11 - id))));
+        }
+        using var dir = TempPath.Dir();
+        var svc = new AudioFeedService(tg, new FileMediaCache(dir.Path));
+
+        IReadOnlyList<FeedItem> first = await svc.LoadAsync(1, -5, CancellationToken.None);
+        var batches = new CollectingBatchProgress();
+
+        IReadOnlyList<FeedItem> grown = await svc.LoadAsync(1, -10, CancellationToken.None,
+            previous: first.Select(i => i.Audio).ToList(), onBatch: batches);
+
+        Assert.Equal(10, grown.Count);
+        Assert.NotEmpty(batches.Batches);
+        // only the extra 5 older ones were reported, not the 5 already kept
+        Assert.Equal(5, batches.Batches.SelectMany(b => b).Count());
     }
 
     [Fact]

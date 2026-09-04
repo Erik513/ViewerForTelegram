@@ -611,10 +611,18 @@ public sealed class MainForm : StyledForm
                 : Loc.T("status.loadingCount", n));
         });
 
-        // A large fresh "newest N" pull can take a while - show rows as pages
-        // arrive (every ~500) instead of only once the whole thing is done.
-        var partial = new List<FeedItem>();
-        int nextRenderAt = 500;
+        // A large fresh "newest N" pull (or growing a reused list, e.g. Newest
+        // 1000 -> 5000) can take a while - show rows as pages arrive (every
+        // ~500) instead of only once the whole thing is done. Growing starts
+        // from what's already shown (previous), not from zero.
+        List<FeedItem> partial = null!;
+        int nextRenderAt = 0;
+        void ResetPartial()
+        {
+            partial = previous is null ? new List<FeedItem>() : new List<FeedItem>(_items);
+            nextRenderAt = partial.Count + 500;
+        }
+        ResetPartial();
         var onBatch = new Progress<IReadOnlyList<FeedItem>>(batch =>
         {
             if (seq != _feedSeq || rendering)
@@ -643,8 +651,7 @@ public sealed class MainForm : StyledForm
             {
                 // A retry re-fetches from the start - reset so onBatch doesn't
                 // append the previous, failed attempt's pages on top.
-                partial.Clear();
-                nextRenderAt = 500;
+                ResetPartial();
                 loaded = (await _feed.LoadAsync(chatId, range, token, progress, previous, onBatch)).ToList();
             });
         }

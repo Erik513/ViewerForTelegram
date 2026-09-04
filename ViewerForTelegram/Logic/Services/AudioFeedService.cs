@@ -37,9 +37,12 @@ public sealed class AudioFeedService
     /// </summary>
     /// <param name="onBatch">
     /// Optional: reports newly-fetched <see cref="FeedItem"/>s as soon as each
-    /// page arrives - only for a fresh load (no reusable <paramref name="previous"/>),
-    /// so the caller can show rows for a large "newest N" pull as it grows
-    /// instead of waiting for the whole thing.
+    /// page arrives - for a fresh load (no reusable <paramref name="previous"/>)
+    /// that's every page; when growing a reused <paramref name="previous"/>
+    /// list (e.g. Newest 1000 -&gt; 5000) it's the extra older pages only (the
+    /// caller already shows <paramref name="previous"/>). Either way the caller
+    /// can show rows for a large "newest N" pull as it grows instead of waiting
+    /// for the whole thing.
     /// </param>
     public async Task<IReadOnlyList<FeedItem>> LoadAsync(
         long chatId, int range, CancellationToken ct, IProgress<int>? progress = null,
@@ -50,21 +53,22 @@ public sealed class AudioFeedService
         DateTime sinceUtc = byCount ? DateTime.MinValue : DateTime.UtcNow.AddDays(-range);
         int maxAudios = byCount ? Math.Max(1, -range) : int.MaxValue;
 
+        // Plain adapter, not "new Progress<T>(...)" - the latter captures
+        // SynchronizationContext.Current *here* and would post through it,
+        // double-marshalling on top of onBatch's own (it's already a real
+        // Progress<T> from the caller) - and silently do nothing at all
+        // where there is no context (e.g. a unit test).
+        IProgress<IReadOnlyList<AudioMessage>>? forwardBatch = onBatch is null
+            ? null
+            : new ActionProgress<IReadOnlyList<AudioMessage>>(batch => onBatch.Report(Enrich(batch)));
+
         IReadOnlyList<AudioMessage> audios;
         if (byCount && previous is { Count: > 0 })
         {
-            audios = await LoadIncrementalAsync(chatId, maxAudios, previous, ct, progress);
+            audios = await LoadIncrementalAsync(chatId, maxAudios, previous, ct, progress, forwardBatch);
         }
         else
         {
-            // Plain adapter, not "new Progress<T>(...)" - the latter captures
-            // SynchronizationContext.Current *here* and would post through it,
-            // double-marshalling on top of onBatch's own (it's already a real
-            // Progress<T> from the caller) - and silently do nothing at all
-            // where there is no context (e.g. a unit test).
-            IProgress<IReadOnlyList<AudioMessage>>? forwardBatch = onBatch is null
-                ? null
-                : new ActionProgress<IReadOnlyList<AudioMessage>>(batch => onBatch.Report(Enrich(batch)));
             audios = await _telegram.GetAudioMessagesSinceAsync(
                 chatId, sinceUtc, ct, maxAudios, progress, onBatch: forwardBatch);
         }
@@ -106,7 +110,8 @@ public sealed class AudioFeedService
 
     private async Task<IReadOnlyList<AudioMessage>> LoadIncrementalAsync(
         long chatId, int maxAudios, IReadOnlyList<AudioMessage> previous,
-        CancellationToken ct, IProgress<int>? progress)
+        CancellationToken ct, IProgress<int>? progress,
+        IProgress<IReadOnlyList<AudioMessage>>? onBatch)
     {
         // The count we already have carries over - the progress display must
         // start there, not at zero (the caller asked for e.g. 1000 -> 2000).
@@ -131,7 +136,7 @@ public sealed class AudioFeedService
             IProgress<int>? shifted = progress is null ? null : new ShiftProgress(progress, byId.Count);
             IReadOnlyList<AudioMessage> older = await _telegram.GetAudioMessagesSinceAsync(
                 chatId, DateTime.MinValue, ct, maxAudios - byId.Count, shifted,
-                beforeMessageId: oldestKnownId);
+                beforeMessageId: oldestKnownId, onBatch: onBatch);
             foreach (AudioMessage a in older) byId.TryAdd(a.MessageId, a);
         }
 

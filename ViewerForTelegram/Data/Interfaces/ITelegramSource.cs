@@ -67,4 +67,17 @@ public interface ITelegramSource : IAsyncDisposable
         string targetPath,
         IProgress<int>? progress,
         CancellationToken ct);
+
+    /// <summary>
+    /// Which of <paramref name="messageIds"/> (from <paramref name="chatId"/>)
+    /// no longer exist on Telegram - re-queried explicitly, since a deletion
+    /// that happened while this app wasn't connected is never pushed as an
+    /// update after the fact. A background correctness pass, not part of the
+    /// normal load path: default implementation reports nothing deleted.
+    /// </summary>
+    Task<IReadOnlyList<int>> FindDeletedMessagesAsync(
+        long chatId,
+        IReadOnlyList<int> messageIds,
+        CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<int>>(Array.Empty<int>());
 }

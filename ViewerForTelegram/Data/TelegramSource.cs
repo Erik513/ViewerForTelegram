@@ -301,6 +301,60 @@ public sealed class TelegramSource : ITelegramSource
         return result;
     }
 
+    private const int GetMessagesBatchSize = 100;   // Telegram's own per-call ceiling for this method
+
+    /// <summary>
+    /// Re-queries the given message ids directly (in batches) and reports the
+    /// ones that no longer come back - deleted while this app was not
+    /// connected, so no update event was ever received for them.
+    /// </summary>
+    public async Task<IReadOnlyList<int>> FindDeletedMessagesAsync(
+        long chatId, IReadOnlyList<int> messageIds, CancellationToken ct)
+    {
+        EnsureConnected();
+
+        if (_peers is null || !_peers.TryGetValue(chatId, out InputPeer? peer))
+        {
+            throw new InvalidOperationException(
+                "Chat not known - GetChatsAsync must have run first.");
+        }
+
+        var deleted = new List<int>();
+
+        for (int offset = 0; offset < messageIds.Count; offset += GetMessagesBatchSize)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            int[] batchIds = messageIds.Skip(offset).Take(GetMessagesBatchSize).ToArray();
+            InputMessage[] inputs = Array.ConvertAll(batchIds, id => (InputMessage)new InputMessageID { id = id });
+
+            Messages_MessagesBase result = await _client!.GetMessages(peer, inputs);
+
+            var found = new HashSet<int>();
+            foreach (MessageBase mb in result.Messages)
+            {
+                if (mb is not MessageEmpty)
+                {
+                    found.Add(mb.ID);
+                }
+            }
+
+            foreach (int id in batchIds)
+            {
+                if (!found.Contains(id))
+                {
+                    deleted.Add(id);
+                }
+            }
+        }
+
+        if (deleted.Count > 0)
+        {
+            LogLine($"FindDeletedMessages: chat {chatId}, checked {messageIds.Count} -> {deleted.Count} gone");
+        }
+        return deleted;
+    }
+
     /// <summary>
     /// Turns a message into an <see cref="AudioMessage"/> if it contains an
     /// audio file at all (as "music" with an audio attribute, or as a "file"

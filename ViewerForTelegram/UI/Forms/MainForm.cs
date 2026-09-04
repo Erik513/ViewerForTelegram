@@ -504,6 +504,79 @@ public sealed class MainForm : StyledForm
         if (_groupCombo.SelectedIndex >= 0)
         {
             await LoadFeedAsync();
+
+            // Correction pass, in the background: catches audios deleted from
+            // the chat while this app wasn't connected (no update event for
+            // those ever arrives after the fact). Deliberately only here - on
+            // startup and on Refresh - not on every ordinary range/chat switch,
+            // since re-verifying the whole known list isn't free.
+            if (SelectedChat is { } loadedChat)
+            {
+                _ = CheckForDeletedAsync(loadedChat.Id);
+            }
+        }
+    }
+
+    private long _correctingChatId;   // != 0 while a correction pass (below) is running
+
+    /// <summary>
+    /// Re-verifies every audio known for <paramref name="chatId"/> still exists
+    /// on Telegram, and drops the ones that don't from <see cref="_largestItems"/>
+    /// (persisted cache included) and, if currently shown, <see cref="_items"/>.
+    /// Best-effort: any failure is silently ignored, nothing here is critical.
+    /// </summary>
+    private async Task CheckForDeletedAsync(long chatId)
+    {
+        if (_correctingChatId != 0 || chatId != _largestChatId || _largestItems.Count == 0)
+        {
+            return;
+        }
+
+        _correctingChatId = chatId;
+        try
+        {
+            List<int> ids = _largestItems.Select(i => i.Audio.MessageId).ToList();
+            IReadOnlyList<int> deletedIds;
+            try
+            {
+                deletedIds = await _telegram.FindDeletedMessagesAsync(chatId, ids, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("DeletionCheck", ex.ToString());
+                return;
+            }
+
+            // The user may have switched to a different chat while this ran.
+            if (deletedIds.Count == 0 || chatId != _largestChatId)
+            {
+                return;
+            }
+
+            var deletedSet = new HashSet<int>(deletedIds);
+            _largestItems = _largestItems.Where(i => !deletedSet.Contains(i.Audio.MessageId)).ToList();
+            _largestRange = -_largestItems.Count;
+            _feedCacheStore.Save(new PersistedFeed(
+                chatId, _largestRange, _largestItems.Select(i => i.Audio).ToList()));
+
+            bool visibleChanged = false;
+            for (int idx = _items.Count - 1; idx >= 0; idx--)
+            {
+                if (deletedSet.Contains(_items[idx].Audio.MessageId))
+                {
+                    _byFileId.Remove(_items[idx].Audio.FileId);
+                    _items.RemoveAt(idx);
+                    visibleChanged = true;
+                }
+            }
+            if (visibleChanged)
+            {
+                RenderList();
+            }
+        }
+        finally
+        {
+            _correctingChatId = 0;
         }
     }
 

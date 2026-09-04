@@ -102,6 +102,7 @@ public static class Loc
         // --- toasts / save ---
         ["toast.playFirst"] = "Download failed – play the track first so it is cached.",
         ["toast.downloaded"] = "Downloaded: {0}",
+        ["toast.listUpdated"] = "List updated: {0} files",
         ["save.filter"] = "Audio file|*{0}|All files|*.*",
 
         // --- credentials-incomplete prompt ---
@@ -250,6 +251,7 @@ public static class Loc
 
         ["toast.playFirst"] = "Download fehlgeschlagen – zuerst den Titel abspielen, damit er im Cache liegt.",
         ["toast.downloaded"] = "Heruntergeladen: {0}",
+        ["toast.listUpdated"] = "Liste aktualisiert: {0} Dateien",
         ["save.filter"] = "Audiodatei|*{0}|Alle Dateien|*.*",
 
         ["msg.credsIncomplete.body"] = "api_id, api_hash und Telefonnummer müssen alle ausgefüllt sein.\r\n"

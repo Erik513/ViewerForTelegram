@@ -645,6 +645,7 @@ public sealed class MainForm : StyledForm
         {
             Status(Loc.S("status.refreshing"));
             await RunWithRetryAsync("refresh", ListChatsAndLoadAsync);
+            Toast(Loc.T("toast.listUpdated", _items.Count));
         }
         catch (Exception ex)
         {

@@ -3,6 +3,7 @@ using ErikwnkWFUI;
 using ErikwnkWFUI.Styles;
 using ViewerForTelegram.Data;
 using ViewerForTelegram.Data.Interfaces;
+using ViewerForTelegram.Data.Models;
 using ViewerForTelegram.Logic;
 using ViewerForTelegram.Logic.Services;
 using ViewerForTelegram.UI.Forms;
@@ -27,7 +28,6 @@ static class Program
         CultureInfo.CurrentUICulture = culture;
 
         ApplicationConfiguration.Initialize();
-        UIStyles.Language = UILanguage.English;
 
         // Dark theme with the library's default blue accent (UIColors.Primary).
         // Both are the DLL defaults; applying them explicitly makes the choice
@@ -38,6 +38,14 @@ static class Program
         HookCrashLogging();
 
         IConfigStore configStore = new JsonConfigStore();
+        TelegramConfig startupConfig = configStore.Load();
+
+        // Built-in dialog text follows the saved choice (English by default).
+        // Must be set before any ErikwnkWFUI form is created.
+        UIStyles.Language = startupConfig.Language == DisplayLanguage.German
+            ? UILanguage.German
+            : UILanguage.English;
+
         IMediaCache cache = new FileMediaCache(AppPaths.CacheDir, AppPaths.DurationsFile);
         ITelegramSource telegram = new TelegramSource(configStore, AppPaths.SessionFile);
         IAudioPlayer audio = new AudioPlayer();
@@ -47,7 +55,7 @@ static class Program
         var downloader = new MediaDownloader(telegram, cache, CachePolicy.LimitBytes);
 
         // Cache housekeeping on start: either wipe it or trim it to the limit.
-        if (configStore.Load().ClearCacheOnStart)
+        if (startupConfig.ClearCacheOnStart)
         {
             cache.Clear();
         }

@@ -13,12 +13,24 @@ public class JsonConfigStoreTests
 
         var config = new TelegramConfig(
             12345, "abcdef123456", "+491701234567",
-            ClearCacheOnStart: false, DownloadFolder: @"C:\Music", UseDownloadFolder: true);
+            ClearCacheOnStart: false, DownloadFolder: @"C:\Music", UseDownloadFolder: true,
+            Language: DisplayLanguage.German);
 
         store.Save(config);
         TelegramConfig loaded = store.Load();
 
         Assert.Equal(config, loaded);
+    }
+
+    [Fact]
+    public void Save_WritesLanguageAsName_NotNumber()
+    {
+        using var file = TempPath.File();
+        new JsonConfigStore(file.Path).Save(
+            new TelegramConfig(1, "h", "+1", Language: DisplayLanguage.German));
+
+        string json = File.ReadAllText(file.Path);
+        Assert.Contains("\"German\"", json);
     }
 
     [Fact]
@@ -57,6 +69,7 @@ public class JsonConfigStoreTests
         Assert.True(loaded.ClearCacheOnStart);   // default value
         Assert.False(loaded.UseDownloadFolder);
         Assert.Equal("", loaded.DownloadFolder);
+        Assert.Equal(DisplayLanguage.English, loaded.Language);   // default value
         Assert.True(loaded.IsComplete);
     }
 

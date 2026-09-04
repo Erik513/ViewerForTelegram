@@ -1,6 +1,7 @@
 using ErikwnkWFUI;
 using ErikwnkWFUI.Controls;
 using ErikwnkWFUI.Forms;
+using ErikwnkWFUI.Styles;
 using ViewerForTelegram.Data;
 using ViewerForTelegram.Data.Interfaces;
 using ViewerForTelegram.Data.Models;
@@ -44,6 +45,7 @@ public sealed class SettingsForm : StyledForm
     private readonly PropertyTable _table;
     private readonly ToolTip _toolTip;
 
+    private readonly ComboBox _language;
     private readonly TextBox _apiId;
     private readonly TextBox _apiHash;
     private readonly TextBox _phone;
@@ -97,6 +99,14 @@ public sealed class SettingsForm : StyledForm
         _table = UIStyles.PropertyTables.CreateStandard();
         _table.Dock = DockStyle.Top;
         _table.Padding = new Padding(5);
+
+        _language = UIStyles.ComboBoxes.CreateStandard();
+        _language.DropDownStyle = ComboBoxStyle.DropDownList;
+        _language.TabStop = false;
+        _language.Items.AddRange(new object[] { "English", "Deutsch" });
+        _language.SelectedIndex = current.Language == DisplayLanguage.German ? 1 : 0;
+        _toolTip.SetToolTip(_language,
+            "Language of the library's built-in dialogs. Full effect after a restart.");
 
         _apiId = Field(current.ApiId > 0 ? current.ApiId.ToString() : "");
         _apiHash = Field(current.ApiHash);
@@ -166,6 +176,9 @@ public sealed class SettingsForm : StyledForm
         wipe.Click += (_, _) => Wipe();
 
         // ---- layout ----
+        _table.AddSection("General");
+        _table.AddRow("Language", RowH, UIColumn.Percent(_language, 100));
+
         _table.AddSection("Telegram API");
         AddLockedRow("api_id", _apiId);
         AddLockedRow("api_hash", _apiHash);
@@ -350,6 +363,12 @@ public sealed class SettingsForm : StyledForm
 
         int.TryParse(_apiId.Text.Trim(), out int id);
 
+        DisplayLanguage language =
+            _language.SelectedIndex == 1 ? DisplayLanguage.German : DisplayLanguage.English;
+        // Apply right away for any dialog opened afterwards; the main window
+        // picks it up fully on the next start.
+        UIStyles.Language = language == DisplayLanguage.German ? UILanguage.German : UILanguage.English;
+
         // Store blank while the field still shows the OS Downloads folder, so a
         // later move of that folder keeps being followed.
         string folder = _downloadFolder.Text.Trim();
@@ -364,7 +383,8 @@ public sealed class SettingsForm : StyledForm
             PhoneNumbers.ToPlusForm(_phone.Text),
             _clearCacheOnStart.Checked,
             folder,
-            _useDownloadFolder.Checked);
+            _useDownloadFolder.Checked,
+            language);
     }
 
     /// <summary>

@@ -3,7 +3,8 @@ using System.Text.Json.Serialization;
 namespace ViewerForTelegram.Data.Models;
 
 /// <summary>
-/// The credentials the user enters on first run. Stored as JSON in
+/// Everything the Settings dialog persists: the credentials the user enters on
+/// first run plus a few app preferences. Stored as JSON in
 /// <see cref="AppPaths.ConfigFile"/> - never in the repo.
 ///
 /// Every user obtains api_id / api_hash themselves on my.telegram.org
@@ -25,13 +26,19 @@ namespace ViewerForTelegram.Data.Models;
 /// true: downloads go to <see cref="DownloadFolder"/> without asking.
 /// false: pick the folder on every download.
 /// </param>
+/// <param name="Language">
+/// UI language for the library's built-in dialog text. English by default;
+/// a change takes full effect on the next start.
+/// </param>
 public sealed record TelegramConfig(
     int ApiId,
     string ApiHash,
     string PhoneNumber,
     bool ClearCacheOnStart = true,
     string DownloadFolder = "",
-    bool UseDownloadFolder = false)
+    bool UseDownloadFolder = false,
+    [property: JsonConverter(typeof(JsonStringEnumConverter))]
+    DisplayLanguage Language = DisplayLanguage.English)
 {
     /// <summary>Empty state for "nothing entered yet".</summary>
     public static TelegramConfig Empty { get; } = new(0, "", "");

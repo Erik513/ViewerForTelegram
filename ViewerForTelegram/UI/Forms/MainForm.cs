@@ -1126,6 +1126,11 @@ public sealed class MainForm : StyledForm
             TelegramConfig after = dlg.Result;
             _configStore.Save(after);
 
+            if (after.Language != before.Language)
+            {
+                Status("Language fully applies after a restart.");
+            }
+
             if (dlg.Action == SettingsAction.Logout)
             {
                 await LogoutAsync(wipeConfig: false);

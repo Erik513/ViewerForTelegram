@@ -32,12 +32,13 @@ public class TelegramConfigTests
     }
 
     [Fact]
-    public void Defaults_ClearCacheOn_NoFolder()
+    public void Defaults_ClearCacheOn_NoFolder_EnglishUi()
     {
         var c = new TelegramConfig(1, "h", "+1");
         Assert.True(c.ClearCacheOnStart);
         Assert.False(c.UseDownloadFolder);
         Assert.Equal("", c.DownloadFolder);
+        Assert.Equal(DisplayLanguage.English, c.Language);
     }
 
     [Fact]

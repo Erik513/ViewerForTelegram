@@ -366,6 +366,7 @@ public sealed class MainForm : StyledForm
                 _byFileId[item.Audio.FileId] = item.Audio;
             }
             RenderList();
+            Toast(Loc.T("toast.listUpdated", _items.Count));
         }
 
         PushCacheInfo();
@@ -504,6 +505,7 @@ public sealed class MainForm : StyledForm
         if (_groupCombo.SelectedIndex >= 0)
         {
             await LoadFeedAsync();
+            Toast(Loc.T("toast.listUpdated", _items.Count));
 
             // Correction pass, in the background: catches audios deleted from
             // the chat while this app wasn't connected (no update event for
@@ -636,11 +638,7 @@ public sealed class MainForm : StyledForm
         }
         if (!_connected)
         {
-            await ConnectAsync();
-            if (_connected)
-            {
-                Toast(Loc.T("toast.listUpdated", _items.Count));
-            }
+            await ConnectAsync();   // toasts internally (via ListChatsAndLoadAsync) on success
             return;
         }
 
@@ -648,8 +646,7 @@ public sealed class MainForm : StyledForm
         try
         {
             Status(Loc.S("status.refreshing"));
-            await RunWithRetryAsync("refresh", ListChatsAndLoadAsync);
-            Toast(Loc.T("toast.listUpdated", _items.Count));
+            await RunWithRetryAsync("refresh", ListChatsAndLoadAsync);   // toasts internally too
         }
         catch (Exception ex)
         {

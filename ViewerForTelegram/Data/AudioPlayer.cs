@@ -10,12 +10,13 @@ namespace ViewerForTelegram.Data;
 /// <summary>
 /// <see cref="IAudioPlayer"/> on top of NAudio. .flac goes through
 /// <see cref="FlacReader"/> (Media Foundation's FLAC source reports no
-/// duration); everything else is tried with <see cref="AudioFileReader"/> first
-/// (native PCM / IEEE-float .wav and .mp3) and falls back to
-/// <see cref="MediaFoundationReader"/> for anything it cannot open - notably
-/// WAVE_FORMAT_EXTENSIBLE .wav files and m4a / aac / wma. ogg/opus are not
-/// covered and surface as a load error. Output goes through one
-/// <see cref="WaveOutEvent"/>.
+/// duration); .aiff/.aif go through NAudio's own <see cref="AiffFileReader"/>
+/// (Media Foundation has no AIFF source reader at all); everything else is
+/// tried with <see cref="AudioFileReader"/> first (native PCM / IEEE-float
+/// .wav and .mp3) and falls back to <see cref="MediaFoundationReader"/> for
+/// anything it cannot open - notably WAVE_FORMAT_EXTENSIBLE .wav files and
+/// m4a / aac / wma. ogg/opus are not covered and surface as a load error.
+/// Output goes through one <see cref="WaveOutEvent"/>.
 /// </summary>
 public sealed class AudioPlayer : IAudioPlayer
 {
@@ -81,6 +82,17 @@ public sealed class AudioPlayer : IAudioPlayer
         if (filePath.EndsWith(".flac", StringComparison.OrdinalIgnoreCase))
         {
             output = OpenFlac(filePath);
+        }
+        else if (filePath.EndsWith(".aiff", StringComparison.OrdinalIgnoreCase)
+                 || filePath.EndsWith(".aif", StringComparison.OrdinalIgnoreCase))
+        {
+            // Media Foundation has no AIFF source reader at all ("stream type
+            // not supported", 0xC00D36C4) - AudioFileReader's fallback to it
+            // fails the same way. NAudio ships its own AiffFileReader though.
+            var aiff = new AiffFileReader(filePath);
+            _stream = aiff;
+            _sampleChannel = new SampleChannel(aiff, forceStereo: false) { Volume = _volume };
+            output = _sampleChannel;
         }
         else
         {

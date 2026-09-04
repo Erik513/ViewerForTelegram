@@ -33,6 +33,7 @@ public sealed class MainForm : StyledForm
     private readonly MediaDownloader _downloader;
     private readonly IAudioPlayer _audio;
     private readonly JsonUiStateStore _uiStateStore;
+    private readonly JsonFeedCacheStore _feedCacheStore;
 
     private readonly ComboBox _groupCombo;
     private readonly ComboBox _rangeCombo;
@@ -77,7 +78,8 @@ public sealed class MainForm : StyledForm
         AudioFeedService feed,
         MediaDownloader downloader,
         IAudioPlayer audio,
-        JsonUiStateStore uiStateStore)
+        JsonUiStateStore uiStateStore,
+        JsonFeedCacheStore feedCacheStore)
         : base(StyledFormOptions.CreateStandard("Viewer for Telegram"))
     {
         _telegram = telegram;
@@ -87,6 +89,7 @@ public sealed class MainForm : StyledForm
         _downloader = downloader;
         _audio = audio;
         _uiStateStore = uiStateStore;
+        _feedCacheStore = feedCacheStore;
 
         MinimumSize = new Size(820, 520);
         Size = new Size(1040, 720);
@@ -341,6 +344,24 @@ public sealed class MainForm : StyledForm
         _player.Volume = Math.Clamp(state.VolumePercent, 0, 100) / 100f;
         _audio.Volume = _player.Volume;
         _lastTrackId = state.LastPlayedFileId;   // select + tint this row once the feed loads
+
+        // Show the last session's list immediately - before even connecting -
+        // instead of a blank grid while a fresh "Newest N" is re-fetched from
+        // scratch. LoadFeedAsync's own incremental reuse then only tops it up
+        // (count mode) or does a normal fresh fetch that replaces it (day mode).
+        PersistedFeed? persisted = _feedCacheStore.Load();
+        if (persisted is { Audios.Count: > 0 } && persisted.ChatId == state.LastChatId)
+        {
+            _items = _feed.Restore(persisted.Audios).ToList();
+            _loadedChatId = persisted.ChatId;
+            _loadedRange = persisted.Range;
+            _byFileId.Clear();
+            foreach (FeedItem item in _items)
+            {
+                _byFileId[item.Audio.FileId] = item.Audio;
+            }
+            RenderList();
+        }
 
         PushCacheInfo();
 
@@ -688,6 +709,10 @@ public sealed class MainForm : StyledForm
 
         RenderList(afterLoad: true);
         EndFeedLoading();
+
+        // So a restart can show this list instantly and only fetch what's
+        // changed, instead of re-pulling e.g. "Newest 5000" from scratch.
+        _feedCacheStore.Save(new PersistedFeed(chatId, range, _items.Select(i => i.Audio).ToList()));
     }
 
     /// <summary>Add a column: pass <paramref name="fill"/> for a stretchy column, or <paramref name="width"/> for a fixed one.</summary>
@@ -1311,6 +1336,7 @@ public sealed class MainForm : StyledForm
         if (wipeConfig)
         {
             TryDelete(AppPaths.ConfigFile);
+            TryDelete(AppPaths.FeedCacheFile);
         }
 
         _connected = false;

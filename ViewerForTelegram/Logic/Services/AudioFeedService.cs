@@ -87,6 +87,15 @@ public sealed class AudioFeedService
     }
 
     /// <summary>
+    /// Turns a previously-persisted audio list back into displayable
+    /// <see cref="FeedItem"/>s - no network call, just the same duration/cache
+    /// enrichment <see cref="LoadAsync"/> does. Lets the caller show the last
+    /// session's list immediately on startup, before the real (and - thanks to
+    /// incremental reuse - much cheaper) catch-up fetch runs.
+    /// </summary>
+    public IReadOnlyList<FeedItem> Restore(IReadOnlyList<AudioMessage> audios) => Enrich(audios);
+
+    /// <summary>
     /// Fills in a missing <see cref="AudioMessage.Duration"/> from a length the
     /// cache decoded on an earlier playback, and joins the cached-on-disk flag.
     /// </summary>

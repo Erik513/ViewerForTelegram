@@ -239,4 +239,24 @@ public class AudioFeedServiceTests
         Assert.Single(items);
         Assert.Equal(1, items[0].Audio.FileId);
     }
+
+    [Fact]
+    public void Restore_NoNetworkCall_EnrichesFromCacheJustLikeLoadAsync()
+    {
+        var tg = new FakeTelegramSource();
+        AudioMessage noDuration = Audio(1, DateTime.UtcNow, size: 100);   // Duration == null
+
+        using var dir = TempPath.Dir();
+        var cache = new FileMediaCache(dir.Path);
+        cache.RememberDuration(noDuration, TimeSpan.FromSeconds(90));
+        File.WriteAllBytes(cache.GetPath(noDuration), new byte[100]);   // makes it "cached"
+        var svc = new AudioFeedService(tg, cache);
+
+        IReadOnlyList<FeedItem> restored = svc.Restore(new List<AudioMessage> { noDuration });
+
+        Assert.Equal(0, tg.SinceCalls);
+        Assert.Equal(0, tg.AfterCalls);
+        Assert.Equal(TimeSpan.FromSeconds(90), restored.Single().Audio.Duration);
+        Assert.True(restored.Single().Cached);
+    }
 }

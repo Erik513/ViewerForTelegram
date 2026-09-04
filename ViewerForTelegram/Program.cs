@@ -51,6 +51,7 @@ static class Program
         ITelegramSource telegram = new TelegramSource(configStore, AppPaths.SessionFile);
         IAudioPlayer audio = new AudioPlayer();
         var uiState = new JsonUiStateStore();
+        var feedCache = new JsonFeedCacheStore();
 
         var feed = new AudioFeedService(telegram, cache);
         var downloader = new MediaDownloader(telegram, cache, CachePolicy.LimitBytes);
@@ -68,7 +69,7 @@ static class Program
         try
         {
             Application.Run(new MainForm(
-                telegram, configStore, cache, feed, downloader, audio, uiState));
+                telegram, configStore, cache, feed, downloader, audio, uiState, feedCache));
         }
         finally
         {

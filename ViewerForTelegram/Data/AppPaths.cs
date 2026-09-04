@@ -32,6 +32,13 @@ public static class AppPaths
     /// <summary>Remembered UI preferences (open chat, time range, volume).</summary>
     public static string UiStateFile { get; }
 
+    /// <summary>
+    /// The last successfully loaded audio list (see <c>PersistedFeed</c>) - lets
+    /// a restart show it instantly and fetch only what changed, instead of
+    /// re-pulling e.g. "Newest 5000" from scratch.
+    /// </summary>
+    public static string FeedCacheFile { get; }
+
     /// <summary>Folder for the throwaway playback cache.</summary>
     public static string CacheDir { get; }
 
@@ -59,6 +66,7 @@ public static class AppPaths
         ConfigFile = Path.Combine(Root, "appsettings.local.json");
         SessionFile = Path.Combine(Root, "telegram.session");
         UiStateFile = Path.Combine(Root, "ui-state.json");
+        FeedCacheFile = Path.Combine(Root, "feed-cache.json");
         CacheDir = Path.Combine(Root, "cache");
         DurationsFile = Path.Combine(Root, "durations.json");
 

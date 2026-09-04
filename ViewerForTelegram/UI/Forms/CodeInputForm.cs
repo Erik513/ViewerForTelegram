@@ -1,5 +1,6 @@
 using ErikwnkWFUI;
 using ErikwnkWFUI.Forms;
+using ViewerForTelegram.UI.Localization;
 
 namespace ViewerForTelegram.UI.Forms;
 
@@ -16,19 +17,18 @@ public sealed class CodeInputForm : StyledForm
     public string? Code { get; private set; }
 
     public CodeInputForm()
-        : base(StyledFormOptions.CreateDialog("Telegram code"))
+        : base(StyledFormOptions.CreateDialog(Loc.S("code.title")))
     {
         Size = new Size(380, 230);
         StartPosition = FormStartPosition.CenterScreen;
 
-        Label label = UIStyles.Labels.CreateNormal(
-            "Telegram sent you a login code\r\n(in the app or by SMS). Please enter it:");
+        Label label = UIStyles.Labels.CreateNormal(Loc.S("code.prompt"));
         label.SetBounds(24, 16, 320, 48);
 
         _codeBox = UIStyles.TextBoxes.CreateStandard("", "12345");
         _codeBox.SetBounds(24, 74, 320, 30);
 
-        Button okButton = UIStyles.Buttons.CreatePrimary("Confirm");
+        Button okButton = UIStyles.Buttons.CreatePrimary(Loc.S("code.confirm"));
         okButton.SetBounds(24, 122, 320, 42);
         okButton.Click += (_, _) =>
         {

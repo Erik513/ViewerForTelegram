@@ -6,6 +6,7 @@ using ViewerForTelegram.Data.Models;
 using ViewerForTelegram.Logic;
 using ViewerForTelegram.Logic.Services;
 using ViewerForTelegram.UI.Controls;
+using ViewerForTelegram.UI.Localization;
 using StyledGrid = ErikwnkWFUI.Controls.DataGridView;
 using StyledMessageBox = ErikwnkWFUI.Forms.MessageBox;
 using MessageBoxButtons = ErikwnkWFUI.Forms.MessageBoxButtons;
@@ -36,6 +37,8 @@ public sealed class MainForm : StyledForm
     private readonly ComboBox _rangeCombo;
     private readonly TextBox _searchBox;
     private readonly Label _cacheLabel;
+    private readonly Button _settingsButton;
+    private readonly Button _refreshButton;
     private readonly StyledGrid _list;
     private readonly PlayerPanel _player;
     private readonly ToolTip _toolTip = new() { AutoPopDelay = 12000, InitialDelay = 400 };
@@ -96,11 +99,11 @@ public sealed class MainForm : StyledForm
         _filterDebounce.Tick += (_, _) => { _filterDebounce.Stop(); RenderList(); };
 
         // ---- top bar ----
-        var settingsButton = UIStyles.Buttons.CreatePrimary("", "Settings", new Size(30, 30));
-        settingsButton.Anchor = AnchorStyles.None;   // square, centred in its cell, no clipping
-        settingsButton.Paint += (s, e) => GlyphIcons.DrawGear(
+        _settingsButton = UIStyles.Buttons.CreatePrimary("", Loc.S("top.settings.tip"), new Size(30, 30));
+        _settingsButton.Anchor = AnchorStyles.None;   // square, centred in its cell, no clipping
+        _settingsButton.Paint += (s, e) => GlyphIcons.DrawGear(
             e.Graphics, ((Control)s!).ClientRectangle, ((Control)s).ForeColor);
-        settingsButton.Click += async (_, _) => await OpenSettingsAsync(isStartup: false);
+        _settingsButton.Click += async (_, _) => await OpenSettingsAsync(isStartup: false);
 
         _groupCombo = UIStyles.ComboBoxes.CreateStandard();
         _groupCombo.Anchor = AnchorStyles.Left | AnchorStyles.Right;
@@ -108,24 +111,18 @@ public sealed class MainForm : StyledForm
 
         _rangeCombo = UIStyles.ComboBoxes.CreateStandard();
         _rangeCombo.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-        _rangeCombo.Items.AddRange(new object[]
-        {
-            "Last 3 days", "Last 7 days", "Last 14 days", "Last 30 days", "Last 60 days",
-            "Newest 50 audios", "Newest 100 audios", "Newest 200 audios", "Newest 500 audios",
-            "Newest 1000 audios", "Newest 2000 audios", "Newest 3000 audios"
-        });
         _rangeCombo.SelectedIndexChanged += (_, _) => OnFilterChanged();
 
-        var refreshButton = UIStyles.Buttons.CreatePrimary("", "Reload chats and list", new Size(30, 30));
-        refreshButton.Anchor = AnchorStyles.None;
-        refreshButton.Paint += (s, e) => GlyphIcons.DrawRefresh(
+        _refreshButton = UIStyles.Buttons.CreatePrimary("", Loc.S("top.refresh.tip"), new Size(30, 30));
+        _refreshButton.Anchor = AnchorStyles.None;
+        _refreshButton.Paint += (s, e) => GlyphIcons.DrawRefresh(
             e.Graphics, ((Control)s!).ClientRectangle, ((Control)s).ForeColor);
-        refreshButton.Click += async (_, _) => await RefreshAsync();
+        _refreshButton.Click += async (_, _) => await RefreshAsync();
 
         // No factory placeholder - that variant writes the placeholder string
         // into .Text, which would then be read as a filter. Use the native one.
         _searchBox = UIStyles.TextBoxes.CreateStandard();
-        _searchBox.PlaceholderText = "Filter …";
+        _searchBox.PlaceholderText = Loc.S("top.filter.placeholder");
         _searchBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _searchBox.TextChanged += (_, _) => { _filterDebounce.Stop(); _filterDebounce.Start(); };
 
@@ -133,7 +130,7 @@ public sealed class MainForm : StyledForm
         // and ignores ForeColor, so the "cache full" red would never show.
         _cacheLabel = new Label
         {
-            Text = "Cache: –",
+            Text = Loc.S("cache.initial"),
             AutoSize = false,
             AutoEllipsis = false,
             Dock = DockStyle.Fill,
@@ -158,10 +155,10 @@ public sealed class MainForm : StyledForm
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40));
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 54));
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200));
-        topRow.Controls.Add(settingsButton, 0, 0);
+        topRow.Controls.Add(_settingsButton, 0, 0);
         topRow.Controls.Add(_groupCombo, 1, 0);
         topRow.Controls.Add(_rangeCombo, 2, 0);
-        topRow.Controls.Add(refreshButton, 3, 0);
+        topRow.Controls.Add(_refreshButton, 3, 0);
         topRow.Controls.Add(_searchBox, 4, 0);
         topRow.Controls.Add(_cacheLabel, 5, 0);
 
@@ -181,11 +178,11 @@ public sealed class MainForm : StyledForm
             ScrollBars = ScrollBars.Vertical,   // no horizontal scrollbar, ever
         };
         _list.RowTemplate.Height = 26;
-        AddColumn("Date", width: 84);
-        AddColumn("Title", fill: 62);
-        AddColumn("Artist", fill: 38);
-        AddColumn("Length", width: 64);
-        AddColumn("Size", width: 90, alignRight: true);
+        AddColumn(Loc.S("col.date"), width: 84);
+        AddColumn(Loc.S("col.title"), fill: 62);
+        AddColumn(Loc.S("col.artist"), fill: 38);
+        AddColumn(Loc.S("col.length"), width: 64);
+        AddColumn(Loc.S("col.size"), width: 90, alignRight: true);
         // The list only shows info. The player's one button does the work:
         // download / cancel / play / pause on the selected row.
         // ShowCellToolTips (WinForms default) shows a tooltip only for a cell
@@ -228,7 +225,7 @@ public sealed class MainForm : StyledForm
             _currentFileId = null;
             HighlightPlayingRow();
             ShowSelected();
-            Status("Playback failed: " + ex.Message);
+            Status(Loc.T("status.playbackFailed", ex.Message));
         };
 
         // A 3-row grid so nothing can overlap regardless of window size.
@@ -252,6 +249,9 @@ public sealed class MainForm : StyledForm
 
         ContentPanel.Controls.Add(root);
 
+        ApplyTexts();   // also fills the range combo
+        Loc.Changed += OnLanguageChanged;
+
         Shown += async (_, _) =>
         {
             if (_started)
@@ -263,6 +263,7 @@ public sealed class MainForm : StyledForm
         };
         FormClosing += (_, _) =>
         {
+            Loc.Changed -= OnLanguageChanged;
             _playCts?.Cancel();
             _feedCts?.Cancel();
             _positionTimer.Stop();
@@ -271,6 +272,56 @@ public sealed class MainForm : StyledForm
             _audio.Stop();
             SaveUiState();
         };
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e) => ApplyTexts();
+
+    /// <summary>(Re-)applies every visible string from <see cref="Loc"/>.</summary>
+    private void ApplyTexts()
+    {
+        FormTitle = Loc.S("app.title");
+        UIStyles.Buttons.UpdateTooltip(_settingsButton, Loc.S("top.settings.tip"));
+        UIStyles.Buttons.UpdateTooltip(_refreshButton, Loc.S("top.refresh.tip"));
+        _searchBox.PlaceholderText = Loc.S("top.filter.placeholder");
+
+        _list.Columns[0].HeaderText = Loc.S("col.date");
+        _list.Columns[1].HeaderText = Loc.S("col.title");
+        _list.Columns[2].HeaderText = Loc.S("col.artist");
+        _list.Columns[3].HeaderText = Loc.S("col.length");
+        _list.Columns[4].HeaderText = Loc.S("col.size");
+
+        _suppressComboEvents = true;
+
+        int rangeSel = _rangeCombo.SelectedIndex;
+        _rangeCombo.Items.Clear();
+        foreach (int d in RangeDayOptions)
+        {
+            _rangeCombo.Items.Add(d > 0 ? Loc.T("range.days", d) : Loc.T("range.newest", -d));
+        }
+        if (rangeSel >= 0 && rangeSel < _rangeCombo.Items.Count)
+        {
+            _rangeCombo.SelectedIndex = rangeSel;
+        }
+
+        int groupSel = _groupCombo.SelectedIndex;
+        _groupCombo.Items.Clear();
+        foreach (TelegramChat chat in _chats)
+        {
+            _groupCombo.Items.Add(new ChatChoice(chat));
+        }
+        if (groupSel >= 0 && groupSel < _groupCombo.Items.Count)
+        {
+            _groupCombo.SelectedIndex = groupSel;
+        }
+
+        _suppressComboEvents = false;
+
+        _player.ApplyTexts();
+        PushCacheInfo();
+        if (_items.Count > 0 || _connected)
+        {
+            RenderList();   // refresh the "{n} audios" status line
+        }
     }
 
     // ---------- startup / connect ----------
@@ -310,13 +361,13 @@ public sealed class MainForm : StyledForm
         _connecting = true;
         try
         {
-            await RunWithRetryAsync("Connecting", ConnectAndListChatsAsync);
+            await RunWithRetryAsync("connecting", ConnectAndListChatsAsync);
             _connected = true;
         }
         catch (Exception ex)
         {
             _connected = false;
-            Status(DescribeFailure("Sign-in", ex));
+            Status(DescribeFailure("signin", ex));
         }
         finally
         {
@@ -343,7 +394,7 @@ public sealed class MainForm : StyledForm
             catch (Exception ex) when (attempt < NetworkRetries && IsTransient(ex))
             {
                 AppLog.Error(what, $"attempt {attempt}/{NetworkRetries}: {ex.GetType().Name}: {ex.Message}");
-                Status($"{what} failed, retrying ({attempt}/{NetworkRetries}) …");
+                Status(Loc.T("status.retry", Loc.S("op." + what), attempt, NetworkRetries));
                 await Task.Delay(TimeSpan.FromSeconds(2 * attempt));
             }
         }
@@ -376,23 +427,23 @@ public sealed class MainForm : StyledForm
         AppLog.Error(what, ex.ToString());
         if (IsRateLimit(ex, out int seconds))
         {
-            return $"Telegram rate limit – wait {seconds}s, then Settings › Sign in.";
+            return Loc.T("status.rateLimit", seconds);
         }
         if (ex is NotSupportedException)
         {
             return ex.Message;
         }
-        return $"{what} failed ({ex.Message}). Settings › Sign in to retry.";
+        return Loc.T("status.opFailed", Loc.S("op." + what), ex.Message);
     }
 
     private async Task ConnectAndListChatsAsync()
     {
         if (!_configStore.Load().IsComplete)
         {
-            throw new InvalidOperationException("Credentials are missing.");
+            throw new InvalidOperationException(Loc.S("err.credentialsMissing"));
         }
 
-        Status("Connecting …");
+        Status(Loc.S("status.connecting"));
         await _telegram.ConnectAsync(AskForCodeAsync, CancellationToken.None);
         await ListChatsAndLoadAsync();
     }
@@ -419,7 +470,7 @@ public sealed class MainForm : StyledForm
         _groupCombo.SelectedIndex = idx >= 0 ? idx : (_chats.Count > 0 ? 0 : -1);
         _suppressComboEvents = false;
 
-        Status($"Signed in – {_chats.Count} groups/channels.");
+        Status(Loc.T("status.signedIn", _chats.Count));
 
         if (_groupCombo.SelectedIndex >= 0)
         {
@@ -443,13 +494,13 @@ public sealed class MainForm : StyledForm
         _connecting = true;
         try
         {
-            Status("Refreshing …");
-            await RunWithRetryAsync("Refresh", ListChatsAndLoadAsync);
+            Status(Loc.S("status.refreshing"));
+            await RunWithRetryAsync("refresh", ListChatsAndLoadAsync);
         }
         catch (Exception ex)
         {
             _connected = false;
-            Status(DescribeFailure("Refresh", ex));
+            Status(DescribeFailure("refresh", ex));
         }
         finally
         {
@@ -468,13 +519,13 @@ public sealed class MainForm : StyledForm
                 {
                     return form.Code!;
                 }
-                throw new OperationCanceledException("No login code entered.");
+                throw new OperationCanceledException(Loc.S("err.noCode"));
             });
             return Task.FromResult(code);
         }
         catch (Exception ex) when (ex is ObjectDisposedException or InvalidOperationException)
         {
-            throw new OperationCanceledException("Sign-in cancelled.");
+            throw new OperationCanceledException(Loc.S("err.signinCancelled"));
         }
     }
 
@@ -520,7 +571,7 @@ public sealed class MainForm : StyledForm
                 ? _items.Select(i => i.Audio).ToList()
                 : null;
 
-        Status(previous is null ? "Loading …" : "Checking for new audios …");
+        Status(previous is null ? Loc.S("status.loading") : Loc.S("status.checkingNew"));
 
         // Count mode has a fixed goal ("newest N"); a day window does not.
         int target = range < 0 ? -range : 0;
@@ -535,14 +586,14 @@ public sealed class MainForm : StyledForm
                 return;
             }
             Status(target > 0
-                ? $"Loading … {Math.Min(n, target)} / {target} audios"
-                : $"Loading … {n} audios");
+                ? Loc.T("status.loadingProgress", Math.Min(n, target), target)
+                : Loc.T("status.loadingCount", n));
         });
 
         List<FeedItem>? loaded = null;
         try
         {
-            await RunWithRetryAsync("Loading", async () =>
+            await RunWithRetryAsync("loading", async () =>
                 loaded = (await _feed.LoadAsync(chatId, range, token, progress, previous)).ToList());
         }
         catch (OperationCanceledException)
@@ -553,7 +604,7 @@ public sealed class MainForm : StyledForm
         {
             if (seq == _feedSeq)
             {
-                Status(DescribeFailure("Loading", ex));
+                Status(DescribeFailure("loading", ex));
             }
             return;
         }
@@ -725,15 +776,15 @@ public sealed class MainForm : StyledForm
 
         if (_items.Count == 0)
         {
-            Status(_connected ? "No audio in this time range." : "Not signed in – open Settings.");
+            Status(_connected ? Loc.S("status.noAudioRange") : Loc.S("status.notSignedIn"));
         }
         else if (query.Length == 0)
         {
-            Status(afterLoad ? $"Loading … finished, {_items.Count} audios" : $"{_items.Count} audios");
+            Status(afterLoad ? Loc.T("status.loadingFinished", _items.Count) : Loc.T("status.count", _items.Count));
         }
         else
         {
-            Status($"{filtered.Count} of {_items.Count} audios");
+            Status(Loc.T("status.filtered", filtered.Count, _items.Count));
         }
     }
 
@@ -877,7 +928,7 @@ public sealed class MainForm : StyledForm
         }
         catch (Exception ex)
         {
-            Status($"Cannot play {Path.GetExtension(audio.FileName)}: {ex.Message}");
+            Status(Loc.T("status.cannotPlay", Path.GetExtension(audio.FileName), ex.Message));
             return;
         }
 
@@ -890,7 +941,7 @@ public sealed class MainForm : StyledForm
         _audio.Play();
         _player.SetButton(PlayerButton.Pause);
         _positionTimer.Start();
-        Status($"Playing: {audio.DisplayName}");
+        Status(Loc.T("status.playing", audio.DisplayName));
     }
 
     /// <summary>
@@ -945,7 +996,7 @@ public sealed class MainForm : StyledForm
         {
             _player.SetDownloadProgress(0);
         }
-        Status($"Loading: {audio.DisplayName}");
+        Status(Loc.T("status.loadingFile", audio.DisplayName));
 
         var progress = new Progress<int>(p =>
         {
@@ -970,7 +1021,7 @@ public sealed class MainForm : StyledForm
             if (seq == _playSeq)
             {
                 _pendingFileId = 0;
-                Status("Cancelled.");
+                Status(Loc.S("status.cancelled"));
                 ShowSelected();
             }
             return;
@@ -980,7 +1031,7 @@ public sealed class MainForm : StyledForm
             if (seq == _playSeq)
             {
                 _pendingFileId = 0;
-                Status("Download failed: " + ex.Message);
+                Status(Loc.T("status.downloadFailed", ex.Message));
                 ShowSelected();
             }
             return;
@@ -1001,7 +1052,7 @@ public sealed class MainForm : StyledForm
         }
         catch (Exception ex)
         {
-            Status($"Cannot play {Path.GetExtension(audio.FileName)} – open it elsewhere via \"Save a copy\". ({ex.Message})");
+            Status(Loc.T("status.cannotPlayElsewhere", Path.GetExtension(audio.FileName), ex.Message));
             ShowSelected();
             return;
         }
@@ -1018,7 +1069,7 @@ public sealed class MainForm : StyledForm
             _player.SetLoaded(_audio.Duration, _audio.BitrateKbps);
             _player.SetButton(PlayerButton.Pause);
         }
-        Status($"Playing: {audio.DisplayName}");
+        Status(Loc.T("status.playing", audio.DisplayName));
     }
 
     private void OnVolumeChanged(float v)
@@ -1040,7 +1091,7 @@ public sealed class MainForm : StyledForm
         }
         catch (Exception ex)
         {
-            Status("Cannot open folder: " + ex.Message);
+            Status(Loc.T("status.cannotOpenFolder", ex.Message));
         }
     }
 
@@ -1060,7 +1111,7 @@ public sealed class MainForm : StyledForm
         }
         if (!_cache.Contains(audio))
         {
-            Toast("Download failed – play the track first so it is cached.");
+            Toast(Loc.S("toast.playFirst"));
             return;
         }
 
@@ -1073,7 +1124,7 @@ public sealed class MainForm : StyledForm
             if (cfg.UseDownloadFolder && Directory.Exists(cfg.EffectiveDownloadFolder))
             {
                 File.Copy(source, Path.Combine(cfg.EffectiveDownloadFolder, name), overwrite: true);
-                Toast($"Downloaded: {name}");
+                Toast(Loc.T("toast.downloaded", name));
                 return;
             }
 
@@ -1088,14 +1139,14 @@ public sealed class MainForm : StyledForm
             if (dlg.ShowDialog(this) == DialogResult.OK)
             {
                 File.Copy(source, dlg.FileName, overwrite: true);
-                Toast($"Downloaded: {Path.GetFileName(dlg.FileName)}");
+                Toast(Loc.T("toast.downloaded", Path.GetFileName(dlg.FileName)));
             }
             // dialog cancelled -> nothing happened, no toast
         }
         catch (Exception ex)
         {
             AppLog.Error("Download", $"{name}: {ex.Message}");
-            Toast($"Download failed: {ex.Message}");
+            Toast(Loc.T("status.downloadFailed", ex.Message));
         }
     }
 
@@ -1126,11 +1177,6 @@ public sealed class MainForm : StyledForm
             TelegramConfig after = dlg.Result;
             _configStore.Save(after);
 
-            if (after.Language != before.Language)
-            {
-                Status("Language fully applies after a restart.");
-            }
-
             if (dlg.Action == SettingsAction.Logout)
             {
                 await LogoutAsync(wipeConfig: false);
@@ -1149,16 +1195,15 @@ public sealed class MainForm : StyledForm
             if (wantsConnect && !after.IsComplete)
             {
                 DialogResult r = StyledMessageBox.Show(
-                    "api_id, api_hash and phone number must all be filled in.\r\n" +
-                    "Enter them again?",
-                    "Credentials incomplete",
+                    Loc.S("msg.credsIncomplete.body"),
+                    Loc.S("msg.credsIncomplete.title"),
                     MessageBoxButtons.YesNo, MessageBoxIcon.Warning, this);
 
                 if (r == DialogResult.Yes)
                 {
                     continue;
                 }
-                Status("Not signed in – open Settings.");
+                Status(Loc.S("status.notSignedIn"));
                 return;
             }
 
@@ -1177,7 +1222,7 @@ public sealed class MainForm : StyledForm
             }
             else if (!_connected)
             {
-                Status("Not signed in – open Settings.");
+                Status(Loc.S("status.notSignedIn"));
             }
             return;
         }
@@ -1213,7 +1258,7 @@ public sealed class MainForm : StyledForm
         _suppressListEvents = false;
         _selectedFileId = null;
         _player.SetIdle();
-        Status(wipeConfig ? "Credentials deleted." : "Signed out.");
+        Status(wipeConfig ? Loc.S("status.credentialsDeleted") : Loc.S("status.signedOut"));
     }
 
     // ---------- helpers ----------
@@ -1228,13 +1273,11 @@ public sealed class MainForm : StyledForm
             ? $"{bytes / 1024d / 1024d / 1024d:0.0} GB"
             : $"{bytes / 1024d / 1024d:0} MB";
         long limitMb = CachePolicy.LimitBytes / 1024 / 1024;
-        _cacheLabel.Text = $"Cache {size} · {count}";
+        _cacheLabel.Text = Loc.T("cache.label", size, count);
         _cacheLabel.ForeColor = bytes > CacheWarnBytes
             ? UIStyles.Colors.RedLight
             : UIStyles.Colors.TextMuted;
-        _toolTip.SetToolTip(_cacheLabel,
-            $"Downloaded songs kept locally: {size} / {limitMb} MB ({count} files).\r\n" +
-            "The oldest are removed once the limit is reached.");
+        _toolTip.SetToolTip(_cacheLabel, Loc.T("cache.tip", size, limitMb, count));
     }
 
     private void SaveUiState()
@@ -1265,6 +1308,6 @@ public sealed class MainForm : StyledForm
     private sealed record ChatChoice(TelegramChat Chat)
     {
         public override string ToString() =>
-            $"[{(Chat.Kind == TelegramChatKind.Channel ? "Channel" : "Group")}] {Chat.Title}";
+            $"[{Loc.S(Chat.Kind == TelegramChatKind.Channel ? "chat.channel" : "chat.group")}] {Chat.Title}";
     }
 }

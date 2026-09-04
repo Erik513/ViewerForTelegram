@@ -1,11 +1,11 @@
 using ErikwnkWFUI;
 using ErikwnkWFUI.Controls;
 using ErikwnkWFUI.Forms;
-using ErikwnkWFUI.Styles;
 using ViewerForTelegram.Data;
 using ViewerForTelegram.Data.Interfaces;
 using ViewerForTelegram.Data.Models;
 using ViewerForTelegram.Logic;
+using ViewerForTelegram.UI.Localization;
 using MessageBox = ErikwnkWFUI.Forms.MessageBox;
 using MessageBoxButtons = ErikwnkWFUI.Forms.MessageBoxButtons;
 using MessageBoxIcon = ErikwnkWFUI.Forms.MessageBoxIcon;
@@ -29,8 +29,10 @@ public enum SettingsAction
 }
 
 /// <summary>
-/// Settings: credentials (read-only, unlockable via the pencil), sign-in,
-/// download folder, cache. No save button - applied automatically on close.
+/// Settings: language, credentials (read-only, unlockable via the pencil),
+/// sign-in, download folder, cache. No save button - applied automatically on
+/// close. Every string comes from <see cref="Loc"/> and refreshes live when the
+/// language changes.
 /// </summary>
 public sealed class SettingsForm : StyledForm
 {
@@ -43,6 +45,7 @@ public sealed class SettingsForm : StyledForm
 
     private readonly IMediaCache _cache;
     private readonly PropertyTable _table;
+    private readonly Panel _host;
     private readonly ToolTip _toolTip;
 
     private readonly ComboBox _language;
@@ -50,10 +53,16 @@ public sealed class SettingsForm : StyledForm
     private readonly TextBox _apiHash;
     private readonly TextBox _phone;
     private readonly TextBox _downloadFolder;
+    private readonly TextBox _cacheFolder;
     private readonly ToggleSwitch _useDownloadFolder;
     private readonly ToggleSwitch _clearCacheOnStart;
     private readonly Label _cacheSizeLabel;
+    private readonly Button _help;
+    private readonly Button _browse;
+    private readonly Button _cacheBrowse;
     private readonly Button _clearCacheButton;
+    private readonly Button _loginBtn;
+    private readonly Button _wipe;
     private readonly bool _isConnected;
 
     /// <summary>Current state - filled from the fields on close.</summary>
@@ -63,7 +72,7 @@ public sealed class SettingsForm : StyledForm
     public SettingsAction Action { get; private set; } = SettingsAction.None;
 
     public SettingsForm(TelegramConfig current, IMediaCache cache, bool isConnected)
-        : base(StyledFormOptions.CreateDialog("Settings"))
+        : base(StyledFormOptions.CreateDialog(Loc.S("settings.title")))
     {
         _cache = cache;
         _isConnected = isConnected;
@@ -71,7 +80,6 @@ public sealed class SettingsForm : StyledForm
         StartPosition = FormStartPosition.CenterParent;
 
         _toolTip = UIStyles.ToolTips.CreateToolTip();
-        Disposed += (_, _) => _toolTip.Dispose();
 
         // Background a touch lighter than the PropertyTable (which sits on
         // BackgroundMedium) - so it stands out as a "card".
@@ -83,17 +91,16 @@ public sealed class SettingsForm : StyledForm
         top.Dock = DockStyle.Top;
         top.Height = 46;
 
-        Button help = UIStyles.Buttons.CreatePrimary(
-            "?  Guide", "How do I get api_id / api_hash?", ButtonSize);
-        help.TabStop = false;
-        help.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-        help.Location = new Point(top.Width - ButtonSize.Width - 16, 8);
-        help.Click += (_, _) =>
+        _help = UIStyles.Buttons.CreatePrimary(Loc.S("settings.guide"), Loc.S("settings.guide.tip"), ButtonSize);
+        _help.TabStop = false;
+        _help.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        _help.Location = new Point(top.Width - ButtonSize.Width - 16, 8);
+        _help.Click += (_, _) =>
         {
             using var h = new TelegramApiHelpForm();
             h.ShowDialog(this);
         };
-        top.Controls.Add(help);
+        top.Controls.Add(_help);
 
         // ---- PropertyTable ----
         _table = UIStyles.PropertyTables.CreateStandard();
@@ -105,8 +112,11 @@ public sealed class SettingsForm : StyledForm
         _language.TabStop = false;
         _language.Items.AddRange(new object[] { "English", "Deutsch" });
         _language.SelectedIndex = current.Language == DisplayLanguage.German ? 1 : 0;
-        _toolTip.SetToolTip(_language,
-            "Language of the library's built-in dialogs. Full effect after a restart.");
+        _language.SelectedIndexChanged += (_, _) =>
+            // Switch the whole UI right now (Loc.Changed -> ApplyTexts here too).
+            Loc.Current = _language.SelectedIndex == 1
+                ? DisplayLanguage.German
+                : DisplayLanguage.English;
 
         _apiId = Field(current.ApiId > 0 ? current.ApiId.ToString() : "");
         _apiHash = Field(current.ApiHash);
@@ -118,46 +128,44 @@ public sealed class SettingsForm : StyledForm
 
         _useDownloadFolder = UIStyles.ToggleSwitches.CreateStandard(
             current.UseDownloadFolder,
-            "Downloads go to this folder without asking",
-            "Pick the folder on every download");
+            Loc.S("settings.toggle.folder.on"),
+            Loc.S("settings.toggle.folder.off"));
         _useDownloadFolder.TabStop = false;
 
         _clearCacheOnStart = UIStyles.ToggleSwitches.CreateStandard(
             current.ClearCacheOnStart,
-            "Cache is wiped on every startup",
-            "Cache is kept between sessions (only the size limit applies)");
+            Loc.S("settings.toggle.clearCache.on"),
+            Loc.S("settings.toggle.clearCache.off"));
         _clearCacheOnStart.TabStop = false;
 
-        Button browse = UIStyles.Buttons.CreateBrowse("Choose folder");
-        browse.TabStop = false;
-        browse.Click += (_, _) => Browse();
+        _browse = UIStyles.Buttons.CreateBrowse(Loc.S("settings.btn.chooseFolder"));
+        _browse.TabStop = false;
+        _browse.Click += (_, _) => Browse();
 
         _cacheSizeLabel = UIStyles.Labels.CreateNormal("");
-        _clearCacheButton = UIStyles.Buttons.CreateRed("Clear cache", size: ButtonSize);
+        _clearCacheButton = UIStyles.Buttons.CreateRed(Loc.S("settings.btn.clearCache"), size: ButtonSize);
         _clearCacheButton.TabStop = false;
         _clearCacheButton.Click += (_, _) => ClearCache();
 
-        TextBox cacheFolder = Field(AppPaths.CacheDir);
-        cacheFolder.ReadOnly = true;
-        cacheFolder.TabStop = false;
-        _toolTip.SetToolTip(cacheFolder, AppPaths.CacheDir);
+        _cacheFolder = Field(AppPaths.CacheDir);
+        _cacheFolder.ReadOnly = true;
+        _cacheFolder.TabStop = false;
+        _toolTip.SetToolTip(_cacheFolder, AppPaths.CacheDir);
 
-        Button cacheBrowse = UIStyles.Buttons.CreateBrowse("Open the cache folder");
-        cacheBrowse.TabStop = false;
-        cacheBrowse.Click += (_, _) => OpenCacheFolder();
+        _cacheBrowse = UIStyles.Buttons.CreateBrowse(Loc.S("settings.btn.openCache"));
+        _cacheBrowse.TabStop = false;
+        _cacheBrowse.Click += (_, _) => OpenCacheFolder();
 
-        Button loginBtn = _isConnected
-            ? UIStyles.Buttons.CreatePrimary("Sign out", "", ButtonSize)
-            : UIStyles.Buttons.CreatePrimary("Sign in", "", ButtonSize);
-        loginBtn.TabStop = false;
-        loginBtn.Click += (_, _) =>
+        _loginBtn = UIStyles.Buttons.CreatePrimary("", "", ButtonSize);
+        _loginBtn.TabStop = false;
+        _loginBtn.Click += (_, _) =>
         {
             if (_isConnected)
             {
                 if (MessageBox.Show(
-                        "Sign out? The stored login is deleted.\r\n" +
-                        "The credentials are kept.",
-                        "Sign out", MessageBoxButtons.YesNo, MessageBoxIcon.Question, this)
+                        Loc.S("settings.msg.signout.body"),
+                        Loc.S("settings.msg.signout.title"),
+                        MessageBoxButtons.YesNo, MessageBoxIcon.Question, this)
                     != DialogResult.Yes)
                 {
                     return;
@@ -171,88 +179,136 @@ public sealed class SettingsForm : StyledForm
             Close();
         };
 
-        Button wipe = UIStyles.Buttons.CreateRed("Delete", size: ButtonSize);
-        wipe.TabStop = false;
-        wipe.Click += (_, _) => Wipe();
-
-        // ---- layout ----
-        _table.AddSection("General");
-        _table.AddRow("Language", RowH, UIColumn.Percent(_language, 100));
-
-        _table.AddSection("Telegram API");
-        AddLockedRow("api_id", _apiId);
-        AddLockedRow("api_hash", _apiHash);
-        AddLockedRow("Phone", _phone);
-
-        _table.AddSection("Sign-in");
-        _table.AddRow(
-            "Status", RowH,
-            UIColumn.Percent(Desc(_isConnected ? "signed in" : "not signed in"), 100),
-            UIColumn.Absolute(loginBtn, ButtonColumn));
-
-        _table.AddSection("Downloads");
-        _table.AddRow(
-            "Folder", RowH,
-            UIColumn.Percent(_downloadFolder, 100),
-            UIColumn.Absolute(browse, 44),
-            UIColumn.Absolute(_useDownloadFolder, 56));
-
-        _table.AddSection("Cache");
-        _table.AddRow(
-            "Used", RowH,
-            UIColumn.Percent(_cacheSizeLabel, 100),
-            UIColumn.Absolute(_clearCacheOnStart, 56));
-        _table.AddRow(
-            "Folder", RowH,
-            UIColumn.Percent(cacheFolder, 100),
-            UIColumn.Absolute(cacheBrowse, 44),
-            UIColumn.Absolute(_clearCacheButton, ButtonColumn));
-
-        _table.AddSection("Credentials");
-        _table.AddRow(
-            "Reset", RowH,
-            UIColumn.Percent(Desc("Delete data and sign out"), 100),
-            UIColumn.Absolute(wipe, ButtonColumn));
+        _wipe = UIStyles.Buttons.CreateRed(Loc.S("settings.btn.delete"), size: ButtonSize);
+        _wipe.TabStop = false;
+        _wipe.Click += (_, _) => Wipe();
 
         _toolTip.SetToolTip(_downloadFolder, current.EffectiveDownloadFolder);
-        UpdateCacheLabel();
 
-        // Measure the table once, then fix it to a static size and center it in
-        // a lighter area - so a wider window only adds whitespace, the table
-        // stays the same size.
-        _table.PerformLayout();
-        Size tableSize = _table.PreferredSize;
+        BuildTable();
+        FixTableSize();
 
-        _table.AutoSize = false;
-        _table.Dock = DockStyle.None;
-        _table.Size = new Size(Math.Max(540, tableSize.Width), tableSize.Height);
-        _table.Anchor = AnchorStyles.Top;
-        _table.Top = 16;
-
-        var host = new Panel
+        _host = new Panel
         {
             Dock = DockStyle.Fill,
             BackColor = UIStyles.Colors.BackgroundMediumElevated,
             AutoScroll = true
         };
-        host.Controls.Add(_table);
-        host.Resize += (_, _) =>
-            _table.Left = Math.Max(16, (host.ClientSize.Width - _table.Width) / 2);
+        _host.Controls.Add(_table);
+        _host.Resize += (_, _) => Recenter();
 
-        ContentPanel.Controls.Add(host);
+        ContentPanel.Controls.Add(_host);
         ContentPanel.Controls.Add(top);
 
         ClientSize = new Size(
             _table.Width + 220,
             top.Height + _table.Height + TitleBar.Height + 40);
 
-        void Recenter() =>
-            _table.Left = Math.Max(16, (host.ClientSize.Width - _table.Width) / 2);
-
+        ApplyTexts();
         Recenter();
+        Loc.Changed += OnLanguageChanged;
         Shown += (_, _) => Recenter();
 
         FormClosing += (_, _) => Save();
+        Disposed += (_, _) =>
+        {
+            Loc.Changed -= OnLanguageChanged;
+            _toolTip.Dispose();
+        };
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        ApplyTexts();
+        FixTableSize();
+        Recenter();
+    }
+
+    private void Recenter() =>
+        _table.Left = Math.Max(16, (_host.ClientSize.Width - _table.Width) / 2);
+
+    private void FixTableSize()
+    {
+        _table.AutoSize = true;
+        _table.Dock = DockStyle.Top;
+        _table.PerformLayout();
+        Size size = _table.PreferredSize;
+
+        _table.AutoSize = false;
+        _table.Dock = DockStyle.None;
+        _table.Size = new Size(Math.Max(540, size.Width), size.Height);
+        _table.Anchor = AnchorStyles.Top;
+        _table.Top = 16;
+    }
+
+    /// <summary>(Re-)builds the sections and rows with the current language.</summary>
+    private void BuildTable()
+    {
+        _table.ClearRows();
+
+        _table.AddSection(Loc.S("settings.sec.general"));
+        _table.AddRow(Loc.S("settings.row.language"), RowH, UIColumn.Percent(_language, 100));
+
+        _table.AddSection(Loc.S("settings.sec.api"));
+        AddLockedRow("api_id", _apiId);
+        AddLockedRow("api_hash", _apiHash);
+        AddLockedRow(Loc.S("settings.row.phone"), _phone);
+
+        _table.AddSection(Loc.S("settings.sec.signin"));
+        _table.AddRow(
+            Loc.S("settings.row.status"), RowH,
+            UIColumn.Percent(Desc(_isConnected
+                ? Loc.S("settings.status.connected")
+                : Loc.S("settings.status.disconnected")), 100),
+            UIColumn.Absolute(_loginBtn, ButtonColumn));
+
+        _table.AddSection(Loc.S("settings.sec.downloads"));
+        _table.AddRow(
+            Loc.S("settings.row.folder"), RowH,
+            UIColumn.Percent(_downloadFolder, 100),
+            UIColumn.Absolute(_browse, 44),
+            UIColumn.Absolute(_useDownloadFolder, 56));
+
+        _table.AddSection(Loc.S("settings.sec.cache"));
+        _table.AddRow(
+            Loc.S("settings.row.used"), RowH,
+            UIColumn.Percent(_cacheSizeLabel, 100),
+            UIColumn.Absolute(_clearCacheOnStart, 56));
+        _table.AddRow(
+            Loc.S("settings.row.folder"), RowH,
+            UIColumn.Percent(_cacheFolder, 100),
+            UIColumn.Absolute(_cacheBrowse, 44),
+            UIColumn.Absolute(_clearCacheButton, ButtonColumn));
+
+        _table.AddSection(Loc.S("settings.sec.credentials"));
+        _table.AddRow(
+            Loc.S("settings.row.reset"), RowH,
+            UIColumn.Percent(Desc(Loc.S("settings.reset.desc")), 100),
+            UIColumn.Absolute(_wipe, ButtonColumn));
+
+        UpdateCacheLabel();
+    }
+
+    /// <summary>(Re-)applies strings that live outside the table rows.</summary>
+    private void ApplyTexts()
+    {
+        FormTitle = Loc.S("settings.title");
+        _help.Text = Loc.S("settings.guide");
+        _toolTip.SetToolTip(_help, Loc.S("settings.guide.tip"));
+        _toolTip.SetToolTip(_language, Loc.S("settings.lang.tip"));
+
+        _loginBtn.Text = _isConnected ? Loc.S("settings.btn.signout") : Loc.S("settings.btn.signin");
+        _browse.Text = Loc.S("settings.btn.chooseFolder");
+        _cacheBrowse.Text = Loc.S("settings.btn.openCache");
+        _clearCacheButton.Text = Loc.S("settings.btn.clearCache");
+        _wipe.Text = Loc.S("settings.btn.delete");
+
+        _useDownloadFolder.ToolTipTextChecked = Loc.S("settings.toggle.folder.on");
+        _useDownloadFolder.ToolTipTextUnchecked = Loc.S("settings.toggle.folder.off");
+        _clearCacheOnStart.ToolTipTextChecked = Loc.S("settings.toggle.clearCache.on");
+        _clearCacheOnStart.ToolTipTextUnchecked = Loc.S("settings.toggle.clearCache.off");
+
+        BuildTable();
     }
 
     private void AddLockedRow(string label, TextBox field)
@@ -260,14 +316,15 @@ public sealed class SettingsForm : StyledForm
         field.ReadOnly = true;
         field.TabStop = false;
 
-        Button lockBtn = UIStyles.Buttons.CreatePrimary(Pencil, "Edit", new Size(40, 28));
+        Button lockBtn = UIStyles.Buttons.CreatePrimary(
+            field.ReadOnly ? Pencil : Check, Loc.S("settings.lock.tip"), new Size(40, 28));
         lockBtn.TabStop = false;
 
         // While signed in, the credentials must not be changed - sign out first.
         if (_isConnected)
         {
             lockBtn.Enabled = false;
-            _toolTip.SetToolTip(lockBtn, "Sign out first to change this");
+            _toolTip.SetToolTip(lockBtn, Loc.S("settings.lock.tip.locked"));
         }
 
         lockBtn.Click += (_, _) =>
@@ -324,8 +381,9 @@ public sealed class SettingsForm : StyledForm
         }
 
         if (MessageBox.Show(
-                $"Delete {count} files ({Mb(bytes)}) from the cache?",
-                "Clear cache", MessageBoxButtons.YesNo, MessageBoxIcon.Question, this)
+                Loc.T("settings.msg.clearCache.body", count, Mb(bytes)),
+                Loc.S("settings.msg.clearCache.title"),
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question, this)
             == DialogResult.Yes)
         {
             _cache.Clear();
@@ -336,7 +394,7 @@ public sealed class SettingsForm : StyledForm
     private void UpdateCacheLabel()
     {
         (int count, long bytes) = _cache.GetStats();
-        string text = $"{Mb(bytes)} / {Mb(CachePolicy.LimitBytes)} ({count} files)";
+        string text = Loc.T("settings.cache.used", Mb(bytes), Mb(CachePolicy.LimitBytes), count);
         _cacheSizeLabel.Text = text;
         _toolTip.SetToolTip(_cacheSizeLabel, text);
         _clearCacheButton.Enabled = count > 0;
@@ -345,8 +403,9 @@ public sealed class SettingsForm : StyledForm
     private void Wipe()
     {
         if (MessageBox.Show(
-                "Really delete api_id, api_hash and phone number and sign out?",
-                "Delete credentials", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, this)
+                Loc.S("settings.msg.wipe.body"),
+                Loc.S("settings.msg.wipe.title"),
+                MessageBoxButtons.YesNo, MessageBoxIcon.Warning, this)
             == DialogResult.Yes)
         {
             Action = SettingsAction.Wipe;
@@ -365,9 +424,6 @@ public sealed class SettingsForm : StyledForm
 
         DisplayLanguage language =
             _language.SelectedIndex == 1 ? DisplayLanguage.German : DisplayLanguage.English;
-        // Apply right away for any dialog opened afterwards; the main window
-        // picks it up fully on the next start.
-        UIStyles.Language = language == DisplayLanguage.German ? UILanguage.German : UILanguage.English;
 
         // Store blank while the field still shows the OS Downloads folder, so a
         // later move of that folder keeps being followed.

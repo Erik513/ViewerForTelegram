@@ -1,6 +1,7 @@
 using ErikwnkWFUI;
 using ErikwnkWFUI.Controls;
 using ViewerForTelegram.Data.Models;
+using ViewerForTelegram.UI.Localization;
 
 namespace ViewerForTelegram.UI.Controls;
 
@@ -39,8 +40,10 @@ public sealed class PlayerPanel : Panel
     private readonly SlimProgressBar _downloadBar;
     private readonly TableLayoutPanel _seekRow;
     private readonly Label _time;
+    private readonly Label _volLabel;
     private readonly SliderBar _volume;
     private readonly TextBox _status;
+    private string? _saveTipFileName;   // file name currently shown on the save button's tooltip
     private readonly ToolTip _tips = new() { AutoPopDelay = 20000 };
 
     private TimeSpan _duration;
@@ -55,7 +58,7 @@ public sealed class PlayerPanel : Panel
         Padding = new Padding(12, 5, 14, 3);
         BackColor = UIStyles.Colors.BackgroundDarkElevated;
 
-        _mainButton = MakeIconButton(44, "Play / pause");
+        _mainButton = MakeIconButton(44, Loc.S("player.tip.main"));
         _mainButton.Anchor = AnchorStyles.None;
         _mainButton.Click += (_, _) => MainButton?.Invoke();
         // Every state is drawn by hand (GlyphIcons) so the icon is pixel-centred
@@ -72,7 +75,7 @@ public sealed class PlayerPanel : Panel
 
         // The library's yellow browse button - kept yellow, but the folder icon
         // is redrawn so it matches the weight/centring of the other icons.
-        _browseButton = UIStyles.Buttons.CreateBrowse("Open the download folder", new Size(34, 34));
+        _browseButton = UIStyles.Buttons.CreateBrowse(Loc.S("player.tip.browse"), new Size(34, 34));
         _browseButton.Text = "";
         _browseButton.Anchor = AnchorStyles.None;
         _browseButton.Click += (_, _) => BrowseFolder?.Invoke();
@@ -82,7 +85,7 @@ public sealed class PlayerPanel : Panel
         // Title / artist as read-only text boxes (white) so they can be selected
         // and copied.
         _title = MakeReadonlyText(bold: true);
-        _title.Text = "Nothing selected";
+        _title.Text = Loc.S("player.nothingSelected");
         _performer = MakeReadonlyText(bold: false);
 
         _fileSize = MakeLabel(UIStyles.Labels.CreateMuted(""));
@@ -116,8 +119,8 @@ public sealed class PlayerPanel : Panel
         _time = MakeLabel(UIStyles.Labels.CreateMuted("–:– / –:–"));
         _time.TextAlign = ContentAlignment.MiddleCenter;
 
-        var volLabel = MakeLabel(UIStyles.Labels.CreateMuted("Vol"));
-        volLabel.TextAlign = ContentAlignment.MiddleRight;
+        _volLabel = MakeLabel(UIStyles.Labels.CreateMuted(Loc.S("player.vol")));
+        _volLabel.TextAlign = ContentAlignment.MiddleRight;
 
         _volume = new SliderBar { Maximum = 1.0, Value = 0.1, Anchor = AnchorStyles.Left | AnchorStyles.Right };
         _volume.ValueChanged += (_, _) => VolumeChanged?.Invoke((float)_volume.Value);
@@ -182,7 +185,7 @@ public sealed class PlayerPanel : Panel
         _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
         _seekRow.Controls.Add(_seek, 0, 0);
         _seekRow.Controls.Add(_time, 1, 0);
-        _seekRow.Controls.Add(volLabel, 2, 0);
+        _seekRow.Controls.Add(_volLabel, 2, 0);
         _seekRow.Controls.Add(_volume, 3, 0);
 
         var stack = new TableLayoutPanel
@@ -230,8 +233,34 @@ public sealed class PlayerPanel : Panel
         root.Controls.Add(_status, 0, 1);
 
         Controls.Add(root);
-        Disposed += (_, _) => _tips.Dispose();
+        Loc.Changed += OnLanguageChanged;
+        Disposed += (_, _) =>
+        {
+            Loc.Changed -= OnLanguageChanged;
+            _tips.Dispose();
+        };
         SetIdle();
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e) => ApplyTexts();
+
+    /// <summary>(Re-)applies every visible string from <see cref="Loc"/>.</summary>
+    public void ApplyTexts()
+    {
+        _volLabel.Text = Loc.S("player.vol");
+        UIStyles.Buttons.UpdateTooltip(_mainButton, Loc.S("player.tip.main"));
+        _tips.SetToolTip(_browseButton, Loc.S("player.tip.browse"));
+
+        SetButton(_state);   // re-localises the main button's tooltip
+
+        if (_state == PlayerButton.None)
+        {
+            _title.Text = Loc.S("player.nothingSelected");
+        }
+
+        _tips.SetToolTip(_saveButton, _saveTipFileName is { } f
+            ? Loc.T("player.tip.downloadFile", f)
+            : Loc.S("player.tip.download"));
     }
 
     /// <summary>Sets the status / error line along the bottom of the player.</summary>
@@ -255,12 +284,13 @@ public sealed class PlayerPanel : Panel
         _sizeBytes = 0;
         SetButton(PlayerButton.None);   // greyed-out play icon
         _saveButton.Enabled = false;
-        _title.Text = "Nothing selected";
+        _title.Text = Loc.S("player.nothingSelected");
         _performer.Text = "";
         _fileSize.Text = "";
         _bitrate.Text = "";
         _fileFormat.Text = "";
-        _tips.SetToolTip(_saveButton, "Download");
+        _saveTipFileName = null;
+        _tips.SetToolTip(_saveButton, Loc.S("player.tip.download"));
         _seek.Enabled = false;
         _seek.Value = 0;
         _time.Text = "–:– / –:–";
@@ -276,7 +306,8 @@ public sealed class PlayerPanel : Panel
         _fileSize.Text = $"{a.SizeBytes / 1024d / 1024d:0.0} MB";
         _bitrate.Text = a.BitrateKbps is { } kb ? $"{kb} kbps" : "";
         _fileFormat.Text = Path.GetExtension(a.FileName).TrimStart('.').ToUpperInvariant();
-        _tips.SetToolTip(_saveButton, $"Download: {a.FileName}");
+        _saveTipFileName = a.FileName;
+        _tips.SetToolTip(_saveButton, Loc.T("player.tip.downloadFile", a.FileName));
 
         SetButton(button);
         _saveButton.Enabled = cached;
@@ -298,10 +329,10 @@ public sealed class PlayerPanel : Panel
         _mainButton.Invalidate();
         UIStyles.Buttons.UpdateTooltip(_mainButton, button switch
         {
-            PlayerButton.Cancel => "Cancel download",
-            PlayerButton.Pause => "Pause",
-            PlayerButton.Play => "Play",
-            _ => "Nothing selected"
+            PlayerButton.Cancel => Loc.S("player.tip.cancelDownload"),
+            PlayerButton.Pause => Loc.S("player.tip.pause"),
+            PlayerButton.Play => Loc.S("player.tip.play"),
+            _ => Loc.S("player.nothingSelected")
         });
     }
 

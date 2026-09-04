@@ -7,6 +7,7 @@ using ViewerForTelegram.Data.Models;
 using ViewerForTelegram.Logic;
 using ViewerForTelegram.Logic.Services;
 using ViewerForTelegram.UI.Forms;
+using ViewerForTelegram.UI.Localization;
 
 namespace ViewerForTelegram;
 
@@ -40,11 +41,10 @@ static class Program
         IConfigStore configStore = new JsonConfigStore();
         TelegramConfig startupConfig = configStore.Load();
 
-        // Built-in dialog text follows the saved choice (English by default).
-        // Must be set before any ErikwnkWFUI form is created.
-        UIStyles.Language = startupConfig.Language == DisplayLanguage.German
-            ? UILanguage.German
-            : UILanguage.English;
+        // UI language follows the saved choice (English by default). Register
+        // before, set before any form is built.
+        Loc.Register();
+        Loc.Current = startupConfig.Language;
 
         IMediaCache cache = new FileMediaCache(AppPaths.CacheDir, AppPaths.DurationsFile);
         ITelegramSource telegram = new TelegramSource(configStore, AppPaths.SessionFile);

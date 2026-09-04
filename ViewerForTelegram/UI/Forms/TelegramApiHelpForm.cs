@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using ErikwnkWFUI;
 using ErikwnkWFUI.Forms;
+using ViewerForTelegram.UI.Localization;
 
 namespace ViewerForTelegram.UI.Forms;
 
@@ -19,7 +20,7 @@ public sealed class TelegramApiHelpForm : StyledForm
     private readonly TextBox _text;
 
     public TelegramApiHelpForm()
-        : base(StyledFormOptions.CreateDialog("Create credentials"))
+        : base(StyledFormOptions.CreateDialog(Loc.S("help.title")))
     {
         StartPosition = FormStartPosition.CenterParent;
 
@@ -35,7 +36,7 @@ public sealed class TelegramApiHelpForm : StyledForm
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, ButtonRow));
 
         _text = UIStyles.TextBoxes.CreateStandard();
-        _text.Text = InstructionText();
+        _text.Text = Loc.S("help.body");
         _text.Dock = DockStyle.Fill;
         _text.Multiline = true;
         _text.ReadOnly = true;
@@ -58,11 +59,11 @@ public sealed class TelegramApiHelpForm : StyledForm
             BackColor = Color.Transparent
         };
 
-        Button close = UIStyles.Buttons.CreatePrimary("Close", "", new Size(110, 32));
+        Button close = UIStyles.Buttons.CreatePrimary(Loc.S("help.close"), "", new Size(110, 32));
         close.Margin = new Padding(8, 4, 0, 4);
         close.Click += (_, _) => Close();
 
-        Button open = UIStyles.Buttons.CreatePrimary("Open my.telegram.org", "", new Size(200, 32));
+        Button open = UIStyles.Buttons.CreatePrimary(Loc.S("help.open"), "", new Size(200, 32));
         open.Margin = new Padding(0, 4, 0, 4);
         open.Click += (_, _) => OpenUrl();
 
@@ -123,23 +124,4 @@ public sealed class TelegramApiHelpForm : StyledForm
         }
     }
 
-    private static string InstructionText() =>
-        "ViewerForTelegram ships no shared API credentials - every user creates\r\n" +
-        "their own. It is free and takes about 2 minutes.\r\n\r\n" +
-        "How to get api_id and api_hash:\r\n\r\n" +
-        "1. Click \"Open my.telegram.org\" below.\r\n" +
-        "2. Sign in with your Telegram phone number - the confirmation code\r\n" +
-        "   arrives in your Telegram app.\r\n" +
-        "3. Click \"API development tools\".\r\n" +
-        "4. Fill in the form:\r\n" +
-        "     App title:   e.g. ViewerForTelegram\r\n" +
-        "     Short name:  e.g. tgviewer\r\n" +
-        "     Platform:    Desktop\r\n" +
-        "     (URL and description can stay empty)\r\n" +
-        "5. Click \"Create application\".\r\n" +
-        "6. The next page shows \"App api_id\" (a number) and\r\n" +
-        "   \"App api_hash\" (a long hex string).\r\n" +
-        "7. Enter both here in the settings - the pencil icon unlocks the\r\n" +
-        "   respective field.\r\n\r\n" +
-        "Important: the api_hash is like a password - do not share it.";
 }

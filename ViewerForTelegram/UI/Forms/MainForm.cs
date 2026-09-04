@@ -637,6 +637,10 @@ public sealed class MainForm : StyledForm
         if (!_connected)
         {
             await ConnectAsync();
+            if (_connected)
+            {
+                Toast(Loc.T("toast.listUpdated", _items.Count));
+            }
             return;
         }
 

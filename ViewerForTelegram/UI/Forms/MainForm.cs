@@ -521,9 +521,12 @@ public sealed class MainForm : StyledForm
 
     /// <summary>
     /// Re-verifies every audio known for <paramref name="chatId"/> still exists
-    /// on Telegram, and drops the ones that don't from <see cref="_largestItems"/>
-    /// (persisted cache included) and, if currently shown, <see cref="_items"/>.
-    /// Best-effort: any failure is silently ignored, nothing here is critical.
+    /// on Telegram. Anything gone is dropped, and - so "Newest 1000" still
+    /// means 1000 once that many exist, not quietly fewer - the shortfall is
+    /// refilled with the next-older ones via the normal incremental "grow"
+    /// fetch. Updates <see cref="_largestItems"/> (persisted cache included)
+    /// and, if currently shown, <see cref="_items"/>. Best-effort: any failure
+    /// is silently ignored, nothing here is critical.
     /// </summary>
     private async Task CheckForDeletedAsync(long chatId)
     {
@@ -535,6 +538,7 @@ public sealed class MainForm : StyledForm
         _correctingChatId = chatId;
         try
         {
+            int targetCount = _largestItems.Count;   // refill back up to this, not just "minus deleted"
             List<int> ids = _largestItems.Select(i => i.Audio.MessageId).ToList();
             IReadOnlyList<int> deletedIds;
             try
@@ -554,19 +558,62 @@ public sealed class MainForm : StyledForm
             }
 
             var deletedSet = new HashSet<int>(deletedIds);
-            _largestItems = _largestItems.Where(i => !deletedSet.Contains(i.Audio.MessageId)).ToList();
+            List<FeedItem> corrected = _largestItems.Where(i => !deletedSet.Contains(i.Audio.MessageId)).ToList();
+
+            if (corrected.Count < targetCount)
+            {
+                try
+                {
+                    corrected = (await _feed.LoadAsync(
+                        chatId, -targetCount, CancellationToken.None,
+                        previous: corrected.Select(i => i.Audio).ToList())).ToList();
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Error("DeletionCheck", ex.ToString());   // keep the removal, skip the refill
+                }
+
+                if (chatId != _largestChatId)
+                {
+                    return;   // the user moved on during the (possibly slow) refill
+                }
+            }
+
+            _largestItems = corrected;
             _largestRange = -_largestItems.Count;
             _feedCacheStore.Save(new PersistedFeed(
                 chatId, _largestRange, _largestItems.Select(i => i.Audio).ToList()));
 
             bool visibleChanged = false;
-            for (int idx = _items.Count - 1; idx >= 0; idx--)
+            if (SelectedChat?.Id == chatId && SelectedRange <= 0)
             {
-                if (deletedSet.Contains(_items[idx].Audio.MessageId))
+                // Showing this chat in count mode right now - re-slice from the
+                // corrected (and possibly topped-up) superset, keeping however
+                // many rows were already on screen.
+                List<FeedItem> recut = _largestItems.Take(_items.Count).ToList();
+                if (!recut.SequenceEqual(_items))
                 {
-                    _byFileId.Remove(_items[idx].Audio.FileId);
-                    _items.RemoveAt(idx);
+                    _items = recut;
+                    _byFileId.Clear();
+                    foreach (FeedItem item in _items)
+                    {
+                        _byFileId[item.Audio.FileId] = item.Audio;
+                    }
                     visibleChanged = true;
+                }
+            }
+            else
+            {
+                // A different chat or a day window is on screen - no "refill to
+                // N" concept applies there, just drop whatever was deleted.
+                for (int idx = _items.Count - 1; idx >= 0; idx--)
+                {
+                    if (deletedSet.Contains(_items[idx].Audio.MessageId))
+                    {
+                        _byFileId.Remove(_items[idx].Audio.FileId);
+                        _items.RemoveAt(idx);
+                        visibleChanged = true;
+                    }
                 }
             }
             if (visibleChanged)

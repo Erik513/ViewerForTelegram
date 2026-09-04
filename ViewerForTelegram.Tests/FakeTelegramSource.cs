@@ -19,7 +19,8 @@ internal sealed class FakeTelegramSource : ITelegramSource
 
     public Task<IReadOnlyList<AudioMessage>> GetAudioMessagesSinceAsync(
         long chatId, DateTime sinceUtc, CancellationToken ct, int maxAudios = int.MaxValue,
-        IProgress<int>? progress = null, int beforeMessageId = 0)
+        IProgress<int>? progress = null, int beforeMessageId = 0,
+        IProgress<IReadOnlyList<AudioMessage>>? onBatch = null)
     {
         SinceCalls++;
         var list = Audios.Where(a => a.ChatId == chatId && a.DateUtc >= sinceUtc
@@ -28,6 +29,10 @@ internal sealed class FakeTelegramSource : ITelegramSource
                          .Take(Math.Max(0, maxAudios))
                          .ToList();
         progress?.Report(list.Count);   // real source reports per page; here: once
+        if (list.Count > 0)
+        {
+            onBatch?.Report(list);      // real source reports per page; here: once
+        }
         return Task.FromResult<IReadOnlyList<AudioMessage>>(list);
     }
 

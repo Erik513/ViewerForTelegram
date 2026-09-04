@@ -13,6 +13,12 @@ public class AudioFeedServiceTests
         public void Report(int value) => Values.Add(value);
     }
 
+    private sealed class CollectingBatchProgress : IProgress<IReadOnlyList<FeedItem>>
+    {
+        public List<IReadOnlyList<FeedItem>> Batches { get; } = new();
+        public void Report(IReadOnlyList<FeedItem> value) => Batches.Add(value);
+    }
+
     private static AudioMessage Audio(long fileId, DateTime dateUtc, long size = 10) =>
         new(ChatId: 1, MessageId: (int)fileId, FileId: fileId, Title: "T", Performer: "P",
             Duration: null, SizeBytes: size, FileName: $"{fileId}.mp3", DateUtc: dateUtc);
@@ -143,6 +149,53 @@ public class AudioFeedServiceTests
         Assert.NotEmpty(probe.Values);
         Assert.All(probe.Values, n => Assert.True(n >= 30));   // never below the 30 we kept
         Assert.Contains(probe.Values, n => n == 60);           // reaches the new goal
+    }
+
+    [Fact]
+    public async Task LoadAsync_FreshLoad_ReportsEnrichedBatches()
+    {
+        var tg = new FakeTelegramSource();
+        tg.Audios.Add(Audio(1, DateTime.UtcNow.AddDays(-1), size: 100));
+        tg.Audios.Add(Audio(2, DateTime.UtcNow.AddDays(-2), size: 100));
+
+        using var dir = TempPath.Dir();
+        var cache = new FileMediaCache(dir.Path);
+        var svc = new AudioFeedService(tg, cache);
+        var batches = new CollectingBatchProgress();
+
+        IReadOnlyList<FeedItem> items = await svc.LoadAsync(
+            1, 7, CancellationToken.None, onBatch: batches);
+
+        Assert.Equal(2, items.Count);
+        // FakeTelegramSource reports its whole (capped) result as one batch -
+        // real paging in TelegramSource reports one per page instead.
+        Assert.NotEmpty(batches.Batches);
+        Assert.Equal(
+            items.Select(i => i.Audio.FileId).OrderBy(x => x),
+            batches.Batches.SelectMany(b => b).Select(i => i.Audio.FileId).OrderBy(x => x));
+    }
+
+    [Fact]
+    public async Task LoadAsync_IncrementalReuse_DoesNotReportBatches()
+    {
+        // onBatch is only wired for a fresh fetch - the incremental-reuse path
+        // (previous list reused) already renders instantly from what's kept,
+        // so there is nothing to progressively report.
+        var tg = new FakeTelegramSource();
+        for (int id = 1; id <= 10; id++)
+        {
+            tg.Audios.Add(new(1, id, id, "T", "P", null, 10, $"{id}.mp3", DateTime.UtcNow.AddMinutes(-id)));
+        }
+        using var dir = TempPath.Dir();
+        var svc = new AudioFeedService(tg, new FileMediaCache(dir.Path));
+
+        IReadOnlyList<FeedItem> first = await svc.LoadAsync(1, -5, CancellationToken.None);
+        var batches = new CollectingBatchProgress();
+
+        await svc.LoadAsync(1, -5, CancellationToken.None,
+            previous: first.Select(i => i.Audio).ToList(), onBatch: batches);
+
+        Assert.Empty(batches.Batches);
     }
 
     [Fact]

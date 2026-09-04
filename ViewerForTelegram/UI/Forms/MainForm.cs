@@ -24,7 +24,7 @@ public sealed class MainForm : StyledForm
 {
     // > 0 = days; < 0 = "the newest |n| audios" (no date limit) - see AudioFeedService.
     private static readonly int[] RangeDayOptions =
-        { 3, 7, 14, 30, 60, -50, -100, -200, -500, -1000, -2000, -3000 };
+        { 3, 7, 14, 30, 60, -50, -100, -200, -500, -1000, -2000, -3000, -4000, -5000 };
 
     private readonly ITelegramSource _telegram;
     private readonly IConfigStore _configStore;
@@ -611,11 +611,42 @@ public sealed class MainForm : StyledForm
                 : Loc.T("status.loadingCount", n));
         });
 
+        // A large fresh "newest N" pull can take a while - show rows as pages
+        // arrive (every ~500) instead of only once the whole thing is done.
+        var partial = new List<FeedItem>();
+        int nextRenderAt = 500;
+        var onBatch = new Progress<IReadOnlyList<FeedItem>>(batch =>
+        {
+            if (seq != _feedSeq || rendering)
+            {
+                return;
+            }
+            partial.AddRange(batch);
+            if (partial.Count < nextRenderAt)
+            {
+                return;
+            }
+            nextRenderAt += 500;
+            _items = new List<FeedItem>(partial);
+            _byFileId.Clear();
+            foreach (FeedItem item in _items)
+            {
+                _byFileId[item.Audio.FileId] = item.Audio;
+            }
+            RenderList(announceStatus: false);   // the loading-progress status line stays as-is
+        });
+
         List<FeedItem>? loaded = null;
         try
         {
             await RunWithRetryAsync("loading", async () =>
-                loaded = (await _feed.LoadAsync(chatId, range, token, progress, previous)).ToList());
+            {
+                // A retry re-fetches from the start - reset so onBatch doesn't
+                // append the previous, failed attempt's pages on top.
+                partial.Clear();
+                nextRenderAt = 500;
+                loaded = (await _feed.LoadAsync(chatId, range, token, progress, previous, onBatch)).ToList();
+            });
         }
         catch (OperationCanceledException)
         {
@@ -719,7 +750,7 @@ public sealed class MainForm : StyledForm
         _tintedFileId = mark;
     }
 
-    private void RenderList(bool afterLoad = false)
+    private void RenderList(bool afterLoad = false, bool announceStatus = true)
     {
         // Dismiss a truncation tooltip still showing over a row we're about to
         // remove (WinForms would otherwise leave it hanging).
@@ -798,6 +829,11 @@ public sealed class MainForm : StyledForm
 
         _suppressListEvents = false;
         ShowSelected();   // playing-row tint was applied inline while building
+
+        if (!announceStatus)
+        {
+            return;   // a progressive render mid-load - the loading-progress line owns the status
+        }
 
         if (_items.Count == 0)
         {

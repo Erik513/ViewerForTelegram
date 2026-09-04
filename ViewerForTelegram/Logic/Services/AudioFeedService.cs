@@ -35,18 +35,39 @@ public sealed class AudioFeedService
     /// (same chat) to reuse it: only the newly-posted messages and, if the count
     /// grew, the extra older ones are fetched.
     /// </summary>
+    /// <param name="onBatch">
+    /// Optional: reports newly-fetched <see cref="FeedItem"/>s as soon as each
+    /// page arrives - only for a fresh load (no reusable <paramref name="previous"/>),
+    /// so the caller can show rows for a large "newest N" pull as it grows
+    /// instead of waiting for the whole thing.
+    /// </param>
     public async Task<IReadOnlyList<FeedItem>> LoadAsync(
         long chatId, int range, CancellationToken ct, IProgress<int>? progress = null,
-        IReadOnlyList<AudioMessage>? previous = null)
+        IReadOnlyList<AudioMessage>? previous = null,
+        IProgress<IReadOnlyList<FeedItem>>? onBatch = null)
     {
         bool byCount = range <= 0;
         DateTime sinceUtc = byCount ? DateTime.MinValue : DateTime.UtcNow.AddDays(-range);
         int maxAudios = byCount ? Math.Max(1, -range) : int.MaxValue;
 
-        IReadOnlyList<AudioMessage> audios =
-            byCount && previous is { Count: > 0 }
-                ? await LoadIncrementalAsync(chatId, maxAudios, previous, ct, progress)
-                : await _telegram.GetAudioMessagesSinceAsync(chatId, sinceUtc, ct, maxAudios, progress);
+        IReadOnlyList<AudioMessage> audios;
+        if (byCount && previous is { Count: > 0 })
+        {
+            audios = await LoadIncrementalAsync(chatId, maxAudios, previous, ct, progress);
+        }
+        else
+        {
+            // Plain adapter, not "new Progress<T>(...)" - the latter captures
+            // SynchronizationContext.Current *here* and would post through it,
+            // double-marshalling on top of onBatch's own (it's already a real
+            // Progress<T> from the caller) - and silently do nothing at all
+            // where there is no context (e.g. a unit test).
+            IProgress<IReadOnlyList<AudioMessage>>? forwardBatch = onBatch is null
+                ? null
+                : new ActionProgress<IReadOnlyList<AudioMessage>>(batch => onBatch.Report(Enrich(batch)));
+            audios = await _telegram.GetAudioMessagesSinceAsync(
+                chatId, sinceUtc, ct, maxAudios, progress, onBatch: forwardBatch);
+        }
 
         var items = new List<FeedItem>(audios.Count);
         for (int i = 0; i < audios.Count; i++)
@@ -56,13 +77,29 @@ public sealed class AudioFeedService
                 ct.ThrowIfCancellationRequested();
             }
 
-            AudioMessage a = audios[i];
-            // Telegram often gives no duration for files posted "as a file" - fill
-            // it in from a length the cache decoded on an earlier playback.
-            AudioMessage enriched = a.Duration is null
-                ? a with { Duration = _cache.GetKnownDuration(a) }
-                : a;
-            items.Add(new FeedItem(enriched, _cache.Contains(enriched)));
+            items.Add(Enrich(audios[i]));
+        }
+        return items;
+    }
+
+    /// <summary>
+    /// Fills in a missing <see cref="AudioMessage.Duration"/> from a length the
+    /// cache decoded on an earlier playback, and joins the cached-on-disk flag.
+    /// </summary>
+    private FeedItem Enrich(AudioMessage a)
+    {
+        AudioMessage enriched = a.Duration is null
+            ? a with { Duration = _cache.GetKnownDuration(a) }
+            : a;
+        return new FeedItem(enriched, _cache.Contains(enriched));
+    }
+
+    private List<FeedItem> Enrich(IReadOnlyList<AudioMessage> batch)
+    {
+        var items = new List<FeedItem>(batch.Count);
+        foreach (AudioMessage a in batch)
+        {
+            items.Add(Enrich(a));
         }
         return items;
     }
@@ -112,5 +149,18 @@ public sealed class AudioFeedService
         private readonly int _offset;
         public ShiftProgress(IProgress<int> inner, int offset) { _inner = inner; _offset = offset; }
         public void Report(int value) => _inner.Report(_offset + value);
+    }
+
+    /// <summary>
+    /// Plain <see cref="IProgress{T}"/> that just runs the given action - unlike
+    /// "new Progress&lt;T&gt;(action)", it never marshals through a captured
+    /// SynchronizationContext, so it's safe to wrap another IProgress&lt;T&gt;
+    /// that already does its own marshalling.
+    /// </summary>
+    private sealed class ActionProgress<T> : IProgress<T>
+    {
+        private readonly Action<T> _action;
+        public ActionProgress(Action<T> action) => _action = action;
+        public void Report(T value) => _action(value);
     }
 }

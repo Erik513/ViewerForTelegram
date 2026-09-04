@@ -165,7 +165,8 @@ public sealed class TelegramSource : ITelegramSource
 
     public async Task<IReadOnlyList<AudioMessage>> GetAudioMessagesSinceAsync(
         long chatId, DateTime sinceUtc, CancellationToken ct, int maxAudios = int.MaxValue,
-        IProgress<int>? progress = null, int beforeMessageId = 0)
+        IProgress<int>? progress = null, int beforeMessageId = 0,
+        IProgress<IReadOnlyList<AudioMessage>>? onBatch = null)
     {
         EnsureConnected();
 
@@ -204,6 +205,7 @@ public sealed class TelegramSource : ITelegramSource
                 break; // nothing left
             }
 
+            int pageStart = result.Count;
             bool reachedOlder = false;
             bool reachedCap = false;
             foreach (MessageBase mb in messages)
@@ -229,6 +231,10 @@ public sealed class TelegramSource : ITelegramSource
 
             offsetId = messages[^1].ID; // oldest id of this page -> next page older
             progress?.Report(result.Count);
+            if (result.Count > pageStart)
+            {
+                onBatch?.Report(result.GetRange(pageStart, result.Count - pageStart));
+            }
             if (reachedOlder || reachedCap || messages.Length < HistoryPageSize)
             {
                 break;

@@ -31,13 +31,20 @@ public interface ITelegramSource : IAsyncDisposable
     /// on or after <paramref name="sinceUtc"/>, capped at <paramref name="maxAudios"/>.
     /// Pass <see cref="DateTime.MinValue"/> for "no date limit, just the newest N".
     /// </summary>
+    /// <param name="onBatch">
+    /// Optional: reports just the audios found on each fetched page (not the
+    /// running total) as soon as that page is mapped, newest-first order
+    /// preserved across calls - lets a large "newest N" pull show rows as they
+    /// arrive instead of only once everything is fetched.
+    /// </param>
     Task<IReadOnlyList<AudioMessage>> GetAudioMessagesSinceAsync(
         long chatId,
         DateTime sinceUtc,
         CancellationToken ct,
         int maxAudios = int.MaxValue,
         IProgress<int>? progress = null,
-        int beforeMessageId = 0);
+        int beforeMessageId = 0,
+        IProgress<IReadOnlyList<AudioMessage>>? onBatch = null);
 
     /// <summary>
     /// Audio messages from <paramref name="chatId"/> posted after

@@ -504,8 +504,7 @@ public sealed class MainForm : StyledForm
 
         if (_groupCombo.SelectedIndex >= 0)
         {
-            await LoadFeedAsync();
-            Toast(Loc.T("toast.listUpdated", _items.Count));
+            await LoadFeedAsync();   // toasts internally on success
 
             // Correction pass, in the background: catches audios deleted from
             // the chat while this app wasn't connected (no update event for
@@ -843,6 +842,7 @@ public sealed class MainForm : StyledForm
 
         RenderList(afterLoad: true);
         EndFeedLoading();
+        Toast(Loc.T("toast.listUpdated", _items.Count));
 
         // So a restart (or switching back to this chat) can show the list
         // instantly and only fetch what's changed, instead of re-pulling e.g.

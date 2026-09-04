@@ -16,9 +16,6 @@ public sealed record FeedItem(AudioMessage Audio, bool Cached);
 /// </summary>
 public sealed class AudioFeedService
 {
-    /// <summary>How many audios the "newest N" mode returns (matches the combo label).</summary>
-    public const int RecentAudioCount = 100;
-
     private readonly ITelegramSource _telegram;
     private readonly IMediaCache _cache;
 
@@ -29,17 +26,17 @@ public sealed class AudioFeedService
     }
 
     /// <summary>
-    /// Audios from <paramref name="chatId"/>, newest first. <paramref name="days"/>
-    /// &gt; 0 = the last "now minus n days" (not midnight-rounded);
-    /// <paramref name="days"/> &lt;= 0 = the newest <see cref="RecentAudioCount"/>
-    /// regardless of age (for chats where nothing was posted for a long time).
+    /// Audios from <paramref name="chatId"/>, newest first.
+    /// <paramref name="range"/> &gt; 0 = the last "now minus n days" (not
+    /// midnight-rounded); <paramref name="range"/> &lt; 0 = the newest
+    /// <c>-range</c> audios regardless of age (for chats idle for a long time).
     /// </summary>
     public async Task<IReadOnlyList<FeedItem>> LoadAsync(
-        long chatId, int days, CancellationToken ct)
+        long chatId, int range, CancellationToken ct)
     {
-        bool byCount = days <= 0;
-        DateTime sinceUtc = byCount ? DateTime.MinValue : DateTime.UtcNow.AddDays(-days);
-        int maxAudios = byCount ? RecentAudioCount : int.MaxValue;
+        bool byCount = range <= 0;
+        DateTime sinceUtc = byCount ? DateTime.MinValue : DateTime.UtcNow.AddDays(-range);
+        int maxAudios = byCount ? Math.Max(1, -range) : int.MaxValue;
 
         IReadOnlyList<AudioMessage> audios =
             await _telegram.GetAudioMessagesSinceAsync(chatId, sinceUtc, ct, maxAudios);

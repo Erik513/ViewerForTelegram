@@ -20,7 +20,7 @@ public class AudioFeedServiceTests
         using var dir = TempPath.Dir();
         var svc = new AudioFeedService(tg, new FileMediaCache(dir.Path));
 
-        IReadOnlyList<FeedItem> items = await svc.LoadAsync(chatId: 1, days: 7, CancellationToken.None);
+        IReadOnlyList<FeedItem> items = await svc.LoadAsync(chatId: 1, range: 7, CancellationToken.None);
 
         Assert.Single(items);
         Assert.Equal(1, items[0].Audio.FileId);
@@ -63,12 +63,14 @@ public class AudioFeedServiceTests
         Assert.Equal(TimeSpan.FromSeconds(200), items.Single().Audio.Duration);
     }
 
-    [Fact]
-    public async Task LoadAsync_DaysZeroOrLess_ReturnsNewestNRegardlessOfAge()
+    [Theory]
+    [InlineData(-50, 50)]
+    [InlineData(-200, 200)]
+    public async Task LoadAsync_NegativeRange_ReturnsNewestNRegardlessOfAge(int range, int expected)
     {
         var tg = new FakeTelegramSource();
-        // 150 audios, all more than a year old
-        for (int i = 0; i < 150; i++)
+        // 600 audios, all more than a year old
+        for (int i = 0; i < 600; i++)
         {
             tg.Audios.Add(Audio(i + 1, DateTime.UtcNow.AddDays(-400 - i)));
         }
@@ -76,9 +78,9 @@ public class AudioFeedServiceTests
         using var dir = TempPath.Dir();
         var svc = new AudioFeedService(tg, new FileMediaCache(dir.Path));
 
-        IReadOnlyList<FeedItem> items = await svc.LoadAsync(1, days: 0, CancellationToken.None);
+        IReadOnlyList<FeedItem> items = await svc.LoadAsync(1, range, CancellationToken.None);
 
-        Assert.Equal(AudioFeedService.RecentAudioCount, items.Count);
+        Assert.Equal(expected, items.Count);
         Assert.Equal(1, items[0].Audio.FileId);   // newest first
     }
 

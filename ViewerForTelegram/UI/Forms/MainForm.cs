@@ -20,8 +20,8 @@ namespace ViewerForTelegram.UI.Forms;
 /// </summary>
 public sealed class MainForm : StyledForm
 {
-    // 0 = "the newest N audios" (no date limit) - see AudioFeedService.
-    private static readonly int[] RangeDayOptions = { 3, 7, 14, 30, 60, 0 };
+    // > 0 = days; < 0 = "the newest |n| audios" (no date limit) - see AudioFeedService.
+    private static readonly int[] RangeDayOptions = { 3, 7, 14, 30, 60, -50, -100, -200, -500 };
 
     private readonly ITelegramSource _telegram;
     private readonly IConfigStore _configStore;
@@ -97,7 +97,7 @@ public sealed class MainForm : StyledForm
         _rangeCombo.Items.AddRange(new object[]
         {
             "Last 3 days", "Last 7 days", "Last 14 days", "Last 30 days", "Last 60 days",
-            $"Newest {AudioFeedService.RecentAudioCount} audios"
+            "Newest 50 audios", "Newest 100 audios", "Newest 200 audios", "Newest 500 audios"
         });
         _rangeCombo.SelectedIndexChanged += (_, _) => OnFilterChanged();
 
@@ -469,7 +469,8 @@ public sealed class MainForm : StyledForm
         _ = LoadFeedAsync();
     }
 
-    private int SelectedDays =>
+    /// <summary>Positive = day window; negative = "newest |n| audios".</summary>
+    private int SelectedRange =>
         _rangeCombo.SelectedIndex >= 0 ? RangeDayOptions[_rangeCombo.SelectedIndex] : 7;
 
     private TelegramChat? SelectedChat =>
@@ -489,14 +490,14 @@ public sealed class MainForm : StyledForm
         CancellationToken token = (_feedCts = new CancellationTokenSource()).Token;
         int seq = ++_feedSeq;
         long chatId = chat.Id;
-        int days = SelectedDays;
+        int range = SelectedRange;
 
         Status("Loading …");
         List<FeedItem>? loaded = null;
         try
         {
             await RunWithRetryAsync("Loading", async () =>
-                loaded = (await _feed.LoadAsync(chatId, days, token)).ToList());
+                loaded = (await _feed.LoadAsync(chatId, range, token)).ToList());
         }
         catch (OperationCanceledException)
         {
@@ -1143,7 +1144,7 @@ public sealed class MainForm : StyledForm
     {
         _uiStateStore.Save(new UiState(
             LastChatId: SelectedChat?.Id ?? 0,
-            RangeDays: SelectedDays,
+            RangeDays: SelectedRange,
             VolumePercent: (int)Math.Round(_player.Volume * 100),
             LastPlayedFileId: _lastTrackId));
     }

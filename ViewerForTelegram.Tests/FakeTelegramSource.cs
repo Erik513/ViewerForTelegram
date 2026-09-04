@@ -16,10 +16,11 @@ internal sealed class FakeTelegramSource : ITelegramSource
     public Func<AudioMessage, string, IProgress<int>?, CancellationToken, Task>? DownloadBehavior { get; set; }
 
     public Task<IReadOnlyList<AudioMessage>> GetAudioMessagesSinceAsync(
-        long chatId, DateTime sinceUtc, CancellationToken ct) =>
+        long chatId, DateTime sinceUtc, CancellationToken ct, int maxAudios = int.MaxValue) =>
         Task.FromResult<IReadOnlyList<AudioMessage>>(
             Audios.Where(a => a.ChatId == chatId && a.DateUtc >= sinceUtc)
                   .OrderByDescending(a => a.DateUtc)
+                  .Take(Math.Max(0, maxAudios))
                   .ToList());
 
     public async Task DownloadAsync(

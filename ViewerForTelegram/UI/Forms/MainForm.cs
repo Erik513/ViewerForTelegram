@@ -20,7 +20,8 @@ namespace ViewerForTelegram.UI.Forms;
 /// </summary>
 public sealed class MainForm : StyledForm
 {
-    private static readonly int[] RangeDayOptions = { 3, 7, 14, 30, 60 };
+    // 0 = "the newest N audios" (no date limit) - see AudioFeedService.
+    private static readonly int[] RangeDayOptions = { 3, 7, 14, 30, 60, 0 };
 
     private readonly ITelegramSource _telegram;
     private readonly IConfigStore _configStore;
@@ -95,7 +96,8 @@ public sealed class MainForm : StyledForm
         _rangeCombo.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _rangeCombo.Items.AddRange(new object[]
         {
-            "Last 3 days", "Last 7 days", "Last 14 days", "Last 30 days", "Last 60 days"
+            "Last 3 days", "Last 7 days", "Last 14 days", "Last 30 days", "Last 60 days",
+            $"Newest {AudioFeedService.RecentAudioCount} audios"
         });
         _rangeCombo.SelectedIndexChanged += (_, _) => OnFilterChanged();
 
@@ -137,7 +139,7 @@ public sealed class MainForm : StyledForm
         };
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 42));
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 46));
-        topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 118));
+        topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150));
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40));
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 54));
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200));

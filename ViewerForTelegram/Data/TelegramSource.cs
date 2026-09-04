@@ -164,7 +164,7 @@ public sealed class TelegramSource : ITelegramSource
     private const int MaxMessages = 5000;
 
     public async Task<IReadOnlyList<AudioMessage>> GetAudioMessagesSinceAsync(
-        long chatId, DateTime sinceUtc, CancellationToken ct)
+        long chatId, DateTime sinceUtc, CancellationToken ct, int maxAudios = int.MaxValue)
     {
         EnsureConnected();
 
@@ -178,6 +178,7 @@ public sealed class TelegramSource : ITelegramSource
             ? DateTime.SpecifyKind(sinceUtc, DateTimeKind.Utc)
             : sinceUtc.ToUniversalTime();
 
+        int cap = maxAudios <= 0 ? 0 : Math.Min(maxAudios, MaxMessages);
         var result = new List<AudioMessage>();
         int offsetId = 0; // 0 = from the newest message
 
@@ -195,6 +196,7 @@ public sealed class TelegramSource : ITelegramSource
             }
 
             bool reachedOlder = false;
+            bool reachedCap = false;
             foreach (MessageBase mb in messages)
             {
                 // Messages come newest -> oldest. Once one is older than
@@ -208,11 +210,16 @@ public sealed class TelegramSource : ITelegramSource
                 if (mb is Message m && TryMapAudio(m, chatId, out AudioMessage audio))
                 {
                     result.Add(audio);
+                    if (result.Count >= cap)
+                    {
+                        reachedCap = true;
+                        break;
+                    }
                 }
             }
 
             offsetId = messages[^1].ID; // oldest id of this page -> next page older
-            if (reachedOlder || result.Count >= MaxMessages || messages.Length < HistoryPageSize)
+            if (reachedOlder || reachedCap || messages.Length < HistoryPageSize)
             {
                 break;
             }

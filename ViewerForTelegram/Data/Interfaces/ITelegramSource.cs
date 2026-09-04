@@ -27,13 +27,15 @@ public interface ITelegramSource : IAsyncDisposable
     Task<IReadOnlyList<TelegramChat>> GetChatsAsync(CancellationToken ct);
 
     /// <summary>
-    /// All audio messages from <paramref name="chatId"/> posted on or after
-    /// <paramref name="sinceUtc"/> - newest first.
+    /// Audio messages from <paramref name="chatId"/>, newest first: those posted
+    /// on or after <paramref name="sinceUtc"/>, capped at <paramref name="maxAudios"/>.
+    /// Pass <see cref="DateTime.MinValue"/> for "no date limit, just the newest N".
     /// </summary>
     Task<IReadOnlyList<AudioMessage>> GetAudioMessagesSinceAsync(
         long chatId,
         DateTime sinceUtc,
-        CancellationToken ct);
+        CancellationToken ct,
+        int maxAudios = int.MaxValue);
 
     /// <summary>
     /// Downloads the bytes of the audio file belonging to

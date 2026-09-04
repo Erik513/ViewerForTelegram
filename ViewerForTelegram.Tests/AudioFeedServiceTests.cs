@@ -64,17 +64,22 @@ public class AudioFeedServiceTests
     }
 
     [Fact]
-    public async Task LoadAsync_NegativeDays_ReturnEmptyListWithoutError()
+    public async Task LoadAsync_DaysZeroOrLess_ReturnsNewestNRegardlessOfAge()
     {
         var tg = new FakeTelegramSource();
-        tg.Audios.Add(Audio(1, DateTime.UtcNow.AddDays(-1)));
+        // 150 audios, all more than a year old
+        for (int i = 0; i < 150; i++)
+        {
+            tg.Audios.Add(Audio(i + 1, DateTime.UtcNow.AddDays(-400 - i)));
+        }
 
         using var dir = TempPath.Dir();
         var svc = new AudioFeedService(tg, new FileMediaCache(dir.Path));
 
-        IReadOnlyList<FeedItem> items = await svc.LoadAsync(1, days: -5, CancellationToken.None);
+        IReadOnlyList<FeedItem> items = await svc.LoadAsync(1, days: 0, CancellationToken.None);
 
-        Assert.Empty(items);
+        Assert.Equal(AudioFeedService.RecentAudioCount, items.Count);
+        Assert.Equal(1, items[0].Audio.FileId);   // newest first
     }
 
     [Fact]

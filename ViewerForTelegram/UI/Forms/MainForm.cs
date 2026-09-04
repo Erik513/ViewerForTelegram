@@ -59,8 +59,14 @@ public sealed class MainForm : StyledForm
     private int _feedSeq;           // bumped per feed load so a superseded one bails out
     private int _feedLoadingSeq;    // != 0 while a feed load owns the status line (matches its _feedSeq)
     private string? _deferredStatus; // a playback status held back until the feed load above finishes
-    private long _loadedChatId;     // chat + range the current _items belong to
-    private int _loadedRange;
+    // The biggest count-mode ("Newest N") list built up this session for one
+    // chat - never shrinks (a smaller N just displays fewer of it), so a later
+    // grow (or the next app start) doesn't re-fetch what was already known.
+    // Basis for incremental reuse and what gets persisted to disk.
+    private const int MaxLargestAudios = ViewerForTelegram.Data.JsonFeedCacheStore.MaxAudiosPerChat;
+    private long _largestChatId;
+    private int _largestRange;      // informational: -_largestItems.Count
+    private List<FeedItem> _largestItems = new();
     private int _lastProgress;
     private CancellationTokenSource? _playCts;
     private CancellationTokenSource? _feedCts;
@@ -345,16 +351,15 @@ public sealed class MainForm : StyledForm
         _audio.Volume = _player.Volume;
         _lastTrackId = state.LastPlayedFileId;   // select + tint this row once the feed loads
 
-        // Show the last session's list immediately - before even connecting -
-        // instead of a blank grid while a fresh "Newest N" is re-fetched from
-        // scratch. LoadFeedAsync's own incremental reuse then only tops it up
-        // (count mode) or does a normal fresh fetch that replaces it (day mode).
-        PersistedFeed? persisted = _feedCacheStore.Load();
-        if (persisted is { Audios.Count: > 0 } && persisted.ChatId == state.LastChatId)
+        // Show the last session's list for this chat immediately - before even
+        // connecting - instead of a blank grid while a fresh "Newest N" is
+        // re-fetched from scratch. LoadFeedAsync's own incremental reuse then
+        // only tops it up (count mode) or does a normal fresh fetch that
+        // replaces it (day mode).
+        EnsureLargestFor(state.LastChatId);
+        if (_largestItems.Count > 0)
         {
-            _items = _feed.Restore(persisted.Audios).ToList();
-            _loadedChatId = persisted.ChatId;
-            _loadedRange = persisted.Range;
+            _items = _largestItems;
             _byFileId.Clear();
             foreach (FeedItem item in _items)
             {
@@ -588,6 +593,11 @@ public sealed class MainForm : StyledForm
         long chatId = chat.Id;
         int range = SelectedRange;
 
+        // Switching to a chat we haven't touched yet this session picks up its
+        // own persisted list (if any) - so revisiting an earlier chat is just
+        // as cheap as restarting the app on the current one.
+        EnsureLargestFor(chatId);
+
         // While a feed load is running, its progress is more important than a
         // playback status update (e.g. "Playing: X") - PlaybackStatus defers
         // those until the load finishes instead of letting them overwrite it.
@@ -606,12 +616,14 @@ public sealed class MainForm : StyledForm
             }
         }
 
-        // Reuse the current list when only the count changed on the same chat -
-        // then only new posts (and any extra older ones) are fetched.
-        IReadOnlyList<AudioMessage>? previous =
-            range <= 0 && _loadedRange <= 0 && chatId == _loadedChatId && _items.Count > 0
-                ? _items.Select(i => i.Audio).ToList()
+        // Reuse the biggest count-mode list known for this chat - then only new
+        // posts (and any extra older ones) are fetched, regardless of whether
+        // what's currently on screen is smaller (a previous "shrink").
+        List<FeedItem>? previousItems =
+            range <= 0 && chatId == _largestChatId && _largestItems.Count > 0
+                ? _largestItems
                 : null;
+        IReadOnlyList<AudioMessage>? previous = previousItems?.Select(i => i.Audio).ToList();
 
         Status(previous is null ? Loc.S("status.loading") : Loc.S("status.checkingNew"));
 
@@ -635,12 +647,14 @@ public sealed class MainForm : StyledForm
         // A large fresh "newest N" pull (or growing a reused list, e.g. Newest
         // 1000 -> 5000) can take a while - show rows as pages arrive (every
         // ~500) instead of only once the whole thing is done. Growing starts
-        // from what's already shown (previous), not from zero.
+        // from everything already known (previousItems - which can be bigger
+        // than what's currently on screen, e.g. after an earlier shrink), not
+        // from what's merely displayed and not from zero.
         List<FeedItem> partial = null!;
         int nextRenderAt = 0;
         void ResetPartial()
         {
-            partial = previous is null ? new List<FeedItem>() : new List<FeedItem>(_items);
+            partial = previousItems is null ? new List<FeedItem>() : new List<FeedItem>(previousItems);
             nextRenderAt = partial.Count + 500;
         }
         ResetPartial();
@@ -699,8 +713,6 @@ public sealed class MainForm : StyledForm
 
         rendering = true;   // from here on, late progress callbacks must not talk
         _items = loaded;
-        _loadedChatId = chatId;
-        _loadedRange = range;
         _byFileId.Clear();
         foreach (FeedItem item in _items)
         {
@@ -710,9 +722,67 @@ public sealed class MainForm : StyledForm
         RenderList(afterLoad: true);
         EndFeedLoading();
 
-        // So a restart can show this list instantly and only fetch what's
-        // changed, instead of re-pulling e.g. "Newest 5000" from scratch.
-        _feedCacheStore.Save(new PersistedFeed(chatId, range, _items.Select(i => i.Audio).ToList()));
+        // So a restart (or switching back to this chat) can show the list
+        // instantly and only fetch what's changed, instead of re-pulling e.g.
+        // "Newest 5000" from scratch. Count mode: fold into the running
+        // superset (a smaller N here must not shrink what's remembered) and
+        // persist that; day mode has no "superset" concept, just persist what's shown.
+        if (range <= 0)
+        {
+            _largestChatId = chatId;
+            _largestItems = MergeLargest(_largestItems, loaded);
+            _largestRange = -_largestItems.Count;
+            _feedCacheStore.Save(new PersistedFeed(
+                chatId, _largestRange, _largestItems.Select(i => i.Audio).ToList()));
+        }
+        else
+        {
+            _feedCacheStore.Save(new PersistedFeed(chatId, range, _items.Select(i => i.Audio).ToList()));
+        }
+    }
+
+    /// <summary>
+    /// Switches the "biggest known list" bookkeeping to <paramref name="chatId"/>
+    /// if it isn't already there - restoring its persisted list (if any), so
+    /// revisiting a chat this session (or on the next app start) reuses it
+    /// instead of starting from nothing.
+    /// </summary>
+    private void EnsureLargestFor(long chatId)
+    {
+        if (chatId == _largestChatId)
+        {
+            return;
+        }
+
+        PersistedFeed? persisted = _feedCacheStore.Load(chatId);
+        _largestChatId = chatId;
+        _largestItems = persisted is { Audios.Count: > 0 }
+            ? _feed.Restore(persisted.Audios).ToList()
+            : new List<FeedItem>();
+    }
+
+    /// <summary>
+    /// Merges <paramref name="incoming"/> into <paramref name="existing"/> by
+    /// <see cref="AudioMessage.MessageId"/> (incoming wins on a conflict - it's
+    /// the freshest), newest first, capped at <see cref="MaxLargestAudios"/>.
+    /// </summary>
+    private static List<FeedItem> MergeLargest(List<FeedItem> existing, List<FeedItem> incoming)
+    {
+        var byId = new Dictionary<int, FeedItem>(existing.Count + incoming.Count);
+        foreach (FeedItem item in existing)
+        {
+            byId[item.Audio.MessageId] = item;
+        }
+        foreach (FeedItem item in incoming)
+        {
+            byId[item.Audio.MessageId] = item;
+        }
+
+        return byId.Values
+            .OrderByDescending(i => i.Audio.DateUtc)
+            .ThenByDescending(i => i.Audio.MessageId)
+            .Take(MaxLargestAudios)
+            .ToList();
     }
 
     /// <summary>Add a column: pass <paramref name="fill"/> for a stretchy column, or <paramref name="width"/> for a fixed one.</summary>
@@ -1342,7 +1412,8 @@ public sealed class MainForm : StyledForm
         _connected = false;
         _chats.Clear();
         _items = new();
-        _loadedChatId = 0;
+        _largestChatId = 0;
+        _largestItems = new();
         _byFileId.Clear();
         _suppressComboEvents = true;
         _groupCombo.Items.Clear();

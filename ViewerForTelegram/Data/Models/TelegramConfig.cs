@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using ErikwnkCore;
 
 namespace ViewerForTelegram.Data.Models;
 
@@ -27,8 +28,9 @@ namespace ViewerForTelegram.Data.Models;
 /// false: pick the folder on every download.
 /// </param>
 /// <param name="Language">
-/// UI language for the library's built-in dialog text. English by default;
-/// a change takes full effect on the next start.
+/// UI language - both this app's own strings and ErikwnkWFUI's built-in
+/// dialog text (kept in step via <c>UIStyles.SetLanguage</c>). English by
+/// default; a change applies live, no restart needed.
 /// </param>
 public sealed record TelegramConfig(
     int ApiId,
@@ -38,7 +40,7 @@ public sealed record TelegramConfig(
     string DownloadFolder = "",
     bool UseDownloadFolder = false,
     [property: JsonConverter(typeof(JsonStringEnumConverter))]
-    DisplayLanguage Language = DisplayLanguage.English)
+    AppLanguage Language = AppLanguage.English)
 {
     /// <summary>Empty state for "nothing entered yet".</summary>
     public static TelegramConfig Empty { get; } = new(0, "", "");

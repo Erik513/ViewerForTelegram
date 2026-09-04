@@ -23,6 +23,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Needed directly because TelegramConfig.Language / Loc.Current expose
+         ErikwnkCore.AppLanguage in their public surface. -->
+    <Reference Include="ErikwnkCore">
+      <HintPath>..\lib\ErikwnkWFUI\ErikwnkCore.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 

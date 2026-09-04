@@ -344,7 +344,17 @@
             </summary>
         </member>
         <member name="M:ErikwnkWFUI.Controls.PropertyTable.ClearRows">
-            <summary>Removes every row and section, leaving an empty table.</summary>
+            <summary>
+            Removes every row and section, leaving an empty table. Only
+            detaches the editor controls added via <see cref="M:ErikwnkWFUI.Controls.PropertyTable.AddRow(System.String,System.Windows.Forms.Control[])"/>
+            - it does NOT call <see cref="M:System.Windows.Forms.Control.Dispose(System.Boolean)"/> on them, so they
+            keep whatever state they had (text, selection, checked state,
+            ...) and can be re-added afterward via a fresh AddRow. Handy for
+            rebuilding a table live (e.g. on a language switch, re-adding the
+            same controls with new labels) without losing in-progress editor
+            state; if a caller genuinely wants the old controls gone for
+            good, dispose them explicitly first.
+            </summary>
         </member>
         <member name="M:ErikwnkWFUI.Controls.PropertyTable.AddSection(System.String)">
             <summary>Adds a full-width section header row.</summary>
@@ -777,42 +787,6 @@
             already-formatted number).
             </summary>
         </member>
-        <member name="T:ErikwnkWFUI.AppLocalization">
-            <summary>
-            General-purpose text localization for a consumer app's own strings -
-            separate from ErikwnkWFUI's internal UIStrings, which only covers the
-            library's own built-in dialogs (title bar tooltips, update prompt).
-            An app registers one dictionary per language once at startup, then
-            looks strings up by key. Switching Language raises LanguageChanged so
-            already-built UI can refresh itself.
-            </summary>
-        </member>
-        <member name="E:ErikwnkWFUI.AppLocalization.LanguageChanged">
-            <summary>
-            Raised when Language changes. UI built before the change has to
-            re-fetch its strings and re-apply them itself - this event only
-            signals that it should, it doesn't do that automatically.
-            </summary>
-        </member>
-        <member name="M:ErikwnkWFUI.AppLocalization.Register(ErikwnkWFUI.AppLanguage,System.Collections.Generic.IDictionary{System.String,System.String})">
-            <summary>
-            Adds (or overwrites) the translations for one language. Call once
-            per language at startup, before building any UI that uses Get.
-            </summary>
-        </member>
-        <member name="M:ErikwnkWFUI.AppLocalization.Get(System.String)">
-            <summary>
-            Looks up a string in the current language. Falls back to
-            English, then to the key itself, so a missing translation never
-            crashes - it just shows the raw key, which is easy to notice.
-            </summary>
-        </member>
-        <member name="M:ErikwnkWFUI.AppLocalization.Get(System.String,System.Object[])">
-            <summary>
-            Same as Get, but runs the result through string.Format with the
-            given arguments - for strings with placeholders like "{0}".
-            </summary>
-        </member>
         <member name="T:ErikwnkWFUI.Styles.UIAccentColors">
             <summary>
             A curated palette of base colors for <see cref="M:ErikwnkWFUI.Styles.UIColors.SetAccent(System.Drawing.Color)"/>,
@@ -937,8 +911,8 @@
             with a set of <c>Create*</c> factory methods that return a
             pre-themed, ready-to-add WinForms control. See <see cref="T:ErikwnkWFUI.UIStyles.Colors"/>
             for how to customize the color scheme (accent color and/or full
-            light/dark theme) and <see cref="P:ErikwnkWFUI.UIStyles.Language"/> for switching the
-            language of built-in dialog text.
+            light/dark theme) and <see cref="P:ErikwnkWFUI.UIStyles.Language"/>/<see cref="M:ErikwnkWFUI.UIStyles.SetLanguage(ErikwnkCore.AppLanguage)"/>
+            for switching the language of built-in dialog text.
             </summary>
         </member>
         <member name="P:ErikwnkWFUI.UIStyles.Language">
@@ -946,6 +920,25 @@
             Language used by built-in dialogs/controls that ship their own text
             (update prompt, title bar tooltips). Set once at startup, before any
             ErikwnkWFUI form is created, to switch away from the English default.
+            Separate from <see cref="T:ErikwnkCore.AppLocalization"/>.Language (a
+            consuming app's OWN strings) - see <see cref="M:ErikwnkWFUI.UIStyles.SetLanguage(ErikwnkCore.AppLanguage)"/> to set
+            both together, which is what most apps actually want.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.SetLanguage(ErikwnkCore.AppLanguage)">
+            <summary>
+            Sets this library's own <see cref="P:ErikwnkWFUI.UIStyles.Language"/> and a consuming
+            app's <see cref="T:ErikwnkCore.AppLocalization"/>.Language together,
+            from one <see cref="T:ErikwnkCore.AppLanguage"/> value. The two are
+            separate properties, in separate assemblies with separate enums,
+            because AppLocalization has no WinForms dependency at all and
+            doesn't know this library exists - but almost every app that uses
+            both wants them switched in lockstep, and forgetting to set one of
+            the two is an easy way to end up with the app's own text in one
+            language and ErikwnkWFUI's built-in dialogs (update prompt, title
+            bar tooltips) in another. Prefer this over setting
+            <see cref="P:ErikwnkWFUI.UIStyles.Language"/> and AppLocalization.Language individually
+            unless an app specifically wants them to diverge.
             </summary>
         </member>
         <member name="T:ErikwnkWFUI.UIStyles.Colors">
@@ -982,6 +975,20 @@
         <member name="T:ErikwnkWFUI.UIStyles.Buttons">
             <summary>Flat, themed <see cref="T:System.Windows.Forms.Button"/>s in a few preset colors (<see cref="M:ErikwnkWFUI.UIStyles.Buttons.CreateStandard(System.String,System.String,System.Nullable{System.Drawing.Size},System.Boolean)"/>, <see cref="M:ErikwnkWFUI.UIStyles.Buttons.CreatePrimary(System.String,System.String,System.Nullable{System.Drawing.Size},System.Boolean)"/>, <see cref="M:ErikwnkWFUI.UIStyles.Buttons.CreateGreen(System.String,System.String,System.Nullable{System.Drawing.Size},System.Boolean)"/>, <see cref="M:ErikwnkWFUI.UIStyles.Buttons.CreateRed(System.String,System.String,System.Nullable{System.Drawing.Size},System.Boolean)"/>) plus a couple of special-purpose ones.</summary>
         </member>
+        <member name="M:ErikwnkWFUI.UIStyles.Buttons.CreateBrowse(System.String,System.Nullable{System.Drawing.Size},System.Boolean)">
+            <summary>
+            A yellow "open folder" icon button. <paramref name="tooltip"/>
+            is exactly that - the tooltip text - NOT the button's visible
+            label: this factory always sets <c>.Text</c> to the folder
+            glyph ("📁") itself, so there's no separate parameter for
+            visible text at all. Overwriting the returned button's
+            <c>.Text</c> afterward (e.g. while re-applying strings on a
+            language switch) replaces the icon with whatever was set and
+            is almost never what's wanted - to change the tooltip later,
+            use <see cref="M:ErikwnkWFUI.UIStyles.Buttons.UpdateTooltip(System.Windows.Forms.Button,System.String)"/> instead, and leave <c>.Text</c>
+            alone.
+            </summary>
+        </member>
         <member name="M:ErikwnkWFUI.UIStyles.Buttons.UpdateTooltip(System.Windows.Forms.Button,System.String)">
             <summary>
             Changes an already-created button's tooltip text - e.g. to
@@ -999,6 +1006,18 @@
         </member>
         <member name="T:ErikwnkWFUI.UIStyles.ComboBoxes">
             <summary>A themed <see cref="T:System.Windows.Forms.ComboBox"/>. Note: only the edit portion follows the theme - the native dropdown list itself still renders with system colors (see ErikwnkWFUI/README.md).</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.ComboBoxes.ReplaceItems(System.Windows.Forms.ComboBox,System.Collections.Generic.IEnumerable{System.Object},System.Boolean)">
+            <summary>
+            Clears <paramref name="comboBox"/>'s items and repopulates it
+            from <paramref name="items"/> - e.g. because a language switch
+            changed the item text - restoring whatever was selected
+            before by its POSITION in the list (not by value/identity, so
+            this assumes the same N choices in the same order, just
+            possibly relabeled). Saves callers from having to remember
+            SelectedIndex and re-set it by hand every time they rebuild a
+            combo box's items.
+            </summary>
         </member>
         <member name="T:ErikwnkWFUI.UIStyles.Panels">
             <summary>Plain <see cref="T:System.Windows.Forms.Panel"/>s pre-filled with one of the theme's background shades - handy as containers/cards.</summary>

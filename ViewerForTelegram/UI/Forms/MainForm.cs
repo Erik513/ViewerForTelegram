@@ -1,3 +1,4 @@
+using ErikwnkCore;
 using ErikwnkWFUI;
 using ErikwnkWFUI.Forms;
 using ViewerForTelegram.Data;
@@ -725,7 +726,7 @@ public sealed class MainForm : StyledForm
             AudioMessage a = filtered[r].Audio;
             var row = new DataGridViewRow { Height = _list.RowTemplate.Height };
             row.CreateCells(_list,
-                a.DateUtc.ToLocalTime().ToString("yyyy-MM-dd"),
+                AppDateFormatter.Format(a.DateUtc.ToLocalTime()),
                 a.Title,
                 a.Performer,
                 a.Duration is { } d ? $"{(int)d.TotalMinutes}:{d.Seconds:00}" : "–",

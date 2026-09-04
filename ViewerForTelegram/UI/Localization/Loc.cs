@@ -1,13 +1,11 @@
+using ErikwnkCore;
 using ErikwnkWFUI;
-using ErikwnkWFUI.Styles;
-using ViewerForTelegram.Data.Models;
 
 namespace ViewerForTelegram.UI.Localization;
 
 /// <summary>
-/// App-wide UI text. Wraps ErikwnkWFUI's <see cref="AppLocalization"/> (our own
-/// strings) and keeps <see cref="UIStyles.Language"/> (the library's built-in
-/// dialog text) in step, so one switch flips everything.
+/// App-wide UI text. Wraps ErikwnkCore's <see cref="AppLocalization"/> (our own
+/// strings; moved there from ErikwnkWFUI since it has no WinForms dependency).
 ///
 /// Call <see cref="Register"/> once at startup. Every form re-applies its texts
 /// from a handler on <see cref="Changed"/> - the event only signals; it does not
@@ -28,20 +26,12 @@ public static class Loc
     /// <summary><see cref="S"/> run through <see cref="string.Format(string,object[])"/>.</summary>
     public static string T(string key, params object[] args) => AppLocalization.Get(key, args);
 
-    public static DisplayLanguage Current
+    public static AppLanguage Current
     {
-        get => AppLocalization.Language == AppLanguage.German
-            ? DisplayLanguage.German
-            : DisplayLanguage.English;
-        set
-        {
-            UIStyles.Language = value == DisplayLanguage.German
-                ? UILanguage.German
-                : UILanguage.English;
-            AppLocalization.Language = value == DisplayLanguage.German
-                ? AppLanguage.German
-                : AppLanguage.English;   // raises Changed
-        }
+        get => AppLocalization.Language;
+        // UIStyles.SetLanguage keeps this app's own strings AND ErikwnkWFUI's
+        // built-in dialog text (UIStyles.Language) in lockstep from one value.
+        set => UIStyles.SetLanguage(value);
     }
 
     public static void Register()

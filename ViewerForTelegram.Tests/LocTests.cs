@@ -1,3 +1,4 @@
+using ErikwnkCore;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using ViewerForTelegram.Data.Models;
@@ -49,15 +50,15 @@ public class LocTests
     {
         Loc.Register();
 
-        Loc.Current = DisplayLanguage.English;
-        Assert.Equal(DisplayLanguage.English, Loc.Current);
+        Loc.Current = AppLanguage.English;
+        Assert.Equal(AppLanguage.English, Loc.Current);
         Assert.Equal("Newest 50 files", Loc.T("range.newest", 50));
 
-        Loc.Current = DisplayLanguage.German;
-        Assert.Equal(DisplayLanguage.German, Loc.Current);
+        Loc.Current = AppLanguage.German;
+        Assert.Equal(AppLanguage.German, Loc.Current);
         Assert.Equal("Neueste 50 Dateien", Loc.T("range.newest", 50));
 
-        Loc.Current = DisplayLanguage.English;   // leave the default in place
+        Loc.Current = AppLanguage.English;   // leave the default in place
     }
 
     [Fact]

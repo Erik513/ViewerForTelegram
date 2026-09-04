@@ -1,3 +1,4 @@
+using ErikwnkCore;
 using ViewerForTelegram.Data;
 using ViewerForTelegram.Data.Models;
 
@@ -38,7 +39,7 @@ public class TelegramConfigTests
         Assert.True(c.ClearCacheOnStart);
         Assert.False(c.UseDownloadFolder);
         Assert.Equal("", c.DownloadFolder);
-        Assert.Equal(DisplayLanguage.English, c.Language);
+        Assert.Equal(AppLanguage.English, c.Language);
     }
 
     [Fact]

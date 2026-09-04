@@ -1,3 +1,4 @@
+using ErikwnkCore;
 using ErikwnkWFUI;
 using ErikwnkWFUI.Controls;
 using ErikwnkWFUI.Forms;
@@ -111,12 +112,12 @@ public sealed class SettingsForm : StyledForm
         _language.DropDownStyle = ComboBoxStyle.DropDownList;
         _language.TabStop = false;
         _language.Items.AddRange(new object[] { "English", "Deutsch" });
-        _language.SelectedIndex = current.Language == DisplayLanguage.German ? 1 : 0;
+        _language.SelectedIndex = current.Language == AppLanguage.German ? 1 : 0;
         _language.SelectedIndexChanged += (_, _) =>
             // Switch the whole UI right now (Loc.Changed -> ApplyTexts here too).
             Loc.Current = _language.SelectedIndex == 1
-                ? DisplayLanguage.German
-                : DisplayLanguage.English;
+                ? AppLanguage.German
+                : AppLanguage.English;
 
         _apiId = Field(current.ApiId > 0 ? current.ApiId.ToString() : "");
         _apiHash = Field(current.ApiHash);
@@ -424,8 +425,8 @@ public sealed class SettingsForm : StyledForm
 
         int.TryParse(_apiId.Text.Trim(), out int id);
 
-        DisplayLanguage language =
-            _language.SelectedIndex == 1 ? DisplayLanguage.German : DisplayLanguage.English;
+        AppLanguage language =
+            _language.SelectedIndex == 1 ? AppLanguage.German : AppLanguage.English;
 
         // Store blank while the field still shows the OS Downloads folder, so a
         // later move of that folder keeps being followed.

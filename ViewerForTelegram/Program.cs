@@ -20,8 +20,9 @@ static class Program
     [STAThread]
     static void Main()
     {
-        // The app is English-only - run everything in en-US so number/date
-        // formatting is consistent regardless of the user's Windows locale.
+        // Run everything in en-US regardless of UI language, so number/date
+        // parsing stays predictable no matter the user's Windows locale -
+        // display text still follows Loc.Current (see AppDateFormatter).
         var culture = CultureInfo.GetCultureInfo("en-US");
         CultureInfo.DefaultThreadCurrentCulture = culture;
         CultureInfo.DefaultThreadCurrentUICulture = culture;

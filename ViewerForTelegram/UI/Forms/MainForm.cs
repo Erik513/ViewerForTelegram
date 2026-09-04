@@ -851,12 +851,24 @@ public sealed class MainForm : StyledForm
         // instantly and only fetch what's changed, instead of re-pulling e.g.
         // "Newest 5000" from scratch. Count mode: fold into the running
         // superset (a smaller N here must not shrink what's remembered) and
-        // persist that; day mode has no "superset" concept, just persist what's shown.
+        // persist that.
         if (range <= 0)
         {
             _largestChatId = chatId;
             _largestItems = MergeLargest(_largestItems, loaded);
             _largestRange = -_largestItems.Count;
+            _feedCacheStore.Save(new PersistedFeed(
+                chatId, _largestRange, _largestItems.Select(i => i.Audio).ToList()));
+        }
+        else if (_largestChatId == chatId && _largestItems.Count > 0)
+        {
+            // Day mode has no "superset" of its own - but this chat already
+            // has a count-mode superset in memory, and it's always a bigger,
+            // strictly better reuse/restart basis than this narrow day
+            // window. Keep persisting THAT instead of overwriting it with
+            // the day window (which used to silently throw the superset away
+            // on disk - the in-memory copy survived, but a later restart, or
+            // switching chats and back, would have restored the tiny one).
             _feedCacheStore.Save(new PersistedFeed(
                 chatId, _largestRange, _largestItems.Select(i => i.Audio).ToList()));
         }

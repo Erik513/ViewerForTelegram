@@ -56,6 +56,8 @@ public sealed class MainForm : StyledForm
     private long _lastTrackId;    // last track put in the player (persisted; drives the row tint before playback)
     private int _playSeq;           // bumped per download so a superseded one bails out
     private int _feedSeq;           // bumped per feed load so a superseded one bails out
+    private int _feedLoadingSeq;    // != 0 while a feed load owns the status line (matches its _feedSeq)
+    private string? _deferredStatus; // a playback status held back until the feed load above finishes
     private long _loadedChatId;     // chat + range the current _items belong to
     private int _loadedRange;
     private int _lastProgress;
@@ -226,7 +228,7 @@ public sealed class MainForm : StyledForm
             _currentFileId = null;
             HighlightPlayingRow();
             ShowSelected();
-            Status(Loc.T("status.playbackFailed", ex.Message));
+            PlaybackStatus(Loc.T("status.playbackFailed", ex.Message));
         };
 
         // A 3-row grid so nothing can overlap regardless of window size.
@@ -565,6 +567,24 @@ public sealed class MainForm : StyledForm
         long chatId = chat.Id;
         int range = SelectedRange;
 
+        // While a feed load is running, its progress is more important than a
+        // playback status update (e.g. "Playing: X") - PlaybackStatus defers
+        // those until the load finishes instead of letting them overwrite it.
+        _feedLoadingSeq = seq;
+        void EndFeedLoading()
+        {
+            if (_feedLoadingSeq != seq)
+            {
+                return;   // a newer load has already taken over the "loading" spot
+            }
+            _feedLoadingSeq = 0;
+            if (_deferredStatus is { } text)
+            {
+                _deferredStatus = null;
+                Status(text);
+            }
+        }
+
         // Reuse the current list when only the count changed on the same chat -
         // then only new posts (and any extra older ones) are fetched.
         IReadOnlyList<AudioMessage>? previous =
@@ -599,6 +619,7 @@ public sealed class MainForm : StyledForm
         }
         catch (OperationCanceledException)
         {
+            EndFeedLoading();
             return;   // superseded by a newer load
         }
         catch (Exception ex)
@@ -607,11 +628,13 @@ public sealed class MainForm : StyledForm
             {
                 Status(DescribeFailure("loading", ex));
             }
+            EndFeedLoading();
             return;
         }
 
         if (seq != _feedSeq || token.IsCancellationRequested || loaded is null)
         {
+            EndFeedLoading();
             return;   // a newer load started while this one ran
         }
 
@@ -626,6 +649,7 @@ public sealed class MainForm : StyledForm
         }
 
         RenderList(afterLoad: true);
+        EndFeedLoading();
     }
 
     /// <summary>Add a column: pass <paramref name="fill"/> for a stretchy column, or <paramref name="width"/> for a fixed one.</summary>
@@ -929,7 +953,7 @@ public sealed class MainForm : StyledForm
         }
         catch (Exception ex)
         {
-            Status(Loc.T("status.cannotPlay", Path.GetExtension(audio.FileName), ex.Message));
+            PlaybackStatus(Loc.T("status.cannotPlay", Path.GetExtension(audio.FileName), ex.Message));
             return;
         }
 
@@ -942,7 +966,7 @@ public sealed class MainForm : StyledForm
         _audio.Play();
         _player.SetButton(PlayerButton.Pause);
         _positionTimer.Start();
-        Status(Loc.T("status.playing", audio.DisplayName));
+        PlaybackStatus(Loc.T("status.playing", audio.DisplayName));
     }
 
     /// <summary>
@@ -997,7 +1021,7 @@ public sealed class MainForm : StyledForm
         {
             _player.SetDownloadProgress(0);
         }
-        Status(Loc.T("status.loadingFile", audio.DisplayName));
+        PlaybackStatus(Loc.T("status.loadingFile", audio.DisplayName));
 
         var progress = new Progress<int>(p =>
         {
@@ -1022,7 +1046,7 @@ public sealed class MainForm : StyledForm
             if (seq == _playSeq)
             {
                 _pendingFileId = 0;
-                Status(Loc.S("status.cancelled"));
+                PlaybackStatus(Loc.S("status.cancelled"));
                 ShowSelected();
             }
             return;
@@ -1032,7 +1056,7 @@ public sealed class MainForm : StyledForm
             if (seq == _playSeq)
             {
                 _pendingFileId = 0;
-                Status(Loc.T("status.downloadFailed", ex.Message));
+                PlaybackStatus(Loc.T("status.downloadFailed", ex.Message));
                 ShowSelected();
             }
             return;
@@ -1053,7 +1077,7 @@ public sealed class MainForm : StyledForm
         }
         catch (Exception ex)
         {
-            Status(Loc.T("status.cannotPlayElsewhere", Path.GetExtension(audio.FileName), ex.Message));
+            PlaybackStatus(Loc.T("status.cannotPlayElsewhere", Path.GetExtension(audio.FileName), ex.Message));
             ShowSelected();
             return;
         }
@@ -1070,7 +1094,7 @@ public sealed class MainForm : StyledForm
             _player.SetLoaded(_audio.Duration, _audio.BitrateKbps);
             _player.SetButton(PlayerButton.Pause);
         }
-        Status(Loc.T("status.playing", audio.DisplayName));
+        PlaybackStatus(Loc.T("status.playing", audio.DisplayName));
     }
 
     private void OnVolumeChanged(float v)
@@ -1092,7 +1116,7 @@ public sealed class MainForm : StyledForm
         }
         catch (Exception ex)
         {
-            Status(Loc.T("status.cannotOpenFolder", ex.Message));
+            PlaybackStatus(Loc.T("status.cannotOpenFolder", ex.Message));
         }
     }
 
@@ -1291,6 +1315,23 @@ public sealed class MainForm : StyledForm
     }
 
     private void Status(string text) => _player.SetStatus(text);
+
+    /// <summary>
+    /// Status update from playback/download - shown right away, unless a feed
+    /// load is currently running (its progress matters more); then it's held
+    /// back and shown as soon as that load finishes.
+    /// </summary>
+    private void PlaybackStatus(string text)
+    {
+        if (_feedLoadingSeq != 0)
+        {
+            _deferredStatus = text;
+        }
+        else
+        {
+            Status(text);
+        }
+    }
     private static void TryDelete(string path)
     {
         try

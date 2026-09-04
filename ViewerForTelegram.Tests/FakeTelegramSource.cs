@@ -8,6 +8,8 @@ internal sealed class FakeTelegramSource : ITelegramSource
 {
     public List<AudioMessage> Audios { get; } = new();
     public int DownloadCalls { get; private set; }
+    public int SinceCalls;
+    public int AfterCalls;
 
     /// <summary>
     /// Optional custom download simulation. Default: writes
@@ -17,12 +19,26 @@ internal sealed class FakeTelegramSource : ITelegramSource
 
     public Task<IReadOnlyList<AudioMessage>> GetAudioMessagesSinceAsync(
         long chatId, DateTime sinceUtc, CancellationToken ct, int maxAudios = int.MaxValue,
-        IProgress<int>? progress = null) =>
-        Task.FromResult<IReadOnlyList<AudioMessage>>(
-            Audios.Where(a => a.ChatId == chatId && a.DateUtc >= sinceUtc)
+        IProgress<int>? progress = null, int beforeMessageId = 0)
+    {
+        SinceCalls++;
+        return Task.FromResult<IReadOnlyList<AudioMessage>>(
+            Audios.Where(a => a.ChatId == chatId && a.DateUtc >= sinceUtc
+                              && (beforeMessageId == 0 || a.MessageId < beforeMessageId))
                   .OrderByDescending(a => a.DateUtc)
                   .Take(Math.Max(0, maxAudios))
                   .ToList());
+    }
+
+    public Task<IReadOnlyList<AudioMessage>> GetAudioMessagesAfterAsync(
+        long chatId, int afterMessageId, CancellationToken ct)
+    {
+        AfterCalls++;
+        return Task.FromResult<IReadOnlyList<AudioMessage>>(
+            Audios.Where(a => a.ChatId == chatId && a.MessageId > afterMessageId)
+                  .OrderByDescending(a => a.DateUtc)
+                  .ToList());
+    }
 
     public async Task DownloadAsync(
         AudioMessage message, string targetPath, IProgress<int>? progress, CancellationToken ct)

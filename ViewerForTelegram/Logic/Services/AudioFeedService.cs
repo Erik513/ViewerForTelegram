@@ -30,16 +30,23 @@ public sealed class AudioFeedService
     /// <paramref name="range"/> &gt; 0 = the last "now minus n days" (not
     /// midnight-rounded); <paramref name="range"/> &lt; 0 = the newest
     /// <c>-range</c> audios regardless of age (for chats idle for a long time).
+    ///
+    /// In count mode, pass the previous result as <paramref name="previous"/>
+    /// (same chat) to reuse it: only the newly-posted messages and, if the count
+    /// grew, the extra older ones are fetched.
     /// </summary>
     public async Task<IReadOnlyList<FeedItem>> LoadAsync(
-        long chatId, int range, CancellationToken ct, IProgress<int>? progress = null)
+        long chatId, int range, CancellationToken ct, IProgress<int>? progress = null,
+        IReadOnlyList<AudioMessage>? previous = null)
     {
         bool byCount = range <= 0;
         DateTime sinceUtc = byCount ? DateTime.MinValue : DateTime.UtcNow.AddDays(-range);
         int maxAudios = byCount ? Math.Max(1, -range) : int.MaxValue;
 
         IReadOnlyList<AudioMessage> audios =
-            await _telegram.GetAudioMessagesSinceAsync(chatId, sinceUtc, ct, maxAudios, progress);
+            byCount && previous is { Count: > 0 }
+                ? await LoadIncrementalAsync(chatId, maxAudios, previous, ct, progress)
+                : await _telegram.GetAudioMessagesSinceAsync(chatId, sinceUtc, ct, maxAudios, progress);
 
         var items = new List<FeedItem>(audios.Count);
         for (int i = 0; i < audios.Count; i++)
@@ -58,5 +65,36 @@ public sealed class AudioFeedService
             items.Add(new FeedItem(enriched, _cache.Contains(enriched)));
         }
         return items;
+    }
+
+    private async Task<IReadOnlyList<AudioMessage>> LoadIncrementalAsync(
+        long chatId, int maxAudios, IReadOnlyList<AudioMessage> previous,
+        CancellationToken ct, IProgress<int>? progress)
+    {
+        int newestKnownId = previous.Max(a => a.MessageId);
+        int oldestKnownId = previous.Min(a => a.MessageId);
+
+        // 1. anything posted since the previous load
+        IReadOnlyList<AudioMessage> newer =
+            await _telegram.GetAudioMessagesAfterAsync(chatId, newestKnownId, ct);
+
+        var byId = new Dictionary<int, AudioMessage>(previous.Count + newer.Count);
+        foreach (AudioMessage a in newer) byId[a.MessageId] = a;
+        foreach (AudioMessage a in previous) byId.TryAdd(a.MessageId, a);
+
+        // 2. if the requested count grew, fetch the extra older ones
+        if (byId.Count < maxAudios)
+        {
+            IReadOnlyList<AudioMessage> older = await _telegram.GetAudioMessagesSinceAsync(
+                chatId, DateTime.MinValue, ct, maxAudios - byId.Count, progress,
+                beforeMessageId: oldestKnownId);
+            foreach (AudioMessage a in older) byId.TryAdd(a.MessageId, a);
+        }
+
+        return byId.Values
+            .OrderByDescending(a => a.DateUtc)
+            .ThenByDescending(a => a.MessageId)
+            .Take(maxAudios)
+            .ToList();
     }
 }

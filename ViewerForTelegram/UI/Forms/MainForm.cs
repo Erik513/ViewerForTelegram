@@ -52,6 +52,8 @@ public sealed class MainForm : StyledForm
     private long _lastTrackId;    // last track put in the player (persisted; drives the row tint before playback)
     private int _playSeq;           // bumped per download so a superseded one bails out
     private int _feedSeq;           // bumped per feed load so a superseded one bails out
+    private long _loadedChatId;     // chat + range the current _items belong to
+    private int _loadedRange;
     private int _lastProgress;
     private CancellationTokenSource? _playCts;
     private CancellationTokenSource? _feedCts;
@@ -511,7 +513,14 @@ public sealed class MainForm : StyledForm
         long chatId = chat.Id;
         int range = SelectedRange;
 
-        Status("Loading …");
+        // Reuse the current list when only the count changed on the same chat -
+        // then only new posts (and any extra older ones) are fetched.
+        IReadOnlyList<AudioMessage>? previous =
+            range <= 0 && _loadedRange <= 0 && chatId == _loadedChatId && _items.Count > 0
+                ? _items.Select(i => i.Audio).ToList()
+                : null;
+
+        Status(previous is null ? "Loading …" : "Checking for new audios …");
         var progress = new Progress<int>(n =>
         {
             if (seq == _feedSeq)
@@ -524,7 +533,7 @@ public sealed class MainForm : StyledForm
         try
         {
             await RunWithRetryAsync("Loading", async () =>
-                loaded = (await _feed.LoadAsync(chatId, range, token, progress)).ToList());
+                loaded = (await _feed.LoadAsync(chatId, range, token, progress, previous)).ToList());
         }
         catch (OperationCanceledException)
         {
@@ -545,6 +554,8 @@ public sealed class MainForm : StyledForm
         }
 
         _items = loaded;
+        _loadedChatId = chatId;
+        _loadedRange = range;
         _byFileId.Clear();
         foreach (FeedItem item in _items)
         {
@@ -923,7 +934,7 @@ public sealed class MainForm : StyledForm
         {
             _player.SetDownloadProgress(0);
         }
-        Status($"Downloading: {audio.DisplayName}");
+        Status($"Loading: {audio.DisplayName}");
 
         var progress = new Progress<int>(p =>
         {
@@ -1176,6 +1187,7 @@ public sealed class MainForm : StyledForm
         _connected = false;
         _chats.Clear();
         _items = new();
+        _loadedChatId = 0;
         _byFileId.Clear();
         _suppressComboEvents = true;
         _groupCombo.Items.Clear();

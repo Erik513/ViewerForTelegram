@@ -80,10 +80,7 @@ public sealed class AudioPlayer : IAudioPlayer
         ISampleProvider output;
         if (filePath.EndsWith(".flac", StringComparison.OrdinalIgnoreCase))
         {
-            var flac = new FlacReader(filePath);
-            _stream = flac;
-            _sampleChannel = new SampleChannel(flac, forceStereo: false) { Volume = _volume };
-            output = _sampleChannel;
+            output = OpenFlac(filePath);
         }
         else
         {
@@ -117,6 +114,76 @@ public sealed class AudioPlayer : IAudioPlayer
         _output.PlaybackStopped += OnPlaybackStopped;
         _output.Init(output);
         State = PlaybackState.Stopped;
+    }
+
+    private Stream? _ownedStream;   // a FileStream we opened ourselves and must dispose
+
+    /// <summary>
+    /// Opens a .flac file. Falls back for the two common failures of
+    /// <see cref="FlacReader"/>: a non-standard leading ID3v2 tag ("fLaC" sync
+    /// not found - re-open past the tag) and anything else (Media Foundation).
+    /// </summary>
+    private ISampleProvider OpenFlac(string filePath)
+    {
+        try
+        {
+            var flac = new FlacReader(filePath);
+            _stream = flac;
+            _sampleChannel = new SampleChannel(flac, forceStereo: false) { Volume = _volume };
+            return _sampleChannel;
+        }
+        catch (Exception ex)
+        {
+            long skip = LeadingId3v2Length(filePath);
+            AppLog.Error("Audio",
+                $"FlacReader failed: {ex.GetType().Name}: {ex.Message}" +
+                (skip > 0 ? $" - retrying past a {skip}-byte ID3v2 tag" : " - falling back to Media Foundation"));
+
+            if (skip > 0)
+            {
+                try
+                {
+                    var fs = File.OpenRead(filePath);
+                    fs.Position = skip;
+                    var flac = new FlacReader(fs);
+                    _ownedStream = fs;
+                    _stream = flac;
+                    _sampleChannel = new SampleChannel(flac, forceStereo: false) { Volume = _volume };
+                    return _sampleChannel;
+                }
+                catch (Exception ex2)
+                {
+                    AppLog.Error("Audio", $"FlacReader still failed past the tag: {ex2.Message} - Media Foundation");
+                }
+            }
+
+            var mf = new MediaFoundationReader(filePath);
+            _stream = mf;
+            _sampleChannel = new SampleChannel(mf, forceStereo: false) { Volume = _volume };
+            return _sampleChannel;
+        }
+    }
+
+    /// <summary>Length of a leading ID3v2 tag (some taggers wrongly add one to FLAC), or 0.</summary>
+    private static long LeadingId3v2Length(string filePath)
+    {
+        try
+        {
+            using var fs = File.OpenRead(filePath);
+            Span<byte> h = stackalloc byte[10];
+            if (fs.Read(h) < 10 || h[0] != 'I' || h[1] != 'D' || h[2] != '3')
+            {
+                return 0;
+            }
+            // bytes 6..9 are a 7-bit "syncsafe" integer: the tag size after the header
+            int size = (h[6] << 21) | (h[7] << 14) | (h[8] << 7) | h[9];
+            bool hasFooter = (h[5] & 0x10) != 0;
+            return 10 + size + (hasFooter ? 10 : 0);
+        }
+        catch
+        {
+            return 0;
+        }
     }
 
     /// <summary>
@@ -196,6 +263,9 @@ public sealed class AudioPlayer : IAudioPlayer
         _stream = null;
         _fileReader = null;
         _sampleChannel = null;
+
+        try { _ownedStream?.Dispose(); } catch { }
+        _ownedStream = null;
     }
 
     private void OnPlaybackStopped(object? sender, StoppedEventArgs e)

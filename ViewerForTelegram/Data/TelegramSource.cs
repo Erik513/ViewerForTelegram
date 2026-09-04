@@ -165,7 +165,7 @@ public sealed class TelegramSource : ITelegramSource
 
     public async Task<IReadOnlyList<AudioMessage>> GetAudioMessagesSinceAsync(
         long chatId, DateTime sinceUtc, CancellationToken ct, int maxAudios = int.MaxValue,
-        IProgress<int>? progress = null)
+        IProgress<int>? progress = null, int beforeMessageId = 0)
     {
         EnsureConnected();
 
@@ -189,7 +189,7 @@ public sealed class TelegramSource : ITelegramSource
             : MaxMessages / HistoryPageSize;
 
         var result = new List<AudioMessage>();
-        int offsetId = 0; // 0 = from the newest message
+        int offsetId = beforeMessageId; // 0 = from the newest message; else start just before this id
 
         for (int page = 0; page < maxPages; page++)
         {
@@ -235,7 +235,63 @@ public sealed class TelegramSource : ITelegramSource
             }
         }
 
-        LogLine($"GetAudioMessagesSince: chat {chatId}, since {since:u}, cap {cap} -> {result.Count} audios");
+        LogLine($"GetAudioMessagesSince: chat {chatId}, since {since:u}, cap {cap}, before {beforeMessageId} -> {result.Count} audios");
+        return result;
+    }
+
+    /// <summary>
+    /// Audio messages posted after <paramref name="afterMessageId"/> (newest
+    /// first) - used to top up an existing list with what has been posted since.
+    /// </summary>
+    public async Task<IReadOnlyList<AudioMessage>> GetAudioMessagesAfterAsync(
+        long chatId, int afterMessageId, CancellationToken ct)
+    {
+        EnsureConnected();
+
+        if (_peers is null || !_peers.TryGetValue(chatId, out InputPeer? peer))
+        {
+            throw new InvalidOperationException(
+                "Chat not known - GetChatsAsync must have run first.");
+        }
+
+        var result = new List<AudioMessage>();
+        int offsetId = 0;
+
+        for (int page = 0; page < 30; page++)   // new posts since the last load are normally few
+        {
+            ct.ThrowIfCancellationRequested();
+
+            Messages_MessagesBase batch = await _client!.Messages_GetHistory(
+                peer, offset_id: offsetId, min_id: afterMessageId, limit: HistoryPageSize);
+
+            MessageBase[] messages = batch.Messages;
+            if (messages.Length == 0)
+            {
+                break;
+            }
+
+            bool reachedKnown = false;
+            foreach (MessageBase mb in messages)
+            {
+                if (mb.ID <= afterMessageId)
+                {
+                    reachedKnown = true;
+                    break;
+                }
+                if (mb is Message m && TryMapAudio(m, chatId, out AudioMessage audio))
+                {
+                    result.Add(audio);
+                }
+            }
+
+            offsetId = messages[^1].ID;
+            if (reachedKnown || messages.Length < HistoryPageSize)
+            {
+                break;
+            }
+        }
+
+        LogLine($"GetAudioMessagesAfter: chat {chatId}, after {afterMessageId} -> {result.Count} new audios");
         return result;
     }
 

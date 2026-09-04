@@ -36,7 +36,18 @@ public interface ITelegramSource : IAsyncDisposable
         DateTime sinceUtc,
         CancellationToken ct,
         int maxAudios = int.MaxValue,
-        IProgress<int>? progress = null);
+        IProgress<int>? progress = null,
+        int beforeMessageId = 0);
+
+    /// <summary>
+    /// Audio messages from <paramref name="chatId"/> posted after
+    /// <paramref name="afterMessageId"/>, newest first - to catch what was
+    /// posted since an earlier load without re-fetching everything.
+    /// </summary>
+    Task<IReadOnlyList<AudioMessage>> GetAudioMessagesAfterAsync(
+        long chatId,
+        int afterMessageId,
+        CancellationToken ct);
 
     /// <summary>
     /// Downloads the bytes of the audio file belonging to

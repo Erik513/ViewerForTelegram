@@ -85,6 +85,49 @@ public class AudioFeedServiceTests
     }
 
     [Fact]
+    public async Task LoadAsync_Incremental_TopsUpWithNewPosts_WithoutRefetchingEverything()
+    {
+        var tg = new FakeTelegramSource();
+        // Telegram-like: MessageId grows with time (100 = newest)
+        for (int id = 1; id <= 100; id++)
+        {
+            tg.Audios.Add(new(ChatId: 1, MessageId: id, FileId: id, Title: "T", Performer: "P",
+                Duration: null, SizeBytes: 10, FileName: $"{id}.mp3",
+                DateUtc: DateTime.UtcNow.AddMinutes(-2000 + id)));
+        }
+        using var dir = TempPath.Dir();
+        var svc = new AudioFeedService(tg, new FileMediaCache(dir.Path));
+
+        IReadOnlyList<FeedItem> first = await svc.LoadAsync(1, -30, CancellationToken.None);
+        Assert.Equal(30, first.Count);
+        Assert.Equal(100, first[0].Audio.FileId);
+
+        // 5 new songs posted since
+        for (int id = 101; id <= 105; id++)
+        {
+            tg.Audios.Add(new(ChatId: 1, MessageId: id, FileId: id, Title: "T", Performer: "P",
+                Duration: null, SizeBytes: 10, FileName: $"{id}.mp3",
+                DateUtc: DateTime.UtcNow.AddMinutes(id)));
+        }
+        tg.SinceCalls = 0;
+        tg.AfterCalls = 0;
+
+        IReadOnlyList<FeedItem> again = await svc.LoadAsync(
+            1, -30, CancellationToken.None, previous: first.Select(i => i.Audio).ToList());
+
+        Assert.Equal(30, again.Count);
+        Assert.Equal(105, again[0].Audio.FileId);   // newest new post floated to the top
+        Assert.Equal(1, tg.AfterCalls);
+        Assert.Equal(0, tg.SinceCalls);             // same count -> no older re-fetch
+
+        // now grow the count -> the extra older ones are fetched
+        IReadOnlyList<FeedItem> grown = await svc.LoadAsync(
+            1, -60, CancellationToken.None, previous: again.Select(i => i.Audio).ToList());
+        Assert.Equal(60, grown.Count);
+        Assert.True(tg.SinceCalls >= 1);
+    }
+
+    [Fact]
     public async Task LoadAsync_WindowIsHourPrecise_NotRoundedToMidnight()
     {
         var tg = new FakeTelegramSource();

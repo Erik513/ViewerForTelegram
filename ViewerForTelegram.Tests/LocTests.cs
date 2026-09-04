@@ -51,11 +51,11 @@ public class LocTests
 
         Loc.Current = DisplayLanguage.English;
         Assert.Equal(DisplayLanguage.English, Loc.Current);
-        Assert.Equal("Newest 50 audios", Loc.T("range.newest", 50));
+        Assert.Equal("Newest 50 files", Loc.T("range.newest", 50));
 
         Loc.Current = DisplayLanguage.German;
         Assert.Equal(DisplayLanguage.German, Loc.Current);
-        Assert.Equal("Neueste 50 Audios", Loc.T("range.newest", 50));
+        Assert.Equal("Neueste 50 Dateien", Loc.T("range.newest", 50));
 
         Loc.Current = DisplayLanguage.English;   // leave the default in place
     }

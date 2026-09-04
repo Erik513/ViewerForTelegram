@@ -296,7 +296,6 @@ public sealed class SettingsForm : StyledForm
         FormTitle = Loc.S("settings.title");
         _help.Text = Loc.S("settings.guide");
         _toolTip.SetToolTip(_help, Loc.S("settings.guide.tip"));
-        _toolTip.SetToolTip(_language, Loc.S("settings.lang.tip"));
 
         _loginBtn.Text = _isConnected ? Loc.S("settings.btn.signout") : Loc.S("settings.btn.signin");
         _clearCacheButton.Text = Loc.S("settings.btn.clearCache");

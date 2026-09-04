@@ -23,7 +23,7 @@ public sealed class TelegramSource : ITelegramSource
     private WTelegram.Client? _client;
     private Func<Task<string>>? _requestCode;
 
-    // From GetChatsAsync: chatId -> addressable Telegram peer. Messages_GetHistory
+    // From GetChatsAsync: chatId -> addressable Telegram peer. Messages_Search
     // needs an InputPeer, not just the id.
     private Dictionary<long, InputPeer>? _peers;
 
@@ -182,9 +182,12 @@ public sealed class TelegramSource : ITelegramSource
 
         int cap = maxAudios <= 0 ? 0 : Math.Min(maxAudios, MaxMessages);
         // Count mode ("newest N") keeps paging until it has N audios, history
-        // runs out, or the hard message ceiling is hit - a group that is only,
-        // say, 10% audio still needs many pages to reach a few hundred tracks.
-        // The date-window mode stops much sooner (the date check bails first).
+        // runs out, or the hard ceiling is hit. Since Messages_Search already
+        // filters server-side, "ceiling" here is effectively audio messages
+        // scanned, not general messages - MaxMessages comfortably covers the
+        // largest "Newest N" the UI offers (5000) even for an audio-sparse
+        // group. The date-window mode stops much sooner (the date check bails
+        // first).
         int maxPages = maxAudios == int.MaxValue
             ? MaxPages
             : MaxMessages / HistoryPageSize;
@@ -196,8 +199,17 @@ public sealed class TelegramSource : ITelegramSource
         {
             ct.ThrowIfCancellationRequested();
 
-            Messages_MessagesBase batch = await _client!.Messages_GetHistory(
-                peer, offset_id: offsetId, limit: HistoryPageSize);
+            // Server-side "music" filter (the same one Telegram's own clients
+            // use for a chat's shared-media "Audio" tab) instead of paging
+            // through every message and discarding the non-audio ones - a
+            // group that is mostly text used to need many pages of
+            // Messages_GetHistory to reach even a few hundred tracks; each
+            // page here is (close to) all audio, so the same page budget
+            // reaches much further and needs far fewer requests overall
+            // (less FLOOD_WAIT risk too).
+            Messages_MessagesBase batch = await _client!.Messages_Search(
+                peer, q: "", filter: new InputMessagesFilterMusic(),
+                offset_id: offsetId, limit: HistoryPageSize);
 
             MessageBase[] messages = batch.Messages;
             if (messages.Length == 0)
@@ -267,8 +279,9 @@ public sealed class TelegramSource : ITelegramSource
         {
             ct.ThrowIfCancellationRequested();
 
-            Messages_MessagesBase batch = await _client!.Messages_GetHistory(
-                peer, offset_id: offsetId, min_id: afterMessageId, limit: HistoryPageSize);
+            Messages_MessagesBase batch = await _client!.Messages_Search(
+                peer, q: "", filter: new InputMessagesFilterMusic(),
+                offset_id: offsetId, min_id: afterMessageId, limit: HistoryPageSize);
 
             MessageBase[] messages = batch.Messages;
             if (messages.Length == 0)

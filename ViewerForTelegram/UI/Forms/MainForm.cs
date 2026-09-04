@@ -524,9 +524,13 @@ public sealed class MainForm : StyledForm
 
         // Count mode has a fixed goal ("newest N"); a day window does not.
         int target = range < 0 ? -range : 0;
+        // A Progress<int> callback is posted to the UI queue and the last one can
+        // land just after RenderList - then it would overwrite the final count
+        // with "Loading … N" again. Stop honouring it once we start rendering.
+        bool rendering = false;
         var progress = new Progress<int>(n =>
         {
-            if (seq != _feedSeq)
+            if (seq != _feedSeq || rendering)
             {
                 return;
             }
@@ -559,6 +563,7 @@ public sealed class MainForm : StyledForm
             return;   // a newer load started while this one ran
         }
 
+        rendering = true;   // from here on, late progress callbacks must not talk
         _items = loaded;
         _loadedChatId = chatId;
         _loadedRange = range;
@@ -568,7 +573,7 @@ public sealed class MainForm : StyledForm
             _byFileId[item.Audio.FileId] = item.Audio;
         }
 
-        RenderList();
+        RenderList(afterLoad: true);
     }
 
     /// <summary>Add a column: pass <paramref name="fill"/> for a stretchy column, or <paramref name="width"/> for a fixed one.</summary>
@@ -638,7 +643,7 @@ public sealed class MainForm : StyledForm
         _tintedFileId = mark;
     }
 
-    private void RenderList()
+    private void RenderList(bool afterLoad = false)
     {
         // Dismiss a truncation tooltip still showing over a row we're about to
         // remove (WinForms would otherwise leave it hanging).
@@ -724,7 +729,7 @@ public sealed class MainForm : StyledForm
         }
         else if (query.Length == 0)
         {
-            Status($"{_items.Count} audios");
+            Status(afterLoad ? $"Loading … finished, {_items.Count} audios" : $"{_items.Count} audios");
         }
         else
         {

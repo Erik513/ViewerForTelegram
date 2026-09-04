@@ -71,6 +71,10 @@ public sealed class AudioFeedService
         long chatId, int maxAudios, IReadOnlyList<AudioMessage> previous,
         CancellationToken ct, IProgress<int>? progress)
     {
+        // The count we already have carries over - the progress display must
+        // start there, not at zero (the caller asked for e.g. 1000 -> 2000).
+        progress?.Report(previous.Count);
+
         int newestKnownId = previous.Max(a => a.MessageId);
         int oldestKnownId = previous.Min(a => a.MessageId);
 
@@ -81,12 +85,15 @@ public sealed class AudioFeedService
         var byId = new Dictionary<int, AudioMessage>(previous.Count + newer.Count);
         foreach (AudioMessage a in newer) byId[a.MessageId] = a;
         foreach (AudioMessage a in previous) byId.TryAdd(a.MessageId, a);
+        progress?.Report(byId.Count);
 
-        // 2. if the requested count grew, fetch the extra older ones
+        // 2. if the requested count grew, fetch the extra older ones - reporting
+        //    progress on top of what we already had, not from zero.
         if (byId.Count < maxAudios)
         {
+            IProgress<int>? shifted = progress is null ? null : new ShiftProgress(progress, byId.Count);
             IReadOnlyList<AudioMessage> older = await _telegram.GetAudioMessagesSinceAsync(
-                chatId, DateTime.MinValue, ct, maxAudios - byId.Count, progress,
+                chatId, DateTime.MinValue, ct, maxAudios - byId.Count, shifted,
                 beforeMessageId: oldestKnownId);
             foreach (AudioMessage a in older) byId.TryAdd(a.MessageId, a);
         }
@@ -96,5 +103,14 @@ public sealed class AudioFeedService
             .ThenByDescending(a => a.MessageId)
             .Take(maxAudios)
             .ToList();
+    }
+
+    /// <summary>Forwards progress reports with a fixed offset added on.</summary>
+    private sealed class ShiftProgress : IProgress<int>
+    {
+        private readonly IProgress<int> _inner;
+        private readonly int _offset;
+        public ShiftProgress(IProgress<int> inner, int offset) { _inner = inner; _offset = offset; }
+        public void Report(int value) => _inner.Report(_offset + value);
     }
 }

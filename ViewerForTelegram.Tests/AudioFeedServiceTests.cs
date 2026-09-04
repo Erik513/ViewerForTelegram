@@ -6,6 +6,13 @@ namespace ViewerForTelegram.Tests;
 
 public class AudioFeedServiceTests
 {
+    /// <summary>Synchronous <see cref="IProgress{T}"/> - no SynchronizationContext races in tests.</summary>
+    private sealed class CollectingProgress : IProgress<int>
+    {
+        public List<int> Values { get; } = new();
+        public void Report(int value) => Values.Add(value);
+    }
+
     private static AudioMessage Audio(long fileId, DateTime dateUtc, long size = 10) =>
         new(ChatId: 1, MessageId: (int)fileId, FileId: fileId, Title: "T", Performer: "P",
             Duration: null, SizeBytes: size, FileName: $"{fileId}.mp3", DateUtc: dateUtc);
@@ -96,11 +103,15 @@ public class AudioFeedServiceTests
                 DateUtc: DateTime.UtcNow.AddMinutes(-2000 + id)));
         }
         using var dir = TempPath.Dir();
-        var svc = new AudioFeedService(tg, new FileMediaCache(dir.Path));
+        var cache = new FileMediaCache(dir.Path);
+        // one track whose length was decoded on an earlier playback
+        cache.RememberDuration(tg.Audios[99], TimeSpan.FromSeconds(222));   // FileId 100
+        var svc = new AudioFeedService(tg, cache);
 
         IReadOnlyList<FeedItem> first = await svc.LoadAsync(1, -30, CancellationToken.None);
         Assert.Equal(30, first.Count);
         Assert.Equal(100, first[0].Audio.FileId);
+        Assert.Equal(TimeSpan.FromSeconds(222), first[0].Audio.Duration);
 
         // 5 new songs posted since
         for (int id = 101; id <= 105; id++)
@@ -117,14 +128,21 @@ public class AudioFeedServiceTests
 
         Assert.Equal(30, again.Count);
         Assert.Equal(105, again[0].Audio.FileId);   // newest new post floated to the top
+        // the incremental merge must not drop a duration the previous list carried
+        Assert.Equal(TimeSpan.FromSeconds(222), again.Single(i => i.Audio.FileId == 100).Audio.Duration);
         Assert.Equal(1, tg.AfterCalls);
         Assert.Equal(0, tg.SinceCalls);             // same count -> no older re-fetch
 
-        // now grow the count -> the extra older ones are fetched
+        // now grow the count -> the extra older ones are fetched, and the
+        // progress must count on top of what we already had (not restart at 0)
+        var probe = new CollectingProgress();
         IReadOnlyList<FeedItem> grown = await svc.LoadAsync(
-            1, -60, CancellationToken.None, previous: again.Select(i => i.Audio).ToList());
+            1, -60, CancellationToken.None, probe, previous: again.Select(i => i.Audio).ToList());
         Assert.Equal(60, grown.Count);
         Assert.True(tg.SinceCalls >= 1);
+        Assert.NotEmpty(probe.Values);
+        Assert.All(probe.Values, n => Assert.True(n >= 30));   // never below the 30 we kept
+        Assert.Contains(probe.Values, n => n == 60);           // reaches the new goal
     }
 
     [Fact]

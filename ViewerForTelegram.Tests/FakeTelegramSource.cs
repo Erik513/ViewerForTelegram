@@ -22,12 +22,13 @@ internal sealed class FakeTelegramSource : ITelegramSource
         IProgress<int>? progress = null, int beforeMessageId = 0)
     {
         SinceCalls++;
-        return Task.FromResult<IReadOnlyList<AudioMessage>>(
-            Audios.Where(a => a.ChatId == chatId && a.DateUtc >= sinceUtc
-                              && (beforeMessageId == 0 || a.MessageId < beforeMessageId))
-                  .OrderByDescending(a => a.DateUtc)
-                  .Take(Math.Max(0, maxAudios))
-                  .ToList());
+        var list = Audios.Where(a => a.ChatId == chatId && a.DateUtc >= sinceUtc
+                                     && (beforeMessageId == 0 || a.MessageId < beforeMessageId))
+                         .OrderByDescending(a => a.DateUtc)
+                         .Take(Math.Max(0, maxAudios))
+                         .ToList();
+        progress?.Report(list.Count);   // real source reports per page; here: once
+        return Task.FromResult<IReadOnlyList<AudioMessage>>(list);
     }
 
     public Task<IReadOnlyList<AudioMessage>> GetAudioMessagesAfterAsync(

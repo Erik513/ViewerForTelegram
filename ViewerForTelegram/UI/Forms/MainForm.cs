@@ -521,12 +521,18 @@ public sealed class MainForm : StyledForm
                 : null;
 
         Status(previous is null ? "Loading …" : "Checking for new audios …");
+
+        // Count mode has a fixed goal ("newest N"); a day window does not.
+        int target = range < 0 ? -range : 0;
         var progress = new Progress<int>(n =>
         {
-            if (seq == _feedSeq)
+            if (seq != _feedSeq)
             {
-                Status($"Loading … {n} audios");
+                return;
             }
+            Status(target > 0
+                ? $"Loading … {Math.Min(n, target)} / {target} audios"
+                : $"Loading … {n} audios");
         });
 
         List<FeedItem>? loaded = null;

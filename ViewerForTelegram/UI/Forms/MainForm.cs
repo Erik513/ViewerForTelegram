@@ -21,7 +21,8 @@ namespace ViewerForTelegram.UI.Forms;
 public sealed class MainForm : StyledForm
 {
     // > 0 = days; < 0 = "the newest |n| audios" (no date limit) - see AudioFeedService.
-    private static readonly int[] RangeDayOptions = { 3, 7, 14, 30, 60, -50, -100, -200, -500 };
+    private static readonly int[] RangeDayOptions =
+        { 3, 7, 14, 30, 60, -50, -100, -200, -500, -1000, -2000, -3000 };
 
     private readonly ITelegramSource _telegram;
     private readonly IConfigStore _configStore;
@@ -39,6 +40,8 @@ public sealed class MainForm : StyledForm
     private readonly PlayerPanel _player;
     private readonly ToolTip _toolTip = new() { AutoPopDelay = 12000, InitialDelay = 400 };
     private readonly System.Windows.Forms.Timer _positionTimer;
+    private readonly System.Windows.Forms.Timer _feedDebounce;    // coalesce rapid chat/range changes
+    private readonly System.Windows.Forms.Timer _filterDebounce;  // coalesce search-box typing
 
     private List<TelegramChat> _chats = new();
     private List<FeedItem> _items = new();
@@ -81,6 +84,15 @@ public sealed class MainForm : StyledForm
         Size = new Size(1040, 720);
         StartPosition = FormStartPosition.CenterScreen;
 
+        // Changing the chat AND the range in quick succession should trigger one
+        // load for the final state, not two (the first would run to completion
+        // over the shared connection before the second could start). Same idea
+        // for search-box typing vs re-filtering a few thousand rows.
+        _feedDebounce = new System.Windows.Forms.Timer { Interval = 350 };
+        _feedDebounce.Tick += (_, _) => { _feedDebounce.Stop(); _ = LoadFeedAsync(); };
+        _filterDebounce = new System.Windows.Forms.Timer { Interval = 250 };
+        _filterDebounce.Tick += (_, _) => { _filterDebounce.Stop(); RenderList(); };
+
         // ---- top bar ----
         var settingsButton = UIStyles.Buttons.CreatePrimary("", "Settings", new Size(30, 30));
         settingsButton.Anchor = AnchorStyles.None;   // square, centred in its cell, no clipping
@@ -97,7 +109,8 @@ public sealed class MainForm : StyledForm
         _rangeCombo.Items.AddRange(new object[]
         {
             "Last 3 days", "Last 7 days", "Last 14 days", "Last 30 days", "Last 60 days",
-            "Newest 50 audios", "Newest 100 audios", "Newest 200 audios", "Newest 500 audios"
+            "Newest 50 audios", "Newest 100 audios", "Newest 200 audios", "Newest 500 audios",
+            "Newest 1000 audios", "Newest 2000 audios", "Newest 3000 audios"
         });
         _rangeCombo.SelectedIndexChanged += (_, _) => OnFilterChanged();
 
@@ -112,7 +125,7 @@ public sealed class MainForm : StyledForm
         _searchBox = UIStyles.TextBoxes.CreateStandard();
         _searchBox.PlaceholderText = "Filter …";
         _searchBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-        _searchBox.TextChanged += (_, _) => RenderList();
+        _searchBox.TextChanged += (_, _) => { _filterDebounce.Stop(); _filterDebounce.Start(); };
 
         // Plain Label (not UIStyles.Labels.CreateMuted): that one is owner-drawn
         // and ignores ForeColor, so the "cache full" red would never show.
@@ -139,7 +152,7 @@ public sealed class MainForm : StyledForm
         };
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 42));
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 46));
-        topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150));
+        topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 164));
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40));
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 54));
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200));
@@ -156,6 +169,8 @@ public sealed class MainForm : StyledForm
             Dock = DockStyle.Fill,
             ReadOnly = true,
             MultiSelect = false,
+            AllowUserToAddRows = false,      // no phantom row; also lets Rows.AddRange work
+            AllowUserToDeleteRows = false,
             AllowUserToResizeColumns = false,
             AllowUserToOrderColumns = false,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
@@ -194,6 +209,7 @@ public sealed class MainForm : StyledForm
                 _player.SetPosition(_audio.Position);
             }
         };
+
 
         _audio.PlaybackEnded += (_, _) =>
         {
@@ -248,6 +264,8 @@ public sealed class MainForm : StyledForm
             _playCts?.Cancel();
             _feedCts?.Cancel();
             _positionTimer.Stop();
+            _feedDebounce.Stop();
+            _filterDebounce.Stop();
             _audio.Stop();
             SaveUiState();
         };
@@ -466,7 +484,8 @@ public sealed class MainForm : StyledForm
             return;
         }
         SaveUiState();
-        _ = LoadFeedAsync();
+        _feedDebounce.Stop();
+        _feedDebounce.Start();   // fires ~350ms after the last chat/range change
     }
 
     /// <summary>Positive = day window; negative = "newest |n| audios".</summary>
@@ -557,16 +576,41 @@ public sealed class MainForm : StyledForm
     private static readonly Color PlayingRowBack = Color.FromArgb(26, 52, 78);
     private static readonly Color PlayingRowFore = Color.FromArgb(156, 198, 242);
 
-    /// <summary>Colours the current / last-played track's row, clears the rest.</summary>
+    private long? _tintedFileId;   // which row currently carries the playing tint
+
+    private long? PlayingMark =>
+        _currentFileId ?? (_lastTrackId != 0 ? _lastTrackId : (long?)null);
+
+    /// <summary>
+    /// Moves the muted-blue tint to the current / last-played track's row.
+    /// Only touches the two rows that change, not the whole (possibly huge) list.
+    /// </summary>
     private void HighlightPlayingRow()
     {
-        long? mark = _currentFileId ?? (_lastTrackId != 0 ? _lastTrackId : (long?)null);
+        long? mark = PlayingMark;
+        if (mark == _tintedFileId)
+        {
+            return;
+        }
+
         foreach (DataGridViewRow row in _list.Rows)
         {
-            bool playing = row.Tag is long fid && mark is long m && fid == m;
-            row.DefaultCellStyle.BackColor = playing ? PlayingRowBack : Color.Empty;
-            row.DefaultCellStyle.ForeColor = playing ? PlayingRowFore : Color.Empty;
+            if (row.Tag is not long fid)
+            {
+                continue;
+            }
+            if (fid == _tintedFileId)
+            {
+                row.DefaultCellStyle.BackColor = Color.Empty;
+                row.DefaultCellStyle.ForeColor = Color.Empty;
+            }
+            else if (mark is long m && fid == m)
+            {
+                row.DefaultCellStyle.BackColor = PlayingRowBack;
+                row.DefaultCellStyle.ForeColor = PlayingRowFore;
+            }
         }
+        _tintedFileId = mark;
     }
 
     private void RenderList()
@@ -586,19 +630,37 @@ public sealed class MainForm : StyledForm
 
         _suppressListEvents = true;
         _list.SuspendLayout();
+        int scrollBefore = Math.Max(0, _list.FirstDisplayedScrollingRowIndex);
         _list.Rows.Clear();
-        foreach (FeedItem item in filtered)
+
+        long? mark = PlayingMark;
+        _tintedFileId = mark;
+
+        // Build the rows first and add them in one call - Rows.Add in a loop
+        // re-lays-out per row and is painfully slow at a few thousand rows.
+        var rows = new DataGridViewRow[filtered.Count];
+        for (int r = 0; r < filtered.Count; r++)
         {
-            AudioMessage a = item.Audio;
-            int i = _list.Rows.Add(
+            AudioMessage a = filtered[r].Audio;
+            var row = new DataGridViewRow { Height = _list.RowTemplate.Height };
+            row.CreateCells(_list,
                 a.DateUtc.ToLocalTime().ToString("yyyy-MM-dd"),
                 a.Title,
                 a.Performer,
                 a.Duration is { } d ? $"{(int)d.TotalMinutes}:{d.Seconds:00}" : "–",
                 $"{a.SizeBytes / 1024d / 1024d:0.0} MB");
-            _list.Rows[i].Tag = a.FileId;
+            row.Tag = a.FileId;
+            if (mark is long m && a.FileId == m)
+            {
+                row.DefaultCellStyle.BackColor = PlayingRowBack;
+                row.DefaultCellStyle.ForeColor = PlayingRowFore;
+            }
+            rows[r] = row;
         }
-        int scrollBefore = Math.Max(0, _list.FirstDisplayedScrollingRowIndex);
+        if (rows.Length > 0)
+        {
+            _list.Rows.AddRange(rows);
+        }
         _list.ClearSelection();
         try { _list.CurrentCell = null; } catch { }   // no auto-selected row 0
 
@@ -629,8 +691,7 @@ public sealed class MainForm : StyledForm
         }
 
         _suppressListEvents = false;
-        HighlightPlayingRow();
-        ShowSelected();
+        ShowSelected();   // playing-row tint was applied inline while building
 
         if (_items.Count == 0)
         {

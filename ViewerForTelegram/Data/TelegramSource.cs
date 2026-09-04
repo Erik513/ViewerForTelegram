@@ -160,8 +160,8 @@ public sealed class TelegramSource : ITelegramSource
     }
 
     private const int HistoryPageSize = 100;
-    private const int MaxPages = 50;
-    private const int MaxMessages = 5000;
+    private const int MaxPages = 50;      // date-window mode
+    private const int MaxMessages = 20000; // hard ceiling for either mode
 
     public async Task<IReadOnlyList<AudioMessage>> GetAudioMessagesSinceAsync(
         long chatId, DateTime sinceUtc, CancellationToken ct, int maxAudios = int.MaxValue)
@@ -179,10 +179,16 @@ public sealed class TelegramSource : ITelegramSource
             : sinceUtc.ToUniversalTime();
 
         int cap = maxAudios <= 0 ? 0 : Math.Min(maxAudios, MaxMessages);
+        // Count mode ("newest N"): allow enough pages to plausibly reach the cap
+        // even in a group that isn't 100% audio, up to the hard message ceiling.
+        int maxPages = maxAudios == int.MaxValue
+            ? MaxPages
+            : Math.Clamp(cap / 40 + 25, MaxPages, MaxMessages / HistoryPageSize);
+
         var result = new List<AudioMessage>();
         int offsetId = 0; // 0 = from the newest message
 
-        for (int page = 0; page < MaxPages; page++)
+        for (int page = 0; page < maxPages; page++)
         {
             ct.ThrowIfCancellationRequested();
 

@@ -42,8 +42,14 @@ public sealed class AudioFeedService
             await _telegram.GetAudioMessagesSinceAsync(chatId, sinceUtc, ct, maxAudios);
 
         var items = new List<FeedItem>(audios.Count);
-        foreach (AudioMessage a in audios)
+        for (int i = 0; i < audios.Count; i++)
         {
+            if ((i & 0x1FF) == 0)   // every 512 - the cache lookups hit the disk
+            {
+                ct.ThrowIfCancellationRequested();
+            }
+
+            AudioMessage a = audios[i];
             // Telegram often gives no duration for files posted "as a file" - fill
             // it in from a length the cache decoded on an earlier playback.
             AudioMessage enriched = a.Duration is null

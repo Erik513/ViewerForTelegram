@@ -298,10 +298,12 @@ public sealed class SettingsForm : StyledForm
         _toolTip.SetToolTip(_language, Loc.S("settings.lang.tip"));
 
         _loginBtn.Text = _isConnected ? Loc.S("settings.btn.signout") : Loc.S("settings.btn.signin");
-        _browse.Text = Loc.S("settings.btn.chooseFolder");
-        _cacheBrowse.Text = Loc.S("settings.btn.openCache");
         _clearCacheButton.Text = Loc.S("settings.btn.clearCache");
         _wipe.Text = Loc.S("settings.btn.delete");
+
+        // CreateBrowse keeps a folder glyph in .Text - only its tooltip is text.
+        UIStyles.Buttons.UpdateTooltip(_browse, Loc.S("settings.btn.chooseFolder"));
+        UIStyles.Buttons.UpdateTooltip(_cacheBrowse, Loc.S("settings.btn.openCache"));
 
         _useDownloadFolder.ToolTipTextChecked = Loc.S("settings.toggle.folder.on");
         _useDownloadFolder.ToolTipTextUnchecked = Loc.S("settings.toggle.folder.off");

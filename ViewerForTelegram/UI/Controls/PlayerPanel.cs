@@ -23,7 +23,7 @@ public enum PlayerButton
 public sealed class PlayerPanel : Panel
 {
     /// <summary>Fixed height the host should give this panel.</summary>
-    public const int PanelHeight = 120;
+    public const int PanelHeight = 124;
 
     private const int StatusRowHeight = 18;
 
@@ -33,6 +33,7 @@ public sealed class PlayerPanel : Panel
     private readonly TextBox _title;
     private readonly TextBox _performer;
     private readonly Label _fileSize;
+    private readonly Label _bitrate;
     private readonly Label _fileFormat;
     private readonly SliderBar _seek;
     private readonly SlimProgressBar _downloadBar;
@@ -43,6 +44,7 @@ public sealed class PlayerPanel : Panel
     private readonly ToolTip _tips = new() { AutoPopDelay = 20000 };
 
     private TimeSpan _duration;
+    private long _sizeBytes;
     private bool _showingDownloadBar;
     private PlayerButton _state = PlayerButton.None;
 
@@ -84,9 +86,11 @@ public sealed class PlayerPanel : Panel
         _performer = MakeReadonlyText(bold: false);
 
         _fileSize = MakeLabel(UIStyles.Labels.CreateMuted(""));
-        _fileSize.TextAlign = ContentAlignment.BottomRight;
+        _fileSize.TextAlign = ContentAlignment.MiddleRight;
+        _bitrate = MakeLabel(UIStyles.Labels.CreateMuted(""));
+        _bitrate.TextAlign = ContentAlignment.MiddleRight;
         _fileFormat = MakeLabel(UIStyles.Labels.CreateMuted(""));
-        _fileFormat.TextAlign = ContentAlignment.TopRight;
+        _fileFormat.TextAlign = ContentAlignment.MiddleRight;
 
         _seek = new SliderBar
         {
@@ -118,16 +122,18 @@ public sealed class PlayerPanel : Panel
         _volume = new SliderBar { Maximum = 1.0, Value = 0.1, Anchor = AnchorStyles.Left | AnchorStyles.Right };
         _volume.ValueChanged += (_, _) => VolumeChanged?.Invoke((float)_volume.Value);
 
-        // Top-right cluster: size / format stacked, then [save][open folder]
+        // Top-right cluster: size / bitrate / format stacked, then [save][open folder]
         var fileInfoStack = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2,
+            Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3,
             Margin = new Padding(0), BackColor = Color.Transparent
         };
-        fileInfoStack.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
-        fileInfoStack.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+        fileInfoStack.RowStyles.Add(new RowStyle(SizeType.Percent, 34));
+        fileInfoStack.RowStyles.Add(new RowStyle(SizeType.Percent, 33));
+        fileInfoStack.RowStyles.Add(new RowStyle(SizeType.Percent, 33));
         fileInfoStack.Controls.Add(_fileSize, 0, 0);
-        fileInfoStack.Controls.Add(_fileFormat, 0, 1);
+        fileInfoStack.Controls.Add(_bitrate, 0, 1);
+        fileInfoStack.Controls.Add(_fileFormat, 0, 2);
 
         var clusterButtons = new TableLayoutPanel
         {
@@ -184,7 +190,7 @@ public sealed class PlayerPanel : Panel
             Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3,
             Margin = new Padding(12, 0, 0, 0), BackColor = Color.Transparent
         };
-        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+        stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));   // title + the size/kbps/format stack
         stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 22));   // artist text box
         stack.RowStyles.Add(new RowStyle(SizeType.Percent, 100));   // seek row absorbs the rest
         stack.Controls.Add(titleRow, 0, 0);
@@ -246,11 +252,13 @@ public sealed class PlayerPanel : Panel
     public void SetIdle()
     {
         _duration = TimeSpan.Zero;
+        _sizeBytes = 0;
         SetButton(PlayerButton.None);   // greyed-out play icon
         _saveButton.Enabled = false;
         _title.Text = "Nothing selected";
         _performer.Text = "";
         _fileSize.Text = "";
+        _bitrate.Text = "";
         _fileFormat.Text = "";
         _tips.SetToolTip(_saveButton, "Download");
         _seek.Enabled = false;
@@ -264,7 +272,9 @@ public sealed class PlayerPanel : Panel
     {
         _title.Text = string.IsNullOrWhiteSpace(a.Title) ? a.FileName : a.Title;
         _performer.Text = a.Performer;
+        _sizeBytes = a.SizeBytes;
         _fileSize.Text = $"{a.SizeBytes / 1024d / 1024d:0.0} MB";
+        _bitrate.Text = a.BitrateKbps is { } kb ? $"{kb} kbps" : "";
         _fileFormat.Text = Path.GetExtension(a.FileName).TrimStart('.').ToUpperInvariant();
         _tips.SetToolTip(_saveButton, $"Download: {a.FileName}");
 
@@ -333,6 +343,13 @@ public sealed class PlayerPanel : Panel
         _seek.Maximum = Math.Max(1, duration.TotalSeconds);
         _seek.Value = 0;
         UpdateTime(TimeSpan.Zero);
+
+        // Telegram often gives no duration -> the bit rate stayed blank. Now
+        // that the decoder knows the real length, fill it in.
+        if (string.IsNullOrEmpty(_bitrate.Text) && _sizeBytes > 0 && duration.TotalSeconds > 0)
+        {
+            _bitrate.Text = $"{(int)Math.Round(_sizeBytes * 8 / duration.TotalSeconds / 1000)} kbps";
+        }
     }
 
     private void ShowDownloadBar(bool show)

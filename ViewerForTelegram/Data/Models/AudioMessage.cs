@@ -40,4 +40,13 @@ public sealed record AudioMessage(
     /// </summary>
     public string DisplayName =>
         string.IsNullOrWhiteSpace(Performer) ? Title : $"{Performer} - {Title}";
+
+    /// <summary>
+    /// Average bit rate in kbit/s (file size × 8 ÷ duration) - the "overall"
+    /// rate you'd see in a tag editor. <c>null</c> while the duration is unknown.
+    /// </summary>
+    public int? BitrateKbps =>
+        Duration is { TotalSeconds: > 0 } d
+            ? (int)Math.Round(SizeBytes * 8 / d.TotalSeconds / 1000)
+            : null;
 }

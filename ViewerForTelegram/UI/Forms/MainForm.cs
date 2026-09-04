@@ -512,11 +512,19 @@ public sealed class MainForm : StyledForm
         int range = SelectedRange;
 
         Status("Loading …");
+        var progress = new Progress<int>(n =>
+        {
+            if (seq == _feedSeq)
+            {
+                Status($"Loading … {n} audios");
+            }
+        });
+
         List<FeedItem>? loaded = null;
         try
         {
             await RunWithRetryAsync("Loading", async () =>
-                loaded = (await _feed.LoadAsync(chatId, range, token)).ToList());
+                loaded = (await _feed.LoadAsync(chatId, range, token, progress)).ToList());
         }
         catch (OperationCanceledException)
         {

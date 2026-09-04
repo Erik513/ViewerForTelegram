@@ -32,14 +32,14 @@ public sealed class AudioFeedService
     /// <c>-range</c> audios regardless of age (for chats idle for a long time).
     /// </summary>
     public async Task<IReadOnlyList<FeedItem>> LoadAsync(
-        long chatId, int range, CancellationToken ct)
+        long chatId, int range, CancellationToken ct, IProgress<int>? progress = null)
     {
         bool byCount = range <= 0;
         DateTime sinceUtc = byCount ? DateTime.MinValue : DateTime.UtcNow.AddDays(-range);
         int maxAudios = byCount ? Math.Max(1, -range) : int.MaxValue;
 
         IReadOnlyList<AudioMessage> audios =
-            await _telegram.GetAudioMessagesSinceAsync(chatId, sinceUtc, ct, maxAudios);
+            await _telegram.GetAudioMessagesSinceAsync(chatId, sinceUtc, ct, maxAudios, progress);
 
         var items = new List<FeedItem>(audios.Count);
         for (int i = 0; i < audios.Count; i++)

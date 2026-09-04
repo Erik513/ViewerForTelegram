@@ -160,11 +160,12 @@ public sealed class TelegramSource : ITelegramSource
     }
 
     private const int HistoryPageSize = 100;
-    private const int MaxPages = 50;      // date-window mode
-    private const int MaxMessages = 20000; // hard ceiling for either mode
+    private const int MaxPages = 50;       // date-window mode
+    private const int MaxMessages = 15000; // hard message ceiling ("newest N" mode: ~150 pages)
 
     public async Task<IReadOnlyList<AudioMessage>> GetAudioMessagesSinceAsync(
-        long chatId, DateTime sinceUtc, CancellationToken ct, int maxAudios = int.MaxValue)
+        long chatId, DateTime sinceUtc, CancellationToken ct, int maxAudios = int.MaxValue,
+        IProgress<int>? progress = null)
     {
         EnsureConnected();
 
@@ -179,11 +180,13 @@ public sealed class TelegramSource : ITelegramSource
             : sinceUtc.ToUniversalTime();
 
         int cap = maxAudios <= 0 ? 0 : Math.Min(maxAudios, MaxMessages);
-        // Count mode ("newest N"): allow enough pages to plausibly reach the cap
-        // even in a group that isn't 100% audio, up to the hard message ceiling.
+        // Count mode ("newest N") keeps paging until it has N audios, history
+        // runs out, or the hard message ceiling is hit - a group that is only,
+        // say, 10% audio still needs many pages to reach a few hundred tracks.
+        // The date-window mode stops much sooner (the date check bails first).
         int maxPages = maxAudios == int.MaxValue
             ? MaxPages
-            : Math.Clamp(cap / 40 + 25, MaxPages, MaxMessages / HistoryPageSize);
+            : MaxMessages / HistoryPageSize;
 
         var result = new List<AudioMessage>();
         int offsetId = 0; // 0 = from the newest message
@@ -225,13 +228,14 @@ public sealed class TelegramSource : ITelegramSource
             }
 
             offsetId = messages[^1].ID; // oldest id of this page -> next page older
+            progress?.Report(result.Count);
             if (reachedOlder || reachedCap || messages.Length < HistoryPageSize)
             {
                 break;
             }
         }
 
-        LogLine($"GetAudioMessagesSince: chat {chatId}, since {since:u} -> {result.Count} audios");
+        LogLine($"GetAudioMessagesSince: chat {chatId}, since {since:u}, cap {cap} -> {result.Count} audios");
         return result;
     }
 

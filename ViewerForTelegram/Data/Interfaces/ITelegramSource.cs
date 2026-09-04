@@ -35,7 +35,8 @@ public interface ITelegramSource : IAsyncDisposable
         long chatId,
         DateTime sinceUtc,
         CancellationToken ct,
-        int maxAudios = int.MaxValue);
+        int maxAudios = int.MaxValue,
+        IProgress<int>? progress = null);
 
     /// <summary>
     /// Downloads the bytes of the audio file belonging to

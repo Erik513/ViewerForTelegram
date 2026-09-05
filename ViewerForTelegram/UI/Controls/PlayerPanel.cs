@@ -42,7 +42,7 @@ public sealed class PlayerPanel : Panel
     private readonly TableLayoutPanel _seekRow;
     private readonly Label _time;
     private readonly Label _volLabel;
-    private readonly SliderBar _volume;
+    private readonly VolumeSlider _volume;
     private readonly TextBox _status;
     private string? _saveTipFileName;   // file name currently shown on the save button's tooltip
     private readonly ToolTip _tips = new() { AutoPopDelay = 20000 };
@@ -124,7 +124,7 @@ public sealed class PlayerPanel : Panel
         _volLabel = MakeLabel(UIStyles.Labels.CreateMuted(Loc.S("player.vol")));
         _volLabel.TextAlign = ContentAlignment.MiddleRight;
 
-        _volume = new SliderBar { Maximum = 1.0, Value = 0.1, Anchor = AnchorStyles.Left | AnchorStyles.Right };
+        _volume = new VolumeSlider { Value = 0.1, Anchor = AnchorStyles.Left | AnchorStyles.Right };
         _volume.ValueChanged += (_, _) => VolumeChanged?.Invoke((float)_volume.Value);
 
         // Top-right cluster: size / bitrate / format stacked, then [save][open folder]

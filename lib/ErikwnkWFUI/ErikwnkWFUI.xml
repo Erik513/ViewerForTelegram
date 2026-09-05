@@ -377,6 +377,39 @@
         <member name="M:ErikwnkWFUI.Controls.PropertyTable.AddRow(System.String,System.Int32,ErikwnkWFUI.Controls.UIColumn[])">
             <inheritdoc cref="M:ErikwnkWFUI.Controls.PropertyTable.AddRow(System.String,ErikwnkWFUI.Controls.UIColumn[])"/>
         </member>
+        <member name="T:ErikwnkWFUI.Controls.SliderBar">
+            <summary>
+            A slim, theme-matching horizontal slider (WinForms has none of its own).
+            Value runs from 0 to <see cref="P:ErikwnkWFUI.Controls.SliderBar.Maximum"/>. <see cref="E:ErikwnkWFUI.Controls.SliderBar.ValueChanged"/>
+            fires on every change from the user (drag, track click, arrow keys); it
+            does not fire when <see cref="P:ErikwnkWFUI.Controls.SliderBar.Value"/> is set from code.
+            </summary>
+        </member>
+        <member name="F:ErikwnkWFUI.Controls.SliderBar.TrackInset">
+            <summary>
+            Pixels the track is inset from each edge (room for the thumb).
+            Anything meant to line up with the track (e.g. a progress bar next to
+            the slider) should use the same left/right margin.
+            </summary>
+        </member>
+        <member name="E:ErikwnkWFUI.Controls.SliderBar.ValueChanged">
+            <summary>Raised when the user changes the value (not when code sets it).</summary>
+        </member>
+        <member name="E:ErikwnkWFUI.Controls.SliderBar.DragStarted">
+            <summary>Raised when the user presses the thumb/track to begin a drag.</summary>
+        </member>
+        <member name="E:ErikwnkWFUI.Controls.SliderBar.DragEnded">
+            <summary>Raised when the user releases the mouse after a drag.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.SliderBar.IsDragging">
+            <summary>True while the user is dragging the thumb - callers can pause external updates.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.SliderBar.Value">
+            <summary>Setting this from code updates the display without raising <see cref="E:ErikwnkWFUI.Controls.SliderBar.ValueChanged"/>.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.SliderBar.ThumbCenterX">
+            <summary>Pixel x of the thumb centre - for positioning something (e.g. a value popup) over it.</summary>
+        </member>
         <member name="T:ErikwnkWFUI.Controls.SlimProgressBar">
             <summary>
             A thin, fully custom-drawn progress bar - unlike <see cref="T:System.Windows.Forms.ProgressBar"/>,
@@ -482,6 +515,21 @@
         <member name="M:ErikwnkWFUI.Controls.UIColumn.Percent(System.Windows.Forms.Control,System.Single)">
             <summary>A column sized as a percentage of the row's total width.</summary>
         </member>
+        <member name="T:ErikwnkWFUI.Controls.VolumeSlider">
+            <summary>
+            A <see cref="T:ErikwnkWFUI.Controls.SliderBar"/> preconfigured for a 0..1 volume value that
+            shows the current percentage in a small popup above the thumb while the
+            user drags it (and briefly on an arrow-key change). The consuming app
+            only wires <see cref="E:ErikwnkWFUI.Controls.SliderBar.ValueChanged"/> and sets
+            <see cref="P:ErikwnkWFUI.Controls.SliderBar.Value"/> - the readout is handled here.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.VolumeSlider.FormatValue">
+            <summary>
+            How the popup renders the 0..1 value. Default: whole percent, e.g.
+            0.1 -> "10%".
+            </summary>
+        </member>
         <member name="M:ErikwnkWFUI.Factories.UIButtonFactory.UpdateTooltip(System.Windows.Forms.Button,System.String)">
             <summary>
             Changes an already-created button's tooltip text - e.g. to
@@ -554,8 +602,27 @@
             labeled sections (<see cref="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowSections(System.Windows.Forms.Control,ErikwnkWFUI.Forms.InfoPopupSection[])"/> and friends).
             </summary>
         </member>
+        <member name="P:ErikwnkWFUI.Forms.InfoPopupForm.Compact">
+            <summary>
+            Fixed-size mode for a single very short value (e.g. a percentage over
+            a slider): the popup is exactly <see cref="P:ErikwnkWFUI.Forms.InfoPopupForm.CompactSize"/>, the text is
+            centred, and it does not resize as the value's width changes
+            ("9%" vs "100%"). Set this before the first Show call.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Forms.InfoPopupForm.CompactSize">
+            <summary>The fixed client size used while <see cref="P:ErikwnkWFUI.Forms.InfoPopupForm.Compact"/> is true.</summary>
+        </member>
         <member name="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowInfo(System.String,System.Windows.Forms.Control)">
             <summary>Shows (or repositions, if already visible) a single block of text, anchored to the bottom-right of <paramref name="owner"/>.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowCenteredAbove(System.String,System.Windows.Forms.Control,System.Int32)">
+            <summary>
+            Shows (or repositions) a single line of text centred horizontally on
+            <paramref name="anchorLocalX"/> (a pixel x inside <paramref name="anchor"/>)
+            and just above <paramref name="anchor"/> - flips below if there is no
+            room. Typical use is a live value readout over a slider thumb.
+            </summary>
         </member>
         <member name="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowInfoAtMouse(System.String,System.Windows.Forms.Control,System.Drawing.Point)">
             <summary>Same as <see cref="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowInfo(System.String,System.Windows.Forms.Control)"/>, but anchored near <paramref name="mouseScreenPosition"/> instead of <paramref name="owner"/>'s bounds - typical use is showing this from a MouseMove handler.</summary>
@@ -577,6 +644,13 @@
         </member>
         <member name="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowSectionsAtMouse(System.Windows.Forms.Control,System.Drawing.Point,ErikwnkWFUI.Forms.InfoPopupSection[])">
             <summary>Immediate (non-delayed) version of <see cref="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowSectionsAtMouseDelayed(System.Windows.Forms.Control,System.Drawing.Point,ErikwnkWFUI.Forms.InfoPopupSection[])"/> - skips rebuilding the section labels if the content is identical to what's already showing.</summary>
+        </member>
+        <member name="F:ErikwnkWFUI.Forms.InfoPopupForm.DWMWA_WINDOW_CORNER_PREFERENCE">
+            <summary>
+            Clips the window to a rounded rectangle. Always recomputed from the
+            *current* <see cref="P:System.Windows.Forms.Control.ClientRectangle"/> - setting it once from
+            a stale/pre-final size is what left one corner square before.
+            </summary>
         </member>
         <member name="T:ErikwnkWFUI.Forms.InfoPopupSection">
             <summary>One labeled block of text for <see cref="M:ErikwnkWFUI.Forms.InfoPopupForm.ShowSections(System.Windows.Forms.Control,ErikwnkWFUI.Forms.InfoPopupSection[])"/> and its overloads - a section with an empty/null Header or Text just omits that part.</summary>

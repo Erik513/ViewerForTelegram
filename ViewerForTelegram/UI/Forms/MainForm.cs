@@ -9,6 +9,7 @@ using ViewerForTelegram.Logic;
 using ViewerForTelegram.Logic.Services;
 using ViewerForTelegram.UI.Controls;
 using ViewerForTelegram.UI.Localization;
+using ViewerForTelegram.UI;
 using StyledGrid = ErikwnkWFUI.Controls.DataGridView;
 using StyledMessageBox = ErikwnkWFUI.Forms.MessageBox;
 using MessageBoxButtons = ErikwnkWFUI.Forms.MessageBoxButtons;
@@ -290,7 +291,7 @@ public sealed class MainForm : StyledForm
         };
     }
 
-    private void OnLanguageChanged(object? sender, EventArgs e) => ApplyTexts();
+    private void OnLanguageChanged(object? sender, EventArgs e) => this.WithRedrawSuspended(ApplyTexts);
 
     /// <summary>(Re-)applies every visible string from <see cref="Loc"/>.</summary>
     private void ApplyTexts()

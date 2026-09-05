@@ -7,6 +7,7 @@ using ViewerForTelegram.Data.Interfaces;
 using ViewerForTelegram.Data.Models;
 using ViewerForTelegram.Logic;
 using ViewerForTelegram.UI.Localization;
+using ViewerForTelegram.UI;
 using MessageBox = ErikwnkWFUI.Forms.MessageBox;
 using MessageBoxButtons = ErikwnkWFUI.Forms.MessageBoxButtons;
 using MessageBoxIcon = ErikwnkWFUI.Forms.MessageBoxIcon;
@@ -218,12 +219,13 @@ public sealed class SettingsForm : StyledForm
         };
     }
 
-    private void OnLanguageChanged(object? sender, EventArgs e)
-    {
-        ApplyTexts();
-        FixTableSize();
-        Recenter();
-    }
+    private void OnLanguageChanged(object? sender, EventArgs e) =>
+        this.WithRedrawSuspended(() =>
+        {
+            ApplyTexts();
+            FixTableSize();
+            Recenter();
+        });
 
     private void Recenter() =>
         _table.Left = Math.Max(16, (_host.ClientSize.Width - _table.Width) / 2);

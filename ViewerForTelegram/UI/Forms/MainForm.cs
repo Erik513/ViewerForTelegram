@@ -513,6 +513,11 @@ public sealed class MainForm : StyledForm
             .OrderBy(c => c.Title)
             .ToList();
 
+        // A chat the user has left/been removed from no longer shows up here -
+        // drop its persisted list too, or it would sit in feed-cache.json
+        // forever, never displayed again.
+        _feedCacheStore.PruneToKnownChats(_chats.Select(c => c.Id));
+
         _suppressComboEvents = true;
         _groupCombo.Items.Clear();
         foreach (TelegramChat chat in _chats)

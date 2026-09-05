@@ -90,4 +90,33 @@ public class JsonFeedCacheStoreTests
 
         Assert.Equal(JsonFeedCacheStore.MaxAudiosPerChat, store.Load(1)!.Audios.Count);
     }
+
+    [Fact]
+    public void PruneToKnownChats_RemovesChatsNotInTheList()
+    {
+        using var file = TempPath.File();
+        var store = new JsonFeedCacheStore(file.Path);
+        store.Save(new PersistedFeed(1, -50, new List<AudioMessage> { Audio(1, 1, DateTime.UtcNow) }));
+        store.Save(new PersistedFeed(2, -50, new List<AudioMessage> { Audio(2, 2, DateTime.UtcNow) }));
+        store.Save(new PersistedFeed(3, -50, new List<AudioMessage> { Audio(3, 3, DateTime.UtcNow) }));
+
+        store.PruneToKnownChats(new long[] { 1, 3 }); // chat 2 was left
+
+        Assert.NotNull(store.Load(1));
+        Assert.Null(store.Load(2));
+        Assert.NotNull(store.Load(3));
+    }
+
+    [Fact]
+    public void PruneToKnownChats_NothingStale_DoesNotRewriteFile()
+    {
+        using var file = TempPath.File();
+        var store = new JsonFeedCacheStore(file.Path);
+        store.Save(new PersistedFeed(1, -50, new List<AudioMessage> { Audio(1, 1, DateTime.UtcNow) }));
+        DateTime before = File.GetLastWriteTimeUtc(file.Path);
+
+        store.PruneToKnownChats(new long[] { 1, 2 });
+
+        Assert.Equal(before, File.GetLastWriteTimeUtc(file.Path));
+    }
 }

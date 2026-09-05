@@ -62,6 +62,38 @@ public sealed class JsonFeedCacheStore
         }
     }
 
+    /// <summary>
+    /// Drops every persisted chat whose id is not in <paramref name="knownChatIds"/>
+    /// (e.g. a chat the user has left/been removed from no longer appears in a
+    /// fresh <c>GetChatsAsync</c> result) - otherwise a left chat's list would
+    /// sit in this file forever, never displayed again but never cleaned up.
+    /// </summary>
+    public void PruneToKnownChats(IEnumerable<long> knownChatIds)
+    {
+        Dictionary<long, PersistedFeed> all = LoadAll();
+        var known = new HashSet<long>(knownChatIds);
+        List<long> stale = all.Keys.Where(id => !known.Contains(id)).ToList();
+        if (stale.Count == 0)
+        {
+            return;
+        }
+
+        foreach (long id in stale)
+        {
+            all.Remove(id);
+        }
+
+        try
+        {
+            File.WriteAllText(_path, JsonSerializer.Serialize(all, Options));
+        }
+        catch (Exception ex) when (
+            ex is IOException or UnauthorizedAccessException)
+        {
+            // Not worth surfacing - it's just a restart-time convenience.
+        }
+    }
+
     private Dictionary<long, PersistedFeed> LoadAll()
     {
         try

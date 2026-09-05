@@ -1,8 +1,9 @@
 # Viewer for Telegram
 
 A small Windows desktop app that lists the **audio messages** posted in a
-Telegram group or channel you are a member of. Pick a chat, choose a rolling
-time window (last 3 / 7 / 14 / 30 days), double-click a track to play it in the
+Telegram group or channel you are a member of. Pick a chat, choose either a
+rolling time window (last 3 / 7 / 14 / 30 / 60 days) or a fixed count
+("Newest 50" up to "Newest 5000"), double-click a track to play it in the
 player at the bottom, and save the ones you want to keep.
 
 It signs in as **you** via Telegram's MTProto API (like the official clients),
@@ -15,11 +16,17 @@ so it can see full history with no bot restrictions and no file-size limit.
 ## Features
 
 - One player docked at the bottom: play/pause, seek, volume, "Save a copy"
-- Plays mp3, m4a/aac, wav, wma and (on Windows 10+) flac; ogg/opus can be saved
-  but not played in-app
-- Rolling time window, precise to the hour
+- Plays mp3, m4a/aac, wav, wma, aiff/aif and (on Windows 10+) flac; ogg/opus
+  can be saved but not played in-app
+- Rolling time window (precise to the hour) or a fixed "Newest N" count, up
+  to 5000 files
+- The loaded list is cached per chat on disk, so switching back to a chat or
+  restarting the app doesn't re-download everything from scratch; on refresh
+  the app also detects tracks that were deleted on Telegram and fills the gap
+  back up from older history
 - Live text filter over performer / title / file name
 - Volume, last chat and time range remembered between sessions
+- UI language: English or Deutsch, switches instantly, no restart needed
 - Save to a fixed folder or via a save dialog, original file name preserved
 - Size-capped local cache (default 3000 MB) with a "clear now" button
 
@@ -74,6 +81,7 @@ Everything is under `%AppData%\ViewerForTelegram\`:
 | `appsettings.local.json` | api_id, api_hash, phone number, options           |
 | `telegram.session`       | the completed login – treat like a password       |
 | `ui-state.json`          | remembered chat / time range / volume             |
+| `feed-cache.json`        | the loaded audio list per chat (up to 5000 each)  |
 | `cache\`                 | downloaded audio files                            |
 
 Nothing leaves your machine except the traffic to Telegram itself. None of the

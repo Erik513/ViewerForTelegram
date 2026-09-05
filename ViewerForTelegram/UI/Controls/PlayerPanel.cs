@@ -124,7 +124,7 @@ public sealed class PlayerPanel : Panel
         _volLabel = MakeLabel(UIStyles.Labels.CreateMuted(Loc.S("player.vol")));
         _volLabel.TextAlign = ContentAlignment.MiddleRight;
 
-        _volume = new SliderBar { Maximum = 1.0, Value = 0.5, Anchor = AnchorStyles.Left | AnchorStyles.Right };
+        _volume = new SliderBar { Maximum = 1.0, Value = 0.1, Anchor = AnchorStyles.Left | AnchorStyles.Right };
         _volume.ValueChanged += (_, _) => VolumeChanged?.Invoke((float)_volume.Value);
 
         // Top-right cluster: size / bitrate / format stacked, then [save][open folder]

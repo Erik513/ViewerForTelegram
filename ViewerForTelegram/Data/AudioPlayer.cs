@@ -27,7 +27,7 @@ public sealed class AudioPlayer : IAudioPlayer
     private WaveStream? _stream;          // the decoder - position / duration / seek
     private AudioFileReader? _fileReader; // set only for the AudioFileReader path (has its own Volume)
     private SampleChannel? _sampleChannel; // set only for the FLAC path (volume goes here)
-    private float _volume = 0.5f;
+    private float _volume = 0.1f;
     private bool _stopIsIntentional;
 
     // Volume is routed through this process's own entry in the Windows volume

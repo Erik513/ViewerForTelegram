@@ -9,7 +9,7 @@ namespace ViewerForTelegram.Data.Models;
 public sealed record UiState(
     long LastChatId = 0,
     int RangeDays = 7,
-    int VolumePercent = 50,
+    int VolumePercent = 10,
     long LastPlayedFileId = 0)
 {
     public static UiState Default { get; } = new();

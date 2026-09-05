@@ -1,5 +1,6 @@
 using ErikwnkWFUI;
 using ErikwnkWFUI.Controls;
+using ErikwnkWFUI.Helpers;
 using ViewerForTelegram.Data.Models;
 using ViewerForTelegram.UI.Localization;
 
@@ -57,6 +58,7 @@ public sealed class PlayerPanel : Panel
         Height = PanelHeight;
         Padding = new Padding(12, 5, 14, 3);
         BackColor = UIStyles.Colors.BackgroundDarkElevated;
+        _tips.ReviveOnFormActivate(this);
 
         _mainButton = MakeIconButton(44, Loc.S("player.tip.main"));
         _mainButton.Anchor = AnchorStyles.None;

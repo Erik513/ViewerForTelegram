@@ -1586,14 +1586,7 @@ public sealed class MainForm : StyledForm
         _suppressListEvents = false;
         _selectedFileId = null;
         _player.SetIdle();
-        if (wipeConfig)
-        {
-            Toast(Loc.S("status.credentialsDeleted"));
-        }
-        else
-        {
-            Status(Loc.S("status.signedOut"));
-        }
+        Toast(wipeConfig ? Loc.S("status.credentialsDeleted") : Loc.S("status.signedOut"));
     }
 
     // ---------- helpers ----------

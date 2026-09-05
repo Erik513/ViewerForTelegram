@@ -1,7 +1,9 @@
 using System.Net.Http;
 using ErikwnkCore;
+using ErikwnkCore.Updater;
 using ErikwnkWFUI;
 using ErikwnkWFUI.Forms;
+using ErikwnkWFUI.Helpers;
 using ViewerForTelegram.Data;
 using ViewerForTelegram.Data.Interfaces;
 using ViewerForTelegram.Data.Models;
@@ -30,6 +32,18 @@ public sealed class MainForm : StyledForm
 
     private const string UpdateRepoOwner = "Erik513";
     private const string UpdateRepoName = "ViewerForTelegram";
+
+    // Kept alive for the app's whole lifetime (not per-check, like before) so
+    // the same AppUpdater/HttpClients can still drive a download later, if
+    // the user clicks the Settings update button instead of reacting to the
+    // startup notice.
+    private readonly HttpClient _updateCheckClient = new();
+    private readonly HttpClient _updateDownloadClient = new() { Timeout = Timeout.InfiniteTimeSpan };
+    private readonly AppUpdater _updateAppUpdater;
+
+    // The most recent update check's result, or null - remembered so
+    // OpenSettingsAsync can add an update button without checking again.
+    private UpdateCheckResult? _pendingUpdateResult;
 
     private readonly ITelegramSource _telegram;
     private readonly IConfigStore _configStore;
@@ -101,10 +115,12 @@ public sealed class MainForm : StyledForm
         _audio = audio;
         _uiStateStore = uiStateStore;
         _feedCacheStore = feedCacheStore;
+        _updateAppUpdater = new AppUpdater(UpdateRepoOwner, UpdateRepoName, _updateCheckClient, _updateDownloadClient);
 
         MinimumSize = new Size(820, 520);
         Size = new Size(1040, 720);
         StartPosition = FormStartPosition.CenterScreen;
+        _toolTip.ReviveOnFormActivate(this);
 
         // Changing the chat AND the range in quick succession should trigger one
         // load for the final state, not two (the first would run to completion
@@ -387,18 +403,32 @@ public sealed class MainForm : StyledForm
 
     /// <summary>
     /// Checks the repo's latest GitHub release against this build and, if
-    /// newer, shows the update prompt. Best-effort - swallows everything so a
-    /// GitHub outage or a rate limit never affects the rest of the app.
+    /// newer than what we've already notified about, shows the update
+    /// prompt once. Best-effort - swallows everything so a GitHub outage or
+    /// a rate limit never affects the rest of the app. The Settings dialog's
+    /// update button (see <see cref="OpenSettingsAsync"/>) stays available
+    /// regardless, so skipping a release here doesn't hide it for good.
     /// </summary>
     private async Task CheckForUpdatesAsync()
     {
         try
         {
-            using var checkClient = new HttpClient();
-            using var downloadClient = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
-            var updater = new AppUpdater(UpdateRepoOwner, UpdateRepoName, checkClient, downloadClient);
             Version current = typeof(MainForm).Assembly.GetName().Version ?? new Version(1, 0, 0);
-            await updater.CheckForUpdateAsync(current, TimeSpan.FromSeconds(5), this);
+            _pendingUpdateResult = await _updateAppUpdater.CheckForUpdateAsync(current, TimeSpan.FromSeconds(5));
+
+            if (_pendingUpdateResult == null)
+            {
+                return;
+            }
+
+            string latestVersionText = _pendingUpdateResult.LatestVersion.ToString();
+            if (string.Equals(UpdateNotificationStore.LoadLastNotifiedVersion(), latestVersionText, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            UpdateNotificationStore.SaveLastNotifiedVersion(latestVersionText);
+            await _updateAppUpdater.ShowUpdatePromptAsync(_pendingUpdateResult, current, this);
         }
         catch
         {
@@ -1489,6 +1519,14 @@ public sealed class MainForm : StyledForm
             TelegramConfig before = _configStore.Load();
 
             using var dlg = new SettingsForm(before, _cache, _connected);
+
+            if (_pendingUpdateResult != null)
+            {
+                Version current = typeof(MainForm).Assembly.GetName().Version ?? new Version(1, 0, 0);
+                Button updateButton = _updateAppUpdater.CreateUpdateAvailableButton(_pendingUpdateResult, current, dlg);
+                dlg.VersionStrip.Controls.Add(updateButton);
+            }
+
             dlg.ShowDialog(this);
             PushCacheInfo();
 

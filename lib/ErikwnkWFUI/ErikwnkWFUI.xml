@@ -501,11 +501,46 @@
             <summary>checkHttpClient/downloadHttpClient are typically two separate <see cref="T:System.Net.Http.HttpClient"/>s so the download's own timeout/headers don't have to match the (usually much shorter) update-check ones.</summary>
         </member>
         <member name="M:ErikwnkWFUI.Forms.AppUpdater.CheckForUpdateAsync(System.Version,System.TimeSpan,System.Windows.Forms.Form)">
+             <summary>
+             Best-effort, non-blocking check against GitHub's latest release that
+             immediately shows the "update available" prompt if there is one. Never
+             throws; a failed or slow check just means no prompt is shown. On "Update
+             now", downloads and swaps in the new build and exits the app so the swap
+             helper can finish the job.
+            
+             For a settings screen that would rather notify about a new version once
+             (not on every single startup) and otherwise show a quiet "update
+             available" button instead of an unprompted popup, use the silent
+             <see cref="M:ErikwnkWFUI.Forms.AppUpdater.CheckForUpdateAsync(System.Version,System.TimeSpan)"/> overload together
+             with <see cref="M:ErikwnkWFUI.Forms.AppUpdater.ShowUpdatePromptAsync(ErikwnkCore.Updater.UpdateCheckResult,System.Version,System.Windows.Forms.Form)"/> and
+             <see cref="M:ErikwnkWFUI.Forms.AppUpdater.CreateUpdateAvailableButton(ErikwnkCore.Updater.UpdateCheckResult,System.Version,System.Windows.Forms.Form)"/> instead.
+             </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.AppUpdater.CheckForUpdateAsync(System.Version,System.TimeSpan)">
             <summary>
-            Best-effort, non-blocking check against GitHub's latest release. Never
-            throws; a failed or slow check just means no prompt is shown. On "Update
-            now", downloads and swaps in the new build and exits the app so the swap
-            helper can finish the job.
+            Same GitHub check as the other overload, but silent - never shows any
+            UI, just returns the result (or null on no update/failure/timeout) so
+            the caller can decide when, or whether, to actually prompt. Never
+            throws.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.AppUpdater.ShowUpdatePromptAsync(ErikwnkCore.Updater.UpdateCheckResult,System.Version,System.Windows.Forms.Form)">
+            <summary>
+            Shows the "update available" prompt for a <paramref name="result"/> from
+            the silent <see cref="M:ErikwnkWFUI.Forms.AppUpdater.CheckForUpdateAsync(System.Version,System.TimeSpan)"/> - the
+            same dialog+download+failure-handling flow the combined overload uses
+            internally, just callable on its own (from a one-time startup notice, or
+            later from an update button click). Returns how the dialog ended.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.AppUpdater.CreateUpdateAvailableButton(ErikwnkCore.Updater.UpdateCheckResult,System.Version,System.Windows.Forms.Form)">
+            <summary>
+            A small, ready-styled green button (with an update glyph and a
+            tooltip) for <see cref="P:ErikwnkWFUI.Forms.StyledForm.VersionStrip"/> - clicking it shows
+            the same prompt <see cref="M:ErikwnkWFUI.Forms.AppUpdater.ShowUpdatePromptAsync(ErikwnkCore.Updater.UpdateCheckResult,System.Version,System.Windows.Forms.Form)"/> does. Add it once
+            you know an update is available (e.g. after
+            <see cref="M:ErikwnkWFUI.Forms.AppUpdater.CheckForUpdateAsync(System.Version,System.TimeSpan)"/> returned a
+            non-null result), typically when building the settings screen.
             </summary>
         </member>
         <member name="T:ErikwnkWFUI.Forms.InfoPopupForm">
@@ -587,6 +622,16 @@
         </member>
         <member name="P:ErikwnkWFUI.Forms.StyledForm.ContentPanel">
             <summary>The panel below the title bar - add your own UI here.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Forms.StyledForm.VersionStrip">
+            <summary>
+            The reserved bottom-right strip holding <see cref="P:ErikwnkWFUI.Forms.StyledForm.VersionLabel"/>,
+            or null when it wasn't reserved at all (see
+            <see cref="P:ErikwnkWFUI.Forms.StyledFormOptions.VersionText"/>). Flows right-to-left,
+            so <c>VersionStrip.Controls.Add(someControl)</c> places it
+            directly to the left of the version text - e.g. an
+            <see cref="M:ErikwnkWFUI.Forms.AppUpdater.CreateUpdateAvailableButton(ErikwnkCore.Updater.UpdateCheckResult,System.Version,System.Windows.Forms.Form)"/> button.
+            </summary>
         </member>
         <member name="P:ErikwnkWFUI.Forms.StyledForm.VersionLabel">
             <summary>
@@ -789,6 +834,27 @@
         </member>
         <member name="M:ErikwnkWFUI.Helpers.TextDragDropHelper.EnableTextDragDrop(System.Windows.Forms.Control,System.Action{System.String})">
             <summary>Wires up drag/drop of plain text onto <paramref name="control"/>, calling <paramref name="onTextDropped"/> with whatever text was dropped. Sets <see cref="P:System.Windows.Forms.Control.AllowDrop"/> and swaps the cursor to indicate whether the current drag target has droppable text.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Helpers.ToolTipActivationFix">
+            <summary>
+            Works around a WinForms/Windows quirk where a <see cref="T:System.Windows.Forms.ToolTip"/> can
+            silently stop popping up once its owning top-level window has lost and
+            regained focus (e.g. Alt-Tab) - the native tooltip control's internal
+            activation state gets left off and normal mouse hover no longer
+            reactivates it. Toggling <see cref="P:System.Windows.Forms.ToolTip.Active"/> off then on again
+            resets that state; this hooks it automatically to the owning
+            <see cref="T:System.Windows.Forms.Form"/>'s <see cref="E:System.Windows.Forms.Form.Activated"/> event, following the
+            control through reparenting.
+            </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Helpers.ToolTipActivationFix.ReviveOnFormActivate(System.Windows.Forms.ToolTip,System.Windows.Forms.Control)">
+            <summary>
+            Re-arms <paramref name="toolTip"/> every time the <see cref="T:System.Windows.Forms.Form"/>
+            that (currently) contains <paramref name="owner"/> becomes active.
+            Safe to call once per <see cref="T:System.Windows.Forms.ToolTip"/>/owner pair, as soon as
+            the owner exists - re-hooks itself if the owner is later reparented
+            into a different form, and unhooks on the owner's disposal.
+            </summary>
         </member>
         <member name="T:ErikwnkWFUI.AppCurrencyFormatter">
             <summary>

@@ -33,6 +33,13 @@ public static class AppPaths
     public static string UiStateFile { get; }
 
     /// <summary>
+    /// The latest release version the startup "update available" popup has
+    /// already been shown for - lets the check notify about a given release
+    /// only once instead of on every launch. See <see cref="UpdateNotificationStore"/>.
+    /// </summary>
+    public static string UpdateNotificationFile { get; }
+
+    /// <summary>
     /// The last successfully loaded audio list (see <c>PersistedFeed</c>) - lets
     /// a restart show it instantly and fetch only what changed, instead of
     /// re-pulling e.g. "Newest 5000" from scratch.
@@ -66,6 +73,7 @@ public static class AppPaths
         ConfigFile = Path.Combine(Root, "appsettings.local.json");
         SessionFile = Path.Combine(Root, "telegram.session");
         UiStateFile = Path.Combine(Root, "ui-state.json");
+        UpdateNotificationFile = Path.Combine(Root, "last-notified-update.txt");
         FeedCacheFile = Path.Combine(Root, "feed-cache.json");
         CacheDir = Path.Combine(Root, "cache");
         DurationsFile = Path.Combine(Root, "durations.json");

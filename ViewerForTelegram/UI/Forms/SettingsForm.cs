@@ -2,6 +2,7 @@ using ErikwnkCore;
 using ErikwnkWFUI;
 using ErikwnkWFUI.Controls;
 using ErikwnkWFUI.Forms;
+using ErikwnkWFUI.Helpers;
 using ViewerForTelegram.Data;
 using ViewerForTelegram.Data.Interfaces;
 using ViewerForTelegram.Data.Models;
@@ -82,6 +83,7 @@ public sealed class SettingsForm : StyledForm
         StartPosition = FormStartPosition.CenterParent;
 
         _toolTip = UIStyles.ToolTips.CreateToolTip();
+        _toolTip.ReviveOnFormActivate(this);
 
         // Background a touch lighter than the PropertyTable (which sits on
         // BackgroundMedium) - so it stands out as a "card".

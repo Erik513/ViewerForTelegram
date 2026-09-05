@@ -29,6 +29,8 @@ so it can see full history with no bot restrictions and no file-size limit.
 - UI language: English or Deutsch, switches instantly, no restart needed
 - Save to a fixed folder or via a save dialog, original file name preserved
 - Size-capped local cache (default 3000 MB) with a "clear now" button
+- Checks GitHub releases for updates at startup and offers to install them
+- Only one instance runs at a time
 
 ## Requirements
 

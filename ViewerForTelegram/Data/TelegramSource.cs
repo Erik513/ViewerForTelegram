@@ -170,11 +170,7 @@ public sealed class TelegramSource : ITelegramSource
     {
         EnsureConnected();
 
-        if (_peers is null || !_peers.TryGetValue(chatId, out InputPeer? peer))
-        {
-            throw new InvalidOperationException(
-                "Chat not known - GetChatsAsync must have run first.");
-        }
+        InputPeer peer = GetPeer(chatId);
 
         DateTime since = sinceUtc.Kind == DateTimeKind.Unspecified
             ? DateTime.SpecifyKind(sinceUtc, DateTimeKind.Utc)
@@ -266,11 +262,7 @@ public sealed class TelegramSource : ITelegramSource
     {
         EnsureConnected();
 
-        if (_peers is null || !_peers.TryGetValue(chatId, out InputPeer? peer))
-        {
-            throw new InvalidOperationException(
-                "Chat not known - GetChatsAsync must have run first.");
-        }
+        InputPeer peer = GetPeer(chatId);
 
         var result = new List<AudioMessage>();
         int offsetId = 0;
@@ -326,11 +318,7 @@ public sealed class TelegramSource : ITelegramSource
     {
         EnsureConnected();
 
-        if (_peers is null || !_peers.TryGetValue(chatId, out InputPeer? peer))
-        {
-            throw new InvalidOperationException(
-                "Chat not known - GetChatsAsync must have run first.");
-        }
+        InputPeer peer = GetPeer(chatId);
 
         var deleted = new List<int>();
 
@@ -476,12 +464,12 @@ public sealed class TelegramSource : ITelegramSource
         }
         catch (Exception) when (ct.IsCancellationRequested)
         {
-            TryDelete(partPath);
+            IoUtil.TryDelete(partPath);
             throw new OperationCanceledException(ct);
         }
         catch
         {
-            TryDelete(partPath);
+            IoUtil.TryDelete(partPath);
             throw;
         }
 
@@ -497,20 +485,6 @@ public sealed class TelegramSource : ITelegramSource
                 $"({new FileInfo(targetPath).Length} bytes)");
     }
 
-    private static void TryDelete(string path)
-    {
-        try
-        {
-            if (File.Exists(path))
-            {
-                File.Delete(path);
-            }
-        }
-        catch
-        {
-            // never mind
-        }
-    }
 
     public async ValueTask DisposeAsync()
     {
@@ -543,5 +517,15 @@ public sealed class TelegramSource : ITelegramSource
             throw new InvalidOperationException(
                 $"{nameof(ConnectAsync)} must run successfully first.");
         }
+    }
+
+    private InputPeer GetPeer(long chatId)
+    {
+        if (_peers is null || !_peers.TryGetValue(chatId, out InputPeer? peer))
+        {
+            throw new InvalidOperationException(
+                "Chat not known - GetChatsAsync must have run first.");
+        }
+        return peer;
     }
 }

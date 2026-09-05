@@ -364,11 +364,7 @@ public sealed class MainForm : StyledForm
         if (_largestItems.Count > 0)
         {
             _items = _largestItems;
-            _byFileId.Clear();
-            foreach (FeedItem item in _items)
-            {
-                _byFileId[item.Audio.FileId] = item.Audio;
-            }
+            RebuildByFileId();
             RenderList();
             Toast(Loc.T("toast.listUpdated", _items.Count));
         }
@@ -622,11 +618,7 @@ public sealed class MainForm : StyledForm
                 if (!recut.SequenceEqual(_items))
                 {
                     _items = recut;
-                    _byFileId.Clear();
-                    foreach (FeedItem item in _items)
-                    {
-                        _byFileId[item.Audio.FileId] = item.Audio;
-                    }
+                    RebuildByFileId();
                     visibleChanged = true;
                 }
             }
@@ -819,11 +811,7 @@ public sealed class MainForm : StyledForm
             }
             nextRenderAt += 500;
             _items = new List<FeedItem>(partial);
-            _byFileId.Clear();
-            foreach (FeedItem item in _items)
-            {
-                _byFileId[item.Audio.FileId] = item.Audio;
-            }
+            RebuildByFileId();
             RenderList(announceStatus: false);   // the loading-progress status line stays as-is
         });
 
@@ -861,11 +849,7 @@ public sealed class MainForm : StyledForm
 
         rendering = true;   // from here on, late progress callbacks must not talk
         _items = loaded;
-        _byFileId.Clear();
-        foreach (FeedItem item in _items)
-        {
-            _byFileId[item.Audio.FileId] = item.Audio;
-        }
+        RebuildByFileId();
 
         RenderList(afterLoad: true);
         EndFeedLoading();
@@ -1011,6 +995,16 @@ public sealed class MainForm : StyledForm
             }
         }
         _tintedFileId = mark;
+    }
+
+    /// <summary>Reindexes <see cref="_byFileId"/> from the current <see cref="_items"/>.</summary>
+    private void RebuildByFileId()
+    {
+        _byFileId.Clear();
+        foreach (FeedItem item in _items)
+        {
+            _byFileId[item.Audio.FileId] = item.Audio;
+        }
     }
 
     private void RenderList(bool afterLoad = false, bool announceStatus = true)
@@ -1563,11 +1557,11 @@ public sealed class MainForm : StyledForm
         StopCurrent();
 
         await _telegram.DisposeAsync();
-        TryDelete(AppPaths.SessionFile);
+        IoUtil.TryDelete(AppPaths.SessionFile);
         if (wipeConfig)
         {
-            TryDelete(AppPaths.ConfigFile);
-            TryDelete(AppPaths.FeedCacheFile);
+            IoUtil.TryDelete(AppPaths.ConfigFile);
+            IoUtil.TryDelete(AppPaths.FeedCacheFile);
         }
 
         _connected = false;
@@ -1631,20 +1625,6 @@ public sealed class MainForm : StyledForm
         else
         {
             Status(text);
-        }
-    }
-    private static void TryDelete(string path)
-    {
-        try
-        {
-            if (File.Exists(path))
-            {
-                File.Delete(path);
-            }
-        }
-        catch
-        {
-            // never mind
         }
     }
 

@@ -94,7 +94,8 @@ static class Program
 
     /// <summary>
     ///  Unexpected errors go to %AppData%\ViewerForTelegram\crash.log instead of
-    ///  the app quitting silently. A debugging aid, removable later.
+    ///  the app quitting silently - kept permanently so a user can attach it to
+    ///  a bug report.
     /// </summary>
     private static void HookCrashLogging()
     {

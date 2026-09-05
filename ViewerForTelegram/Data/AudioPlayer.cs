@@ -89,10 +89,7 @@ public sealed class AudioPlayer : IAudioPlayer
             // Media Foundation has no AIFF source reader at all ("stream type
             // not supported", 0xC00D36C4) - AudioFileReader's fallback to it
             // fails the same way. NAudio ships its own AiffFileReader though.
-            var aiff = new AiffFileReader(filePath);
-            _stream = aiff;
-            _sampleChannel = new SampleChannel(aiff, forceStereo: false) { Volume = _volume };
-            output = _sampleChannel;
+            output = WrapAsSampleChannel(new AiffFileReader(filePath));
         }
         else
         {
@@ -113,10 +110,7 @@ public sealed class AudioPlayer : IAudioPlayer
                     $"AudioFileReader failed for {Path.GetExtension(filePath)}: " +
                     $"{ex.GetType().Name}: {ex.Message} - falling back to Media Foundation");
 
-                var mf = new MediaFoundationReader(filePath);
-                _stream = mf;
-                _sampleChannel = new SampleChannel(mf, forceStereo: false) { Volume = _volume };
-                output = _sampleChannel;
+                output = WrapAsSampleChannel(new MediaFoundationReader(filePath));
             }
         }
 
@@ -139,10 +133,7 @@ public sealed class AudioPlayer : IAudioPlayer
     {
         try
         {
-            var flac = new FlacReader(filePath);
-            _stream = flac;
-            _sampleChannel = new SampleChannel(flac, forceStereo: false) { Volume = _volume };
-            return _sampleChannel;
+            return WrapAsSampleChannel(new FlacReader(filePath));
         }
         catch (Exception ex)
         {
@@ -159,9 +150,7 @@ public sealed class AudioPlayer : IAudioPlayer
                     fs.Position = skip;
                     var flac = new FlacReader(fs);
                     _ownedStream = fs;
-                    _stream = flac;
-                    _sampleChannel = new SampleChannel(flac, forceStereo: false) { Volume = _volume };
-                    return _sampleChannel;
+                    return WrapAsSampleChannel(flac);
                 }
                 catch (Exception ex2)
                 {
@@ -169,11 +158,16 @@ public sealed class AudioPlayer : IAudioPlayer
                 }
             }
 
-            var mf = new MediaFoundationReader(filePath);
-            _stream = mf;
-            _sampleChannel = new SampleChannel(mf, forceStereo: false) { Volume = _volume };
-            return _sampleChannel;
+            return WrapAsSampleChannel(new MediaFoundationReader(filePath));
         }
+    }
+
+    /// <summary>Sets <see cref="_stream"/>/<see cref="_sampleChannel"/> for <paramref name="stream"/> and returns the channel.</summary>
+    private ISampleProvider WrapAsSampleChannel(WaveStream stream)
+    {
+        _stream = stream;
+        _sampleChannel = new SampleChannel(stream, forceStereo: false) { Volume = _volume };
+        return _sampleChannel;
     }
 
     /// <summary>Length of a leading ID3v2 tag (some taggers wrongly add one to FLAC), or 0.</summary>

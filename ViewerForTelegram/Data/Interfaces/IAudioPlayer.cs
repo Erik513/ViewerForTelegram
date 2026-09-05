@@ -33,6 +33,13 @@ public interface IAudioPlayer : IDisposable
     /// <summary>Volume from 0.0 to 1.0. Persists across <see cref="Load"/> calls.</summary>
     float Volume { get; set; }
 
+    /// <summary>
+    /// Raised when the volume was changed from outside the app (the Windows
+    /// volume mixer). The argument is the new 0..1 value; setting
+    /// <see cref="Volume"/> from a handler must not loop back.
+    /// </summary>
+    event EventHandler<float>? VolumeChangedExternally;
+
     /// <summary>Raised when playback reaches the end of the file on its own.</summary>
     event EventHandler? PlaybackEnded;
 

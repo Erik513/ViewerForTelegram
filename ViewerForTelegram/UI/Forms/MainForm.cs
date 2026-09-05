@@ -232,6 +232,11 @@ public sealed class MainForm : StyledForm
         _player.BrowseFolder += OpenDownloadFolder;
         _player.Seek += seconds => Seek(TimeSpan.FromSeconds(seconds));
         _player.VolumeChanged += OnVolumeChanged;
+        _audio.VolumeChangedExternally += (_, pos) =>
+        {
+            _player.Volume = pos;   // slider setter doesn't re-raise VolumeChanged
+            SaveUiState();
+        };
 
         _positionTimer = new System.Windows.Forms.Timer { Interval = 250 };
         _positionTimer.Tick += (_, _) =>

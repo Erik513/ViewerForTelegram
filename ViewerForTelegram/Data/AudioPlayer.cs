@@ -1,3 +1,5 @@
+using NAudio.CoreAudioApi;
+using NAudio.CoreAudioApi.Interfaces;
 using NAudio.Flac;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
@@ -25,8 +27,31 @@ public sealed class AudioPlayer : IAudioPlayer
     private WaveStream? _stream;          // the decoder - position / duration / seek
     private AudioFileReader? _fileReader; // set only for the AudioFileReader path (has its own Volume)
     private SampleChannel? _sampleChannel; // set only for the FLAC path (volume goes here)
-    private float _volume = 0.1f;
+    private float _volume = 0.5f;
     private bool _stopIsIntentional;
+
+    // Volume is routed through this process's own entry in the Windows volume
+    // mixer (its per-app audio session), so this slider and the "Viewer for
+    // Telegram" slider in the mixer are the same control and stay in sync. The
+    // decoder chain is left at unity gain; the session does the attenuation.
+    private MMDeviceEnumerator? _deviceEnum;
+    private MMDevice? _mmDevice;
+    private AudioSessionControl? _session;
+    private SimpleAudioVolume? _sessionVolume;
+    private SessionEvents? _sessionEvents;
+    private float _lastAppliedScalar = -1f;
+
+    // The Windows volume mixer maps a per-app session's slider position roughly
+    // 1:1 to the linear SimpleAudioVolume scalar, so this slider does the same -
+    // that keeps it and the mixer's "Viewer for Telegram" slider at the same
+    // position and rising at the same, even rate.
+    private static float ToScalar(float sliderPos) => Math.Clamp(sliderPos, 0f, 1f);
+    private static float ToSliderPos(float scalar) => Math.Clamp(scalar, 0f, 1f);
+
+    // Applied to NAudio's own linear volume only when there is no per-app session
+    // to route through (rare - e.g. no audio device). A -40 dB perceptual taper
+    // so a linear amplitude doesn't feel far too loud in the lower half.
+    private float FallbackGain => _volume <= 0f ? 0f : MathF.Pow(10f, (_volume - 1f) * 2f);
 
     public PlaybackState State { get; private set; } = PlaybackState.Stopped;
 
@@ -56,16 +81,45 @@ public sealed class AudioPlayer : IAudioPlayer
         set
         {
             _volume = Math.Clamp(value, 0f, 1f);
-            if (_fileReader is not null)
-            {
-                _fileReader.Volume = _volume;
-            }
-            if (_sampleChannel is not null)
-            {
-                _sampleChannel.Volume = _volume;
-            }
+            ApplyVolume();
         }
     }
+
+    private void ApplyVolume()
+    {
+        if (_sessionVolume is not null)
+        {
+            try
+            {
+                float scalar = ToScalar(_volume);
+                _lastAppliedScalar = scalar;
+                _sessionVolume.Volume = scalar;
+                SetChannelVolume(1f);   // session does the attenuation
+                return;
+            }
+            catch
+            {
+                ReleaseSession();   // session went stale - drop to the fallback
+            }
+        }
+
+        SetChannelVolume(FallbackGain);
+    }
+
+    private void SetChannelVolume(float gain)
+    {
+        if (_fileReader is not null)
+        {
+            _fileReader.Volume = gain;
+        }
+        if (_sampleChannel is not null)
+        {
+            _sampleChannel.Volume = gain;
+        }
+    }
+
+    /// <summary>Raised when the volume was changed from the Windows volume mixer; the argument is the new 0..1 slider position.</summary>
+    public event EventHandler<float>? VolumeChangedExternally;
 
     public event EventHandler? PlaybackEnded;
     public event EventHandler<Exception>? PlaybackFailed;
@@ -95,7 +149,7 @@ public sealed class AudioPlayer : IAudioPlayer
         {
             try
             {
-                _fileReader = new AudioFileReader(filePath) { Volume = _volume };
+                _fileReader = new AudioFileReader(filePath) { Volume = FallbackGain };
                 _stream = _fileReader;
                 output = _fileReader;
             }
@@ -120,6 +174,9 @@ public sealed class AudioPlayer : IAudioPlayer
         _output.PlaybackStopped += OnPlaybackStopped;
         _output.Init(output);
         State = PlaybackState.Stopped;
+
+        AcquireSession();
+        ApplyVolume();
     }
 
     private Stream? _ownedStream;   // a FileStream we opened ourselves and must dispose
@@ -166,7 +223,7 @@ public sealed class AudioPlayer : IAudioPlayer
     private ISampleProvider WrapAsSampleChannel(WaveStream stream)
     {
         _stream = stream;
-        _sampleChannel = new SampleChannel(stream, forceStereo: false) { Volume = _volume };
+        _sampleChannel = new SampleChannel(stream, forceStereo: false) { Volume = FallbackGain };
         return _sampleChannel;
     }
 
@@ -239,6 +296,13 @@ public sealed class AudioPlayer : IAudioPlayer
 
         _output.Play();
         State = PlaybackState.Playing;
+
+        if (_session is null)
+        {
+            // The session sometimes only appears once audio is actually running.
+            AcquireSession();
+            ApplyVolume();
+        }
     }
 
     public void Pause()
@@ -272,6 +336,94 @@ public sealed class AudioPlayer : IAudioPlayer
 
         try { _ownedStream?.Dispose(); } catch { }
         _ownedStream = null;
+
+        ReleaseSession();
+    }
+
+    // ---------- Windows per-app volume session ----------
+
+    private void AcquireSession()
+    {
+        ReleaseSession();
+        try
+        {
+            _deviceEnum ??= new MMDeviceEnumerator();
+            _mmDevice = _deviceEnum.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+
+            SessionCollection sessions = _mmDevice.AudioSessionManager.Sessions;
+            uint pid = (uint)Environment.ProcessId;
+
+            for (int i = 0; i < sessions.Count; i++)
+            {
+                AudioSessionControl candidate = sessions[i];
+                if (candidate.GetProcessID != pid)
+                {
+                    continue;
+                }
+
+                _session = candidate;
+                _sessionVolume = candidate.SimpleAudioVolume;
+                _sessionEvents = new SessionEvents(OnSessionVolume);
+                candidate.RegisterEventClient(_sessionEvents);
+                return;
+            }
+        }
+        catch
+        {
+            ReleaseSession();
+        }
+    }
+
+    private void ReleaseSession()
+    {
+        try
+        {
+            if (_session is not null && _sessionEvents is not null)
+            {
+                _session.UnRegisterEventClient(_sessionEvents);
+            }
+        }
+        catch { }
+
+        _sessionEvents = null;
+        try { _sessionVolume?.Dispose(); } catch { }
+        _sessionVolume = null;
+        try { _session?.Dispose(); } catch { }
+        _session = null;
+        try { _mmDevice?.Dispose(); } catch { }
+        _mmDevice = null;
+        _lastAppliedScalar = -1f;
+    }
+
+    private void OnSessionVolume(float scalar, bool muted)
+    {
+        // Ignore the notification our own ApplyVolume just triggered - it comes
+        // back bit-for-bit equal, whereas a real mixer drag is a step of ~8%.
+        if (!muted && _lastAppliedScalar > 0f
+            && MathF.Abs(scalar - _lastAppliedScalar) < _lastAppliedScalar * 0.01f)
+        {
+            return;
+        }
+
+        float pos = muted ? 0f : ToSliderPos(scalar);
+        _volume = pos;
+        _lastAppliedScalar = ToScalar(pos);
+        _sync.Post(_ => VolumeChangedExternally?.Invoke(this, pos), null);
+    }
+
+    private sealed class SessionEvents : IAudioSessionEventsHandler
+    {
+        private readonly Action<float, bool> _onVolume;
+        public SessionEvents(Action<float, bool> onVolume) => _onVolume = onVolume;
+
+        public void OnVolumeChanged(float volume, bool isMuted) => _onVolume(volume, isMuted);
+
+        public void OnDisplayNameChanged(string displayName) { }
+        public void OnIconPathChanged(string iconPath) { }
+        public void OnChannelVolumeChanged(uint channelCount, IntPtr newVolumes, uint channelIndex) { }
+        public void OnGroupingParamChanged(ref Guid groupingId) { }
+        public void OnStateChanged(AudioSessionState state) { }
+        public void OnSessionDisconnected(AudioSessionDisconnectReason disconnectReason) { }
     }
 
     private void OnPlaybackStopped(object? sender, StoppedEventArgs e)
@@ -297,5 +449,10 @@ public sealed class AudioPlayer : IAudioPlayer
         }, null);
     }
 
-    public void Dispose() => Stop();
+    public void Dispose()
+    {
+        Stop();
+        try { _deviceEnum?.Dispose(); } catch { }
+        _deviceEnum = null;
+    }
 }

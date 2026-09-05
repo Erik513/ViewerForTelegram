@@ -390,6 +390,7 @@ public sealed class SettingsForm : StyledForm
         {
             _cache.Clear();
             UpdateCacheLabel();
+            ToastForm.ShowToast(Loc.T("toast.cacheCleared", count, Mb(bytes)), this);
         }
     }
 

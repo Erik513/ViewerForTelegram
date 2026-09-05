@@ -1567,6 +1567,9 @@ public sealed class MainForm : StyledForm
         {
             IoUtil.TryDelete(AppPaths.ConfigFile);
             IoUtil.TryDelete(AppPaths.FeedCacheFile);
+            IoUtil.TryDelete(AppPaths.UiStateFile);
+            IoUtil.TryDelete(AppPaths.DurationsFile);
+            _cache.Clear();
         }
 
         _connected = false;
@@ -1583,7 +1586,14 @@ public sealed class MainForm : StyledForm
         _suppressListEvents = false;
         _selectedFileId = null;
         _player.SetIdle();
-        Status(wipeConfig ? Loc.S("status.credentialsDeleted") : Loc.S("status.signedOut"));
+        if (wipeConfig)
+        {
+            Toast(Loc.S("status.credentialsDeleted"));
+        }
+        else
+        {
+            Status(Loc.S("status.signedOut"));
+        }
     }
 
     // ---------- helpers ----------

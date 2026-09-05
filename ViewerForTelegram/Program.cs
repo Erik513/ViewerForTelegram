@@ -1,4 +1,5 @@
 using System.Globalization;
+using ErikwnkCore;
 using ErikwnkWFUI;
 using ErikwnkWFUI.Styles;
 using ViewerForTelegram.Data;
@@ -46,6 +47,19 @@ static class Program
         // before, set before any form is built.
         Loc.Register();
         Loc.Current = startupConfig.Language;
+
+        // Bail out before any Telegram/UI setup if another instance already
+        // holds the mutex. Held for the whole run via "using" in Main's scope.
+        using var instanceGuard = new SingleInstanceGuard("ViewerForTelegram");
+        if (!instanceGuard.IsFirstInstance)
+        {
+            ErikwnkWFUI.Forms.MessageBox.Show(
+                Loc.S("app.alreadyRunning"),
+                Loc.S("app.title"),
+                ErikwnkWFUI.Forms.MessageBoxButtons.OK,
+                ErikwnkWFUI.Forms.MessageBoxIcon.Info);
+            return;
+        }
 
         IMediaCache cache = new FileMediaCache(AppPaths.CacheDir, AppPaths.DurationsFile);
         ITelegramSource telegram = new TelegramSource(configStore, AppPaths.SessionFile);

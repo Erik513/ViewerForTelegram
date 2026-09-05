@@ -43,6 +43,7 @@ public static class Loc
     private static readonly Dictionary<string, string> English = new()
     {
         ["app.title"] = "Viewer for Telegram",
+        ["app.alreadyRunning"] = "Viewer for Telegram is already running.",
 
         // --- top bar ---
         ["top.settings.tip"] = "Settings",
@@ -198,6 +199,7 @@ public static class Loc
     private static readonly Dictionary<string, string> German = new()
     {
         ["app.title"] = "Viewer for Telegram",
+        ["app.alreadyRunning"] = "Viewer for Telegram läuft bereits.",
 
         ["top.settings.tip"] = "Einstellungen",
         ["top.refresh.tip"] = "Chats und Liste neu laden",

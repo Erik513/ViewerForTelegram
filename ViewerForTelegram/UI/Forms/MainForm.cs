@@ -1525,6 +1525,12 @@ public sealed class MainForm : StyledForm
                 Version current = typeof(MainForm).Assembly.GetName().Version ?? new Version(1, 0, 0);
                 Button updateButton = _updateAppUpdater.CreateUpdateAvailableButton(_pendingUpdateResult, current, dlg);
                 dlg.VersionStrip.Controls.Add(updateButton);
+                // The strip flows right-to-left (version label added first sits
+                // at the far right) - index 0 puts the button right of it.
+                dlg.VersionStrip.Controls.SetChildIndex(updateButton, 0);
+                // Tuck the button into the corner (the strip's own right inset
+                // is meant for the lone version label).
+                dlg.VersionStrip.Padding = new Padding(0, 0, 4, 0);
             }
 
             dlg.ShowDialog(this);

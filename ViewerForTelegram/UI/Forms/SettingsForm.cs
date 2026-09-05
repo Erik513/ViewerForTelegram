@@ -206,7 +206,7 @@ public sealed class SettingsForm : StyledForm
 
         ClientSize = new Size(
             _table.Width + 220,
-            top.Height + _table.Height + TitleBar.Height + 40 + (VersionLabel?.Height ?? 0));
+            top.Height + _table.Height + TitleBar.Height + 40 + (VersionStrip?.Height ?? 0));
 
         ApplyTexts();
         Recenter();

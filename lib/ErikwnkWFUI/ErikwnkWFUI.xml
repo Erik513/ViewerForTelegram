@@ -588,6 +588,13 @@
         <member name="P:ErikwnkWFUI.Forms.StyledForm.ContentPanel">
             <summary>The panel below the title bar - add your own UI here.</summary>
         </member>
+        <member name="P:ErikwnkWFUI.Forms.StyledForm.VersionLabel">
+            <summary>
+            The reserved bottom-right version strip, or null when
+            <see cref="P:ErikwnkWFUI.Forms.StyledFormOptions.VersionText"/> wasn't set - reach
+            through here to restyle it (font, color) after construction.
+            </summary>
+        </member>
         <member name="P:ErikwnkWFUI.Forms.StyledForm.TitleBar">
             <summary>
             The title bar itself - reach through here for anything not
@@ -610,10 +617,13 @@
             </summary>
         </member>
         <member name="M:ErikwnkWFUI.Forms.StyledForm.#ctor(System.String,ErikwnkWFUI.Forms.StyledFormType)">
-            <summary>Quick-start constructor for the common case - just a title and whether it behaves like a dialog (no minimize/maximize, fixed size) or a standard resizable window.</summary>
+            <summary>Quick-start constructor for the common case - just a title and whether it behaves like a dialog (no minimize/maximize, fixed size), a settings screen (same, plus an automatic version strip), or a standard resizable window.</summary>
         </member>
         <member name="T:ErikwnkWFUI.Forms.StyledFormType">
             <summary>Which <see cref="T:ErikwnkWFUI.Forms.StyledFormOptions"/> preset a <see cref="T:ErikwnkWFUI.Forms.StyledForm"/> should start from.</summary>
+        </member>
+        <member name="F:ErikwnkWFUI.Forms.StyledFormType.Settings">
+            <summary>Like <see cref="F:ErikwnkWFUI.Forms.StyledFormType.Dialog"/>, but automatically shows the entry assembly's version in the reserved bottom-right strip - see <see cref="M:ErikwnkWFUI.Forms.StyledFormOptions.CreateSettings(System.String,System.Drawing.ContentAlignment,System.Nullable{System.Drawing.Color},System.Drawing.Image,System.Drawing.Icon)"/>.</summary>
         </member>
         <member name="T:ErikwnkWFUI.Forms.StyledFormOptions">
             <summary>
@@ -640,11 +650,34 @@
         <member name="P:ErikwnkWFUI.Forms.StyledFormOptions.WindowIcon">
             <summary>The OS-level icon (taskbar, Alt-Tab, system menu) - not the title bar logo, see <see cref="P:ErikwnkWFUI.Forms.StyledFormOptions.Icon"/> for that. Falls back to the running exe's own icon when left null.</summary>
         </member>
+        <member name="P:ErikwnkWFUI.Forms.StyledFormOptions.VersionText">
+            <summary>
+            When set, reserves a thin strip at the bottom of the window with
+            this text right-aligned - typically the app version, e.g.
+            "v1.0.0". Left null (the default), <see cref="P:ErikwnkWFUI.Forms.StyledFormOptions.Type"/> ==
+            <see cref="F:ErikwnkWFUI.Forms.StyledFormType.Settings"/> fills it in automatically
+            from the entry assembly's own version; for any other
+            <see cref="P:ErikwnkWFUI.Forms.StyledFormOptions.Type"/>, null just means no strip at all. Set this
+            explicitly to override the automatic value (e.g. a custom
+            format, or a version string from a different assembly).
+            </summary>
+        </member>
         <member name="M:ErikwnkWFUI.Forms.StyledFormOptions.CreateStandard(System.String,System.Drawing.ContentAlignment,System.Nullable{System.Drawing.Color},System.Drawing.Image,System.Drawing.Icon)">
             <summary>A normal, resizable window with minimize/maximize/close.</summary>
         </member>
         <member name="M:ErikwnkWFUI.Forms.StyledFormOptions.CreateDialog(System.String,System.Drawing.ContentAlignment,System.Nullable{System.Drawing.Color},System.Drawing.Image,System.Drawing.Icon)">
             <summary>A fixed-size dialog: no minimize/maximize, can't be snapped or maximized by dragging.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.Forms.StyledFormOptions.CreateSettings(System.String,System.Drawing.ContentAlignment,System.Nullable{System.Drawing.Color},System.Drawing.Image,System.Drawing.Icon)">
+            <summary>
+            A fixed-size dialog like <see cref="M:ErikwnkWFUI.Forms.StyledFormOptions.CreateDialog(System.String,System.Drawing.ContentAlignment,System.Nullable{System.Drawing.Color},System.Drawing.Image,System.Drawing.Icon)"/>, but marked
+            as a settings screen: <see cref="T:ErikwnkWFUI.Forms.StyledForm"/> automatically
+            shows the entry assembly's version (e.g. "v1.0.0") in a reserved
+            bottom-right strip, without the caller having to look up or pass
+            a version string itself. Use this for every "Settings" window -
+            that's what makes the version strip show up consistently across
+            all of them instead of each app wiring it up separately.
+            </summary>
         </member>
         <member name="T:ErikwnkWFUI.Forms.StyledOptionsForm">
             <summary>

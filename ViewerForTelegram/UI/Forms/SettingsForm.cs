@@ -74,7 +74,7 @@ public sealed class SettingsForm : StyledForm
     public SettingsAction Action { get; private set; } = SettingsAction.None;
 
     public SettingsForm(TelegramConfig current, IMediaCache cache, bool isConnected)
-        : base(StyledFormOptions.CreateDialog(Loc.S("settings.title")))
+        : base(StyledFormOptions.CreateSettings(Loc.S("settings.title")))
     {
         _cache = cache;
         _isConnected = isConnected;
@@ -204,7 +204,7 @@ public sealed class SettingsForm : StyledForm
 
         ClientSize = new Size(
             _table.Width + 220,
-            top.Height + _table.Height + TitleBar.Height + 40);
+            top.Height + _table.Height + TitleBar.Height + 40 + (VersionLabel?.Height ?? 0));
 
         ApplyTexts();
         Recenter();

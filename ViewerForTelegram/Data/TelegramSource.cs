@@ -406,6 +406,38 @@ public sealed class TelegramSource : ITelegramSource
         return true;
     }
 
+    /// <summary>
+    /// Fetches a single message by id and runs it through <see cref="TryMapAudio"/>
+    /// so its <c>Document</c> lands in <see cref="_documents"/> for a download.
+    /// Best-effort - a failure just leaves the caller to report "not known".
+    /// </summary>
+    private async Task TryFetchDocumentAsync(long chatId, int messageId, CancellationToken ct)
+    {
+        if (_peers is null || !_peers.TryGetValue(chatId, out InputPeer? peer))
+        {
+            return;
+        }
+
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+            Messages_MessagesBase result = await _client!.GetMessages(
+                peer, new InputMessage[] { new InputMessageID { id = messageId } });
+
+            foreach (MessageBase mb in result.Messages)
+            {
+                if (mb is Message m)
+                {
+                    TryMapAudio(m, chatId, out _);
+                }
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogLine($"TryFetchDocument: message {messageId} in chat {chatId} failed: {ex.Message}");
+        }
+    }
+
     private static string MimeToExtension(string? mime) => mime?.ToLowerInvariant() switch
     {
         "audio/mpeg" => ".mp3",
@@ -424,8 +456,16 @@ public sealed class TelegramSource : ITelegramSource
 
         if (!_documents.TryGetValue(message.FileId, out Document? doc))
         {
-            throw new InvalidOperationException(
-                "File not known - load the list first.");
+            // The list can come straight from the on-disk cache (a previous
+            // session), so a track's Document was never re-fetched this run.
+            // Pull just this one message to get it.
+            await TryFetchDocumentAsync(message.ChatId, message.MessageId, ct);
+
+            if (!_documents.TryGetValue(message.FileId, out doc))
+            {
+                throw new InvalidOperationException(
+                    "File not known - load the list first.");
+            }
         }
 
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);

@@ -1,3 +1,4 @@
+using System.Net.Http;
 using ErikwnkCore;
 using ErikwnkWFUI;
 using ErikwnkWFUI.Forms;
@@ -25,6 +26,9 @@ public sealed class MainForm : StyledForm
     // > 0 = days; < 0 = "the newest |n| audios" (no date limit) - see AudioFeedService.
     private static readonly int[] RangeDayOptions =
         { 3, 7, 14, 30, 60, -50, -100, -200, -500, -1000, -2000, -3000, -4000, -5000 };
+
+    private const string UpdateRepoOwner = "Erik513";
+    private const string UpdateRepoName = "ViewerForTelegram";
 
     private readonly ITelegramSource _telegram;
     private readonly IConfigStore _configStore;
@@ -371,6 +375,8 @@ public sealed class MainForm : StyledForm
 
         PushCacheInfo();
 
+        _ = CheckForUpdatesAsync();   // best-effort, never blocks startup
+
         bool hasSession = File.Exists(AppPaths.SessionFile);
         if (!_configStore.Load().IsComplete || !hasSession)
         {
@@ -379,6 +385,27 @@ public sealed class MainForm : StyledForm
         else
         {
             await ConnectAsync();
+        }
+    }
+
+    /// <summary>
+    /// Checks the repo's latest GitHub release against this build and, if
+    /// newer, shows the update prompt. Best-effort - swallows everything so a
+    /// GitHub outage or a rate limit never affects the rest of the app.
+    /// </summary>
+    private async Task CheckForUpdatesAsync()
+    {
+        try
+        {
+            using var checkClient = new HttpClient();
+            using var downloadClient = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+            var updater = new AppUpdater(UpdateRepoOwner, UpdateRepoName, checkClient, downloadClient);
+            Version current = typeof(MainForm).Assembly.GetName().Version ?? new Version(1, 0, 0);
+            await updater.CheckForUpdateAsync(current, TimeSpan.FromSeconds(5), this);
+        }
+        catch
+        {
+            // never let a failed update check affect the running app
         }
     }
 

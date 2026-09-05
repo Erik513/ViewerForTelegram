@@ -10,6 +10,8 @@
     <AssemblyName>ViewerForTelegram</AssemblyName>
     <StartupObject>ViewerForTelegram.Program</StartupObject>
     <MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
+    <!-- Compared against GitHub release tags (vX.Y.Z) by AppUpdater at startup. -->
+    <Version>1.0.0</Version>
   </PropertyGroup>
 
   <!-- A single assembly. The layers are folders + namespaces:

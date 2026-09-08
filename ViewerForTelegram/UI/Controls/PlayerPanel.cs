@@ -120,7 +120,7 @@ public sealed class PlayerPanel : Panel
         // Sits just right of the seek bar and spins for the whole time a track
         // is loading (download + decode) - i.e. exactly while the download bar
         // is shown in place of the seek bar.
-        _spinner = UIStyles.Spinners.CreatePrimary(16);
+        _spinner = UIStyles.Spinners.CreatePrimary(34, 3);
         _spinner.Anchor = AnchorStyles.None;
         _spinner.Margin = new Padding(0);
         _spinner.Visible = false;
@@ -182,23 +182,23 @@ public sealed class PlayerPanel : Panel
         titleRow.Controls.Add(_title, 0, 0);
         titleRow.Controls.Add(cluster, 1, 0);
 
-        // Row 2: seek (or download bar)  spinner  time  Vol  volume
+        // Row 2: seek (or download bar)  time  Vol  volume - flush with the
+        // title / performer above it. The load spinner is in the left column
+        // under the play button, not in this row.
         _seekRow = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill, ColumnCount = 5, RowCount = 1,
+            Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 1,
             Margin = new Padding(0), BackColor = Color.Transparent
         };
         _seekRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 22));
         _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
         _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));
         _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
         _seekRow.Controls.Add(_seek, 0, 0);
-        _seekRow.Controls.Add(_spinner, 1, 0);
-        _seekRow.Controls.Add(_time, 2, 0);
-        _seekRow.Controls.Add(_volLabel, 3, 0);
-        _seekRow.Controls.Add(_volume, 4, 0);
+        _seekRow.Controls.Add(_time, 1, 0);
+        _seekRow.Controls.Add(_volLabel, 2, 0);
+        _seekRow.Controls.Add(_volume, 3, 0);
 
         var stack = new TableLayoutPanel
         {
@@ -212,6 +212,19 @@ public sealed class PlayerPanel : Panel
         stack.Controls.Add(_performer, 0, 1);
         stack.Controls.Add(_seekRow, 0, 2);
 
+        // Left column: play button pulled up to sit over the title / performer,
+        // the load spinner directly under it - level with the seek row, so the
+        // seek bar itself lines up with the title and performer above it.
+        var leftColumn = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2,
+            Margin = new Padding(0), BackColor = Color.Transparent
+        };
+        leftColumn.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));    // title + performer band
+        leftColumn.RowStyles.Add(new RowStyle(SizeType.Percent, 100));    // seek row band
+        leftColumn.Controls.Add(_mainButton, 0, 0);   // both anchored None -> centred in their band
+        leftColumn.Controls.Add(_spinner, 0, 1);
+
         var controls = new TableLayoutPanel
         {
             Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1,
@@ -220,7 +233,7 @@ public sealed class PlayerPanel : Panel
         controls.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         controls.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 52));
         controls.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        controls.Controls.Add(_mainButton, 0, 0);
+        controls.Controls.Add(leftColumn, 0, 0);
         controls.Controls.Add(stack, 1, 0);
 
         // Status / error line along the bottom edge - read-only so the text
@@ -372,8 +385,10 @@ public sealed class PlayerPanel : Panel
         _saveButton.Enabled = false;
         _seek.Enabled = false;
         ShowDownloadBar(true);
-        _downloadBar.Value = Math.Clamp(percent, 0, 100);
-        _time.Text = $"↓ {Math.Clamp(percent, 0, 100)}%";
+        int clamped = Math.Clamp(percent, 0, 100);
+        _downloadBar.Value = clamped;
+        _spinner.Progress = clamped;   // the spinner shows the percentage now
+        _time.Text = "–:– / –:–";
     }
 
     /// <summary>The track is now loaded in the audio player - enable the seek bar.</summary>
@@ -410,6 +425,10 @@ public sealed class PlayerPanel : Panel
         _seekRow.Controls.Remove(show ? _seek : (Control)_downloadBar);
         _seekRow.Controls.Add(show ? _downloadBar : (Control)_seek, 0, 0);
         _spinner.Visible = show;   // spins for the whole load (download + decode)
+        if (!show)
+        {
+            _spinner.Progress = null;
+        }
         _seekRow.ResumeLayout();
     }
 

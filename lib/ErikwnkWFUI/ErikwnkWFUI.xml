@@ -445,7 +445,8 @@
             An indeterminate loading spinner: an accent-coloured arc rotating over a
             faint full ring. Owner-drawn, theme-aware, transparent background. Only
             animates while it is actually visible, so an off-screen or hidden one
-            costs nothing.
+            costs nothing. Set <see cref="P:ErikwnkWFUI.Controls.Spinner.Progress"/> to also show a load percentage
+            in the centre.
             </summary>
         </member>
         <member name="P:ErikwnkWFUI.Controls.Spinner.Thickness">
@@ -460,6 +461,14 @@
         </member>
         <member name="P:ErikwnkWFUI.Controls.Spinner.ArcColor">
             <summary>An explicit arc colour, overriding <see cref="P:ErikwnkWFUI.Controls.Spinner.Accent"/>. Null (the default) uses the accent/grey rule.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.Spinner.Progress">
+            <summary>
+            An optional load percentage drawn (bold) in the centre of the ring
+            while the arc keeps spinning. Null (the default) shows nothing; a
+            value is clamped to 0..100. The digits auto-scale to the ring, so a
+            small spinner needs to be a few px larger than usual to stay legible.
+            </summary>
         </member>
         <member name="P:ErikwnkWFUI.Controls.Spinner.ArcSweep">
             <summary>How much of the circle the moving arc covers, in degrees (10..350, default 300).</summary>

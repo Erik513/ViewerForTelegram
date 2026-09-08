@@ -39,6 +39,7 @@ public sealed class PlayerPanel : Panel
     private readonly Label _fileFormat;
     private readonly SliderBar _seek;
     private readonly SlimProgressBar _downloadBar;
+    private readonly Spinner _spinner;
     private readonly TableLayoutPanel _seekRow;
     private readonly Label _time;
     private readonly Label _volLabel;
@@ -116,6 +117,14 @@ public sealed class PlayerPanel : Panel
         _downloadBar.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _downloadBar.Margin = new Padding(SliderBar.TrackInset, 0, SliderBar.TrackInset, 0);
 
+        // Sits just right of the seek bar and spins for the whole time a track
+        // is loading (download + decode) - i.e. exactly while the download bar
+        // is shown in place of the seek bar.
+        _spinner = UIStyles.Spinners.CreatePrimary(16);
+        _spinner.Anchor = AnchorStyles.None;
+        _spinner.Margin = new Padding(0);
+        _spinner.Visible = false;
+
         _time = MakeLabel(UIStyles.Labels.CreateMuted("–:– / –:–"));
         _time.TextAlign = ContentAlignment.MiddleCenter;
 
@@ -173,21 +182,23 @@ public sealed class PlayerPanel : Panel
         titleRow.Controls.Add(_title, 0, 0);
         titleRow.Controls.Add(cluster, 1, 0);
 
-        // Row 2: seek (or download bar)  time  Vol  volume
+        // Row 2: seek (or download bar)  spinner  time  Vol  volume
         _seekRow = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 1,
+            Dock = DockStyle.Fill, ColumnCount = 5, RowCount = 1,
             Margin = new Padding(0), BackColor = Color.Transparent
         };
         _seekRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 22));
         _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
         _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));
         _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
         _seekRow.Controls.Add(_seek, 0, 0);
-        _seekRow.Controls.Add(_time, 1, 0);
-        _seekRow.Controls.Add(_volLabel, 2, 0);
-        _seekRow.Controls.Add(_volume, 3, 0);
+        _seekRow.Controls.Add(_spinner, 1, 0);
+        _seekRow.Controls.Add(_time, 2, 0);
+        _seekRow.Controls.Add(_volLabel, 3, 0);
+        _seekRow.Controls.Add(_volume, 4, 0);
 
         var stack = new TableLayoutPanel
         {
@@ -398,6 +409,7 @@ public sealed class PlayerPanel : Panel
         _seekRow.SuspendLayout();
         _seekRow.Controls.Remove(show ? _seek : (Control)_downloadBar);
         _seekRow.Controls.Add(show ? _downloadBar : (Control)_seek, 0, 0);
+        _spinner.Visible = show;   // spins for the whole load (download + decode)
         _seekRow.ResumeLayout();
     }
 

@@ -120,7 +120,9 @@ public sealed class PlayerPanel : Panel
         // Sits just right of the seek bar and spins for the whole time a track
         // is loading (download + decode) - i.e. exactly while the download bar
         // is shown in place of the seek bar.
-        _spinner = UIStyles.Spinners.CreatePrimary(34, 3);
+        // Status colours (red→yellow→green) to match the download bar it stands
+        // in for; the percentage shows in the centre.
+        _spinner = UIStyles.Spinners.CreateProgressStatus(34, 3);
         _spinner.Anchor = AnchorStyles.None;
         _spinner.Margin = new Padding(0);
         _spinner.Visible = false;

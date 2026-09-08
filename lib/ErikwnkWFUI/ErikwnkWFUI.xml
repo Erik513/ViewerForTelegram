@@ -442,11 +442,14 @@
         </member>
         <member name="T:ErikwnkWFUI.Controls.Spinner">
             <summary>
-            An indeterminate loading spinner: an accent-coloured arc rotating over a
-            faint full ring. Owner-drawn, theme-aware, transparent background. Only
-            animates while it is actually visible, so an off-screen or hidden one
-            costs nothing. Set <see cref="P:ErikwnkWFUI.Controls.Spinner.Progress"/> to also show a load percentage
-            in the centre.
+            An indeterminate loading spinner: a coloured arc rotating over a faint
+            full ring. Owner-drawn, theme-aware, transparent background. Only animates
+            while it is actually visible, so an off-screen or hidden one costs
+            nothing. Set <see cref="P:ErikwnkWFUI.Controls.Spinner.Progress"/> to also show a load percentage in the
+            centre. Colour comes from <see cref="P:ErikwnkWFUI.Controls.Spinner.ArcColor"/> / <see cref="P:ErikwnkWFUI.Controls.Spinner.Accent"/> /
+            <see cref="P:ErikwnkWFUI.Controls.Spinner.UseStatusGradient"/> - the <see cref="T:ErikwnkWFUI.UIStyles.Spinners"/>
+            factories preset these (green / accent, and with a percentage a
+            red→yellow→green status colour driven by <see cref="P:ErikwnkWFUI.Controls.Spinner.Progress"/>).
             </summary>
         </member>
         <member name="P:ErikwnkWFUI.Controls.Spinner.Thickness">
@@ -460,7 +463,16 @@
             </summary>
         </member>
         <member name="P:ErikwnkWFUI.Controls.Spinner.ArcColor">
-            <summary>An explicit arc colour, overriding <see cref="P:ErikwnkWFUI.Controls.Spinner.Accent"/>. Null (the default) uses the accent/grey rule.</summary>
+            <summary>An explicit arc colour, overriding <see cref="P:ErikwnkWFUI.Controls.Spinner.Accent"/> and <see cref="P:ErikwnkWFUI.Controls.Spinner.UseStatusGradient"/>. Null (the default) uses those rules.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.Spinner.UseStatusGradient">
+            <summary>
+            True = the arc colour communicates the load state - a solid colour
+            blended red (0) → yellow → green (100) by <see cref="P:ErikwnkWFUI.Controls.Spinner.Progress"/>.
+            Only meaningful together with a <see cref="P:ErikwnkWFUI.Controls.Spinner.Progress"/> value; ignored
+            when <see cref="P:ErikwnkWFUI.Controls.Spinner.ArcColor"/> is set. Mirrors
+            <see cref="P:ErikwnkWFUI.Controls.SlimProgressBar.UseStatusGradient"/>.
+            </summary>
         </member>
         <member name="P:ErikwnkWFUI.Controls.Spinner.Progress">
             <summary>
@@ -1321,15 +1333,31 @@
             <summary>Same, but the fill and thumb follow the theme accent.</summary>
         </member>
         <member name="T:ErikwnkWFUI.UIStyles.Spinners">
-            <summary>An indeterminate <see cref="T:ErikwnkWFUI.Controls.Spinner"/> - a rotating accent arc for "loading …" states. Only animates while visible.</summary>
+            <summary>
+            A rotating <see cref="T:ErikwnkWFUI.Controls.Spinner"/> for "loading …" states (only
+            animates while visible). Plain variants are green or the theme accent;
+            the <c>CreateProgress*</c> versions also show a percentage in the
+            centre - raise <see cref="P:ErikwnkWFUI.Controls.Spinner.Progress"/> as the load advances -
+            and <see cref="M:ErikwnkWFUI.UIStyles.Spinners.CreateProgressStatus(System.Int32,System.Int32)"/> additionally blends the arc
+            red → yellow → green by that value, like <see cref="T:ErikwnkWFUI.UIStyles.SlimProgressBars"/>.
+            </summary>
         </member>
-        <member name="M:ErikwnkWFUI.UIStyles.Spinners.CreateStandard(System.Int32,System.Int32)">
-            <summary>A fixed neutral-grey spinner.</summary>
+        <member name="M:ErikwnkWFUI.UIStyles.Spinners.CreateGreen(System.Int32,System.Int32)">
+            <summary>A fixed green spinner.</summary>
             <param name="size">Width and height in px (the spinner is always square).</param>
             <param name="thickness">Stroke width in px; 0 scales it to <paramref name="size"/>.</param>
         </member>
         <member name="M:ErikwnkWFUI.UIStyles.Spinners.CreatePrimary(System.Int32,System.Int32)">
-            <summary>Same, but the arc follows the theme accent. Any other colour: set <see cref="P:ErikwnkWFUI.Controls.Spinner.ArcColor"/> on a <see cref="M:ErikwnkWFUI.UIStyles.Spinners.CreateStandard(System.Int32,System.Int32)"/> one.</summary>
+            <summary>The arc follows the theme accent.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.Spinners.CreateProgressGreen(System.Int32,System.Int32)">
+            <summary>A green spinner that also shows a percentage in the centre (starts at 0).</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.Spinners.CreateProgressPrimary(System.Int32,System.Int32)">
+            <summary>An accent spinner that also shows a percentage in the centre (starts at 0).</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.Spinners.CreateProgressStatus(System.Int32,System.Int32)">
+            <summary>Shows a percentage in the centre; the arc is a solid colour blended red (0) → yellow → green (100) by that value.</summary>
         </member>
         <member name="T:ErikwnkWFUI.UIStyles.Icons">
             <summary>

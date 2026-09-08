@@ -13,6 +13,16 @@ so it can see full history with no bot restrictions and no file-size limit.
 > local cache is a throwaway playback buffer and is wiped on every start by
 > default.
 
+## Download
+
+Grab the latest `ViewerForTelegram.exe` from the
+[Releases](https://github.com/Erik513/ViewerForTelegram/releases) page and run
+it – no installer, nothing to set up.
+
+The exe is not code-signed, so on first launch Windows SmartScreen may say
+"Windows protected your PC". Click **More info → Run anyway**. After that the
+app checks for newer releases on startup and can update itself.
+
 ## Features
 
 - One player docked at the bottom: play/pause, seek, volume, "Save a copy"
@@ -24,8 +34,8 @@ so it can see full history with no bot restrictions and no file-size limit.
   restarting the app doesn't re-download everything from scratch; on refresh
   the app also detects tracks that were deleted on Telegram and fills the gap
   back up from older history
-- Live text filter over performer / title / file name
-- Volume, last chat and time range remembered between sessions
+- Filter the list by file format, plus a live text filter over performer / title / file name
+- Volume, last chat, time range and format filter remembered between sessions
 - UI language: English or German, switches instantly, no restart needed
 - Save to a fixed folder or via a save dialog, original file name preserved
 - Size-capped local cache (default 3000 MB) with a "clear now" button

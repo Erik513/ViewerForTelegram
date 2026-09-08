@@ -499,12 +499,36 @@ public sealed class MainForm : StyledForm
         catch (Exception ex)
         {
             _connected = false;
-            Status(DescribeFailure("signin", ex));
+            if (FindInner<TwoFactorAuthNotSupportedException>(ex) is not null)
+            {
+                Status(Loc.S("err.twoFactorUnsupported"));
+                StyledMessageBox.Show(
+                    Loc.S("msg.twoFactor.body"),
+                    Loc.S("msg.twoFactor.title"),
+                    MessageBoxButtons.OK, MessageBoxIcon.Info, this);
+            }
+            else
+            {
+                Status(DescribeFailure("signin", ex));
+            }
         }
         finally
         {
             _connecting = false;
         }
+    }
+
+    /// <summary>Walks the <see cref="Exception.InnerException"/> chain for a <typeparamref name="T"/>.</summary>
+    private static T? FindInner<T>(Exception? ex) where T : Exception
+    {
+        for (; ex is not null; ex = ex.InnerException)
+        {
+            if (ex is T match)
+            {
+                return match;
+            }
+        }
+        return null;
     }
 
     private const int NetworkRetries = 3;
@@ -560,6 +584,10 @@ public sealed class MainForm : StyledForm
         if (IsRateLimit(ex, out int seconds))
         {
             return Loc.T("status.rateLimit", seconds);
+        }
+        if (FindInner<TwoFactorAuthNotSupportedException>(ex) is not null)
+        {
+            return Loc.S("err.twoFactorUnsupported");
         }
         if (ex is NotSupportedException)
         {

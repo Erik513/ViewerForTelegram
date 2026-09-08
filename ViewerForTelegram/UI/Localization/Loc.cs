@@ -115,10 +115,18 @@ public static class Loc
                                        + "Enter them again?",
         ["msg.credsIncomplete.title"] = "Credentials incomplete",
 
+        // --- two-factor (cloud password) not supported ---
+        ["msg.twoFactor.title"] = "Two-factor authentication",
+        ["msg.twoFactor.body"] = "This Telegram account is protected by a cloud password (two-factor "
+                                 + "authentication), which this app can't handle yet.\r\n\r\n"
+                                 + "You can sign in from an account without a cloud password, or disable it "
+                                 + "in Telegram under Settings › Privacy and Security.",
+
         // --- exceptions surfaced to the user ---
         ["err.credentialsMissing"] = "Credentials are missing.",
         ["err.noCode"] = "No login code entered.",
         ["err.signinCancelled"] = "Sign-in cancelled.",
+        ["err.twoFactorUnsupported"] = "Sign-in failed: this account uses a cloud password (2FA), which isn't supported yet.",
 
         // --- player ---
         ["player.nothingSelected"] = "Nothing selected",
@@ -268,9 +276,16 @@ public static class Loc
                                        + "Erneut eingeben?",
         ["msg.credsIncomplete.title"] = "Zugangsdaten unvollständig",
 
+        ["msg.twoFactor.title"] = "Zwei-Faktor-Authentifizierung",
+        ["msg.twoFactor.body"] = "Dieses Telegram-Konto ist mit einem Cloud-Passwort (Zwei-Faktor-"
+                                 + "Authentifizierung) geschützt, das diese App noch nicht verarbeiten kann.\r\n\r\n"
+                                 + "Melde dich mit einem Konto ohne Cloud-Passwort an, oder deaktiviere es in "
+                                 + "Telegram unter Einstellungen › Datenschutz und Sicherheit.",
+
         ["err.credentialsMissing"] = "Zugangsdaten fehlen.",
         ["err.noCode"] = "Kein Anmeldecode eingegeben.",
         ["err.signinCancelled"] = "Anmeldung abgebrochen.",
+        ["err.twoFactorUnsupported"] = "Anmeldung fehlgeschlagen: Dieses Konto nutzt ein Cloud-Passwort (2FA), das noch nicht unterstützt wird.",
 
         ["player.nothingSelected"] = "Nichts ausgewählt",
         ["player.vol"] = "Vol",

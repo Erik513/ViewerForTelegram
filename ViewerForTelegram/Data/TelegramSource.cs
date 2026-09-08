@@ -126,8 +126,7 @@ public sealed class TelegramSource : ITelegramSource
         // this call runs on a worker thread.
         "verification_code" => _requestCode!().GetAwaiter().GetResult(),
 
-        "password" => throw new NotSupportedException(
-            "This account uses a cloud password (2FA). Support for that will be added later."),
+        "password" => throw new TwoFactorAuthNotSupportedException(),
 
         _ => null
     };

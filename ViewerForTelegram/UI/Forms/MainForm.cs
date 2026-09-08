@@ -120,7 +120,8 @@ public sealed class MainForm : StyledForm
         IAudioPlayer audio,
         JsonUiStateStore uiStateStore,
         JsonFeedCacheStore feedCacheStore)
-        : base(StyledFormOptions.CreateStandard("Viewer for Telegram"))
+        : base(StyledFormOptions.CreateStandard(
+            "Viewer for Telegram", icon: AppAssets.TitleBarLogo, windowIcon: AppAssets.WindowIcon))
     {
         _telegram = telegram;
         _configStore = configStore;

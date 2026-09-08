@@ -12,7 +12,16 @@
     <MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
     <!-- Compared against GitHub release tags (vX.Y.Z) by AppUpdater at startup. -->
     <Version>1.0.0</Version>
+    <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- app.ico is also embedded so every window can use the full multi-
+         resolution icon (StyledForm otherwise falls back to a 32px
+         ExtractAssociatedIcon). logo.png is the title-bar logo. -->
+    <EmbeddedResource Include="app.ico" />
+    <EmbeddedResource Include="logo.png" />
+  </ItemGroup>
 
   <!-- A single assembly. The layers are folders + namespaces:
          Data\   (Models, Interfaces, concrete access: WTelegramClient, cache, audio)

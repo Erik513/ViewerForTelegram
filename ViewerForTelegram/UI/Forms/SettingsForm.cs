@@ -75,7 +75,8 @@ public sealed class SettingsForm : StyledForm
     public SettingsAction Action { get; private set; } = SettingsAction.None;
 
     public SettingsForm(TelegramConfig current, IMediaCache cache, bool isConnected)
-        : base(StyledFormOptions.CreateSettings(Loc.S("settings.title")))
+        : base(StyledFormOptions.CreateSettings(
+            Loc.S("settings.title"), icon: AppAssets.TitleBarLogo, windowIcon: AppAssets.WindowIcon))
     {
         _cache = cache;
         _isConnected = isConnected;

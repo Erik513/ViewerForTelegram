@@ -519,8 +519,10 @@
             <summary>
             A <see cref="T:ErikwnkWFUI.Controls.SliderBar"/> preconfigured for a 0..1 volume value that
             shows the current percentage in a small popup above the thumb while the
-            user drags it (and briefly on an arrow-key change). The consuming app
-            only wires <see cref="E:ErikwnkWFUI.Controls.SliderBar.ValueChanged"/> and sets
+            user drags it, then briefly after they let go, click once, or change
+            the value with an arrow key - and also for as long as the mouse simply
+            hovers over it, disappearing the instant the mouse leaves. The
+            consuming app only wires <see cref="E:ErikwnkWFUI.Controls.SliderBar.ValueChanged"/> and sets
             <see cref="P:ErikwnkWFUI.Controls.SliderBar.Value"/> - the readout is handled here.
             </summary>
         </member>
@@ -1256,6 +1258,12 @@
         </member>
         <member name="M:ErikwnkWFUI.UIStyles.SlimProgressBars.CreateStatus">
             <summary>Fill color follows Value instead of being fixed - red at Minimum, yellow at the midpoint, green at Maximum, blending smoothly between them. For a "status/health" bar where color communicates good/bad.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.SliderBars">
+            <summary>A slim, theme-matching horizontal <see cref="T:ErikwnkWFUI.Controls.SliderBar"/> (WinForms has none of its own).</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.VolumeSliders">
+            <summary>A <see cref="T:ErikwnkWFUI.Controls.VolumeSlider"/> - a <see cref="T:ErikwnkWFUI.Controls.SliderBar"/> fixed to 0..1 that shows the current percentage in a small popup while dragged.</summary>
         </member>
         <member name="T:ErikwnkWFUI.UIStyles.Icons">
             <summary>

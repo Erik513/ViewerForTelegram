@@ -97,12 +97,10 @@ public sealed class PlayerPanel : Panel
         _fileFormat = MakeLabel(UIStyles.Labels.CreateMuted(""));
         _fileFormat.TextAlign = ContentAlignment.MiddleRight;
 
-        _seek = new SliderBar
-        {
-            Enabled = false,
-            Anchor = AnchorStyles.Left | AnchorStyles.Right,
-            Margin = new Padding(0)
-        };
+        _seek = UIStyles.SliderBars.CreateStandard();
+        _seek.Enabled = false;
+        _seek.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        _seek.Margin = new Padding(0);
         _seek.ValueChanged += (_, _) =>
         {
             if (_seek.Enabled)
@@ -124,7 +122,8 @@ public sealed class PlayerPanel : Panel
         _volLabel = MakeLabel(UIStyles.Labels.CreateMuted(Loc.S("player.vol")));
         _volLabel.TextAlign = ContentAlignment.MiddleRight;
 
-        _volume = new VolumeSlider { Value = 0.1, Anchor = AnchorStyles.Left | AnchorStyles.Right };
+        _volume = UIStyles.VolumeSliders.CreateStandard(0.1);
+        _volume.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _volume.ValueChanged += (_, _) => VolumeChanged?.Invoke((float)_volume.Value);
 
         // Top-right cluster: size / bitrate / format stacked, then [save][open folder]

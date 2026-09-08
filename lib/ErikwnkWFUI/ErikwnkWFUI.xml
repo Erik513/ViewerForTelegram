@@ -1285,6 +1285,15 @@
         <member name="T:ErikwnkWFUI.UIStyles.ProgressBars">
             <summary>A themed <see cref="T:System.Windows.Forms.ProgressBar"/> (continuous style, not the native blocky one).</summary>
         </member>
+        <member name="M:ErikwnkWFUI.UIStyles.ProgressBars.CreateStandard">
+            <summary>Neutral grey fill by default; set <see cref="P:System.Windows.Forms.Control.ForeColor"/> for any other colour.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.ProgressBars.CreateStandardTransparent">
+            <summary>Like <see cref="M:ErikwnkWFUI.UIStyles.ProgressBars.CreateStandard"/> but without the border, and BackColor left for you to match your own panel.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.ProgressBars.CreateGreen">
+            <summary>Like <see cref="M:ErikwnkWFUI.UIStyles.ProgressBars.CreateStandard"/> but a fixed green fill.</summary>
+        </member>
         <member name="M:ErikwnkWFUI.UIStyles.ProgressBars.CreateGreenTransparent">
             <summary>Like <see cref="M:ErikwnkWFUI.UIStyles.ProgressBars.CreateGreen"/> but without the border, and BackColor left for you to match your own panel - the closest a ProgressBar can get to a transparent background.</summary>
         </member>
@@ -1307,6 +1316,12 @@
             so no border/theming quirks to work around. For slim status-strip-
             style progress indicators rather than a prominent, full-size bar.
             </summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.SlimProgressBars.CreateStandard">
+            <summary>Neutral grey fill by default; set <see cref="P:System.Windows.Forms.Control.ForeColor"/> for any other colour.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.SlimProgressBars.CreateGreen">
+            <summary>Like <see cref="M:ErikwnkWFUI.UIStyles.SlimProgressBars.CreateStandard"/> but a fixed green fill.</summary>
         </member>
         <member name="M:ErikwnkWFUI.UIStyles.SlimProgressBars.CreatePrimary">
             <summary>Like <see cref="M:ErikwnkWFUI.UIStyles.SlimProgressBars.CreateGreen"/> but the fill follows the app-wide accent instead of the fixed green.</summary>
@@ -1335,20 +1350,27 @@
         <member name="T:ErikwnkWFUI.UIStyles.Spinners">
             <summary>
             A rotating <see cref="T:ErikwnkWFUI.Controls.Spinner"/> for "loading …" states (only
-            animates while visible). Plain variants are green or the theme accent;
-            the <c>CreateProgress*</c> versions also show a percentage in the
-            centre - raise <see cref="P:ErikwnkWFUI.Controls.Spinner.Progress"/> as the load advances -
-            and <see cref="M:ErikwnkWFUI.UIStyles.Spinners.CreateProgressStatus(System.Int32,System.Int32)"/> additionally blends the arc
-            red → yellow → green by that value, like <see cref="T:ErikwnkWFUI.UIStyles.SlimProgressBars"/>.
+            animates while visible). Plain variants are neutral grey, fixed green,
+            or the theme accent; the <c>CreateProgress*</c> versions also show a
+            percentage in the centre - raise <see cref="P:ErikwnkWFUI.Controls.Spinner.Progress"/> as the
+            load advances - and <see cref="M:ErikwnkWFUI.UIStyles.Spinners.CreateProgressStatus(System.Int32,System.Int32)"/> additionally
+            blends the arc red → yellow → green by that value, like
+            <see cref="T:ErikwnkWFUI.UIStyles.SlimProgressBars"/>.
             </summary>
         </member>
-        <member name="M:ErikwnkWFUI.UIStyles.Spinners.CreateGreen(System.Int32,System.Int32)">
-            <summary>A fixed green spinner.</summary>
+        <member name="M:ErikwnkWFUI.UIStyles.Spinners.CreateStandard(System.Int32,System.Int32)">
+            <summary>A neutral-grey spinner; set <see cref="P:ErikwnkWFUI.Controls.Spinner.ArcColor"/> for any other colour.</summary>
             <param name="size">Width and height in px (the spinner is always square).</param>
             <param name="thickness">Stroke width in px; 0 scales it to <paramref name="size"/>.</param>
         </member>
+        <member name="M:ErikwnkWFUI.UIStyles.Spinners.CreateGreen(System.Int32,System.Int32)">
+            <summary>A fixed green spinner.</summary>
+        </member>
         <member name="M:ErikwnkWFUI.UIStyles.Spinners.CreatePrimary(System.Int32,System.Int32)">
             <summary>The arc follows the theme accent.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.Spinners.CreateProgressStandard(System.Int32,System.Int32)">
+            <summary>A grey spinner that also shows a percentage in the centre (starts at 0); set <see cref="P:ErikwnkWFUI.Controls.Spinner.ArcColor"/> for any other colour.</summary>
         </member>
         <member name="M:ErikwnkWFUI.UIStyles.Spinners.CreateProgressGreen(System.Int32,System.Int32)">
             <summary>A green spinner that also shows a percentage in the centre (starts at 0).</summary>

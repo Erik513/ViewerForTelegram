@@ -18,7 +18,10 @@ public sealed class CodeInputForm : StyledForm
 
     public CodeInputForm()
         : base(StyledFormOptions.CreateDialog(
-            Loc.S("code.title"), icon: AppAssets.TitleBarLogo, windowIcon: AppAssets.WindowIcon))
+            Loc.S("code.title"),
+            titleTextAlign: ContentAlignment.MiddleLeft,
+            icon: AppAssets.TitleBarLogo,
+            windowIcon: AppAssets.WindowIcon))
     {
         Size = new Size(380, 230);
         StartPosition = FormStartPosition.CenterScreen;

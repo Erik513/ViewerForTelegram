@@ -357,7 +357,13 @@ public sealed class SettingsForm : StyledForm
 
     private void Browse()
     {
-        using var dlg = new FolderBrowserDialog { SelectedPath = _downloadFolder.Text };
+        // Both: InitialDirectory makes the Vista-style dialog actually navigate
+        // there, SelectedPath makes it the pre-selected node.
+        using var dlg = new FolderBrowserDialog
+        {
+            InitialDirectory = _downloadFolder.Text,
+            SelectedPath = _downloadFolder.Text
+        };
         if (dlg.ShowDialog(this) == DialogResult.OK)
         {
             _downloadFolder.Text = dlg.SelectedPath;
@@ -370,8 +376,7 @@ public sealed class SettingsForm : StyledForm
         try
         {
             Directory.CreateDirectory(AppPaths.CacheDir);
-            System.Diagnostics.Process.Start(
-                new System.Diagnostics.ProcessStartInfo { FileName = AppPaths.CacheDir, UseShellExecute = true });
+            IoUtil.OpenFolder(AppPaths.CacheDir);
         }
         catch
         {

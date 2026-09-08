@@ -21,7 +21,10 @@ public sealed class TelegramApiHelpForm : StyledForm
 
     public TelegramApiHelpForm()
         : base(StyledFormOptions.CreateDialog(
-            Loc.S("help.title"), icon: AppAssets.TitleBarLogo, windowIcon: AppAssets.WindowIcon))
+            Loc.S("help.title"),
+            titleTextAlign: ContentAlignment.MiddleLeft,
+            icon: AppAssets.TitleBarLogo,
+            windowIcon: AppAssets.WindowIcon))
     {
         StartPosition = FormStartPosition.CenterParent;
 

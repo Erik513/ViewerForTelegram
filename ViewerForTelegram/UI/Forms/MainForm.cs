@@ -1550,8 +1550,7 @@ public sealed class MainForm : StyledForm
             : AppPaths.CacheDir;
         try
         {
-            System.Diagnostics.Process.Start(
-                new System.Diagnostics.ProcessStartInfo { FileName = folder, UseShellExecute = true });
+            IoUtil.OpenFolder(folder);
         }
         catch (Exception ex)
         {

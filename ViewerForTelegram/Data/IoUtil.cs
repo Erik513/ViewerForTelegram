@@ -1,8 +1,28 @@
+using System.Diagnostics;
+
 namespace ViewerForTelegram.Data;
 
 /// <summary>Small filesystem helpers shared across the Data/UI layers.</summary>
 public static class IoUtil
 {
+    /// <summary>
+    /// Opens <paramref name="path"/> in File Explorer. Launches
+    /// <c>explorer.exe</c> with the literal, quoted path instead of
+    /// shell-executing the folder directly: the latter resolves a path that
+    /// sits under a redirected known folder (e.g. the Music library moved into
+    /// OneDrive) to that library's virtual node and then opens its root rather
+    /// than the actual sub-folder. Throws if the folder can't be opened.
+    /// </summary>
+    public static void OpenFolder(string path)
+    {
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = "explorer.exe",
+            Arguments = "\"" + path + "\"",
+            UseShellExecute = true
+        });
+    }
+
     /// <summary>Deletes <paramref name="path"/> if it exists; swallows any failure.</summary>
     public static void TryDelete(string path)
     {

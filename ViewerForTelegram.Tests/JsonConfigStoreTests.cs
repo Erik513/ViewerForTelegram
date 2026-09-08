@@ -67,7 +67,7 @@ public class JsonConfigStoreTests
         Assert.Equal(555, loaded.ApiId);
         Assert.Equal("hash", loaded.ApiHash);
         Assert.Equal("+49170", loaded.PhoneNumber);
-        Assert.True(loaded.ClearCacheOnStart);   // default value
+        Assert.False(loaded.ClearCacheOnStart);   // default value
         Assert.False(loaded.UseDownloadFolder);
         Assert.Equal("", loaded.DownloadFolder);
         Assert.Equal(AppLanguage.English, loaded.Language);   // default value

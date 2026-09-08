@@ -15,9 +15,8 @@ namespace ViewerForTelegram.Data.Models;
 /// <param name="ApiHash">32-character hex string from my.telegram.org.</param>
 /// <param name="PhoneNumber">Phone number of the Telegram account, international (e.g. +49170...).</param>
 /// <param name="ClearCacheOnStart">
-/// When true (default), the song cache is wiped on every startup - fitting the
-/// "just checking what's new" use case. Can be turned off, then the cache is
-/// kept and only trimmed to the size limit.
+/// When true, the song cache is wiped on every startup. Off by default - the
+/// cache is kept between runs and only trimmed to the size limit.
 /// </param>
 /// <param name="DownloadFolder">
 /// Folder for "Save a copy". Blank means "follow the Windows Downloads folder" -
@@ -36,7 +35,7 @@ public sealed record TelegramConfig(
     int ApiId,
     string ApiHash,
     string PhoneNumber,
-    bool ClearCacheOnStart = true,
+    bool ClearCacheOnStart = false,
     string DownloadFolder = "",
     bool UseDownloadFolder = false,
     [property: JsonConverter(typeof(JsonStringEnumConverter))]

@@ -10,8 +10,8 @@ It signs in as **you** via Telegram's MTProto API (like the official clients),
 so it can see full history with no bot restrictions and no file-size limit.
 
 > Built for the "let me hear what's new" case, not as a re-listen library. The
-> local cache is a throwaway playback buffer and is wiped on every start by
-> default.
+> local cache is just a size-capped playback buffer – clear it any time, or
+> switch on "wipe on every start" in Settings.
 
 ## Download
 

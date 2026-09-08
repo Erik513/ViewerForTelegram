@@ -117,10 +117,14 @@ public static class Loc
 
         // --- two-factor (cloud password) not supported ---
         ["msg.twoFactor.title"] = "Two-factor authentication",
-        ["msg.twoFactor.body"] = "This Telegram account is protected by a cloud password (two-factor "
-                                 + "authentication), which this app can't handle yet.\r\n\r\n"
-                                 + "You can sign in from an account without a cloud password, or disable it "
-                                 + "in Telegram under Settings › Privacy and Security.",
+        // The message box does not word-wrap - the lines are pre-broken and
+        // it's shown at the Large size preset (see MainForm.ConnectAsync).
+        ["msg.twoFactor.body"] = "This account is protected by a cloud password\r\n"
+                                 + "(two-factor authentication), which this app\r\n"
+                                 + "can't sign in with yet.\r\n\r\n"
+                                 + "You can sign in with an account that has no\r\n"
+                                 + "cloud password, or turn the cloud password off in\r\n"
+                                 + "Telegram under Settings › Privacy and Security.",
 
         // --- exceptions surfaced to the user ---
         ["err.credentialsMissing"] = "Credentials are missing.",
@@ -277,10 +281,14 @@ public static class Loc
         ["msg.credsIncomplete.title"] = "Zugangsdaten unvollständig",
 
         ["msg.twoFactor.title"] = "Zwei-Faktor-Authentifizierung",
-        ["msg.twoFactor.body"] = "Dieses Telegram-Konto ist mit einem Cloud-Passwort (Zwei-Faktor-"
-                                 + "Authentifizierung) geschützt, das diese App noch nicht verarbeiten kann.\r\n\r\n"
-                                 + "Melde dich mit einem Konto ohne Cloud-Passwort an, oder deaktiviere es in "
-                                 + "Telegram unter Einstellungen › Datenschutz und Sicherheit.",
+        // Die MessageBox bricht Text nicht um - die Zeilen sind vorgebrochen,
+        // Anzeige in der großen Größe (siehe MainForm.ConnectAsync).
+        ["msg.twoFactor.body"] = "Dieses Konto ist mit einem Cloud-Passwort\r\n"
+                                 + "(Zwei-Faktor-Authentifizierung) geschützt, mit\r\n"
+                                 + "dem sich diese App noch nicht anmelden kann.\r\n\r\n"
+                                 + "Melde dich mit einem Konto ohne Cloud-Passwort an,\r\n"
+                                 + "oder deaktiviere das Cloud-Passwort in Telegram\r\n"
+                                 + "unter Einstellungen › Datenschutz und Sicherheit.",
 
         ["err.credentialsMissing"] = "Zugangsdaten fehlen.",
         ["err.noCode"] = "Kein Anmeldecode eingegeben.",

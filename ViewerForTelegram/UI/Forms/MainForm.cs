@@ -502,10 +502,12 @@ public sealed class MainForm : StyledForm
             if (FindInner<TwoFactorAuthNotSupportedException>(ex) is not null)
             {
                 Status(Loc.S("err.twoFactorUnsupported"));
+                // Large: the message box can't word-wrap, so the body is
+                // pre-wrapped and needs the room.
                 StyledMessageBox.Show(
                     Loc.S("msg.twoFactor.body"),
                     Loc.S("msg.twoFactor.title"),
-                    MessageBoxButtons.OK, MessageBoxIcon.Info, this);
+                    MessageBoxButtons.OK, MessageBoxIcon.Info, this, MessageBoxSize.Large);
             }
             else
             {

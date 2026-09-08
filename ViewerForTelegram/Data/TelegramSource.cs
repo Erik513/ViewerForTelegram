@@ -319,37 +319,53 @@ public sealed class TelegramSource : ITelegramSource
     public async Task<IReadOnlyList<int>> FindDeletedMessagesAsync(
         long chatId, IReadOnlyList<int> messageIds, CancellationToken ct)
     {
-        EnsureConnected();
-
-        InputPeer peer = GetPeer(chatId);
+        // Best-effort catch-up probe. If we're not in a state to query right
+        // now - client not built yet, chat not loaded, or a reconnect in
+        // progress - report nothing gone rather than throwing; the next
+        // refresh runs this check again.
+        if (_client is null || _peers is null || !_peers.TryGetValue(chatId, out InputPeer? peer))
+        {
+            return Array.Empty<int>();
+        }
 
         var deleted = new List<int>();
 
-        for (int offset = 0; offset < messageIds.Count; offset += GetMessagesBatchSize)
+        try
         {
-            ct.ThrowIfCancellationRequested();
-
-            int[] batchIds = messageIds.Skip(offset).Take(GetMessagesBatchSize).ToArray();
-            InputMessage[] inputs = Array.ConvertAll(batchIds, id => (InputMessage)new InputMessageID { id = id });
-
-            Messages_MessagesBase result = await _client!.GetMessages(peer, inputs);
-
-            var found = new HashSet<int>();
-            foreach (MessageBase mb in result.Messages)
+            for (int offset = 0; offset < messageIds.Count; offset += GetMessagesBatchSize)
             {
-                if (mb is not MessageEmpty)
+                ct.ThrowIfCancellationRequested();
+
+                int[] batchIds = messageIds.Skip(offset).Take(GetMessagesBatchSize).ToArray();
+                InputMessage[] inputs = Array.ConvertAll(batchIds, id => (InputMessage)new InputMessageID { id = id });
+
+                Messages_MessagesBase result = await _client.GetMessages(peer, inputs);
+
+                var found = new HashSet<int>();
+                foreach (MessageBase mb in result.Messages)
                 {
-                    found.Add(mb.ID);
+                    if (mb is not MessageEmpty)
+                    {
+                        found.Add(mb.ID);
+                    }
+                }
+
+                foreach (int id in batchIds)
+                {
+                    if (!found.Contains(id))
+                    {
+                        deleted.Add(id);
+                    }
                 }
             }
-
-            foreach (int id in batchIds)
-            {
-                if (!found.Contains(id))
-                {
-                    deleted.Add(id);
-                }
-            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // A blip mid-probe: abandon it. Returning the partial list would
+            // report ids we simply haven't re-queried yet as "deleted" and
+            // drop real entries.
+            LogLine($"FindDeletedMessages: aborted for chat {chatId} ({ex.Message})");
+            return Array.Empty<int>();
         }
 
         if (deleted.Count > 0)

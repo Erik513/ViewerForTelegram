@@ -271,9 +271,13 @@ public sealed class TelegramSource : ITelegramSource
         {
             ct.ThrowIfCancellationRequested();
 
-            Messages_MessagesBase batch = await _client!.Messages_Search(
-                peer, q: "", filter: new InputMessagesFilterMusic(),
-                offset_id: offsetId, min_id: afterMessageId, limit: HistoryPageSize);
+            // Plain history, NOT Messages_Search+InputMessagesFilterMusic:
+            // the "music" filter only matches posts tagged as music and misses
+            // tracks sent "as a file" (audio/* mime, no audio attribute) - which
+            // TryMapAudio does accept. This window (new posts since last visit)
+            // is small, so scanning a few unfiltered pages costs nothing.
+            Messages_MessagesBase batch = await _client!.Messages_GetHistory(
+                peer, offset_id: offsetId, min_id: afterMessageId, limit: HistoryPageSize);
 
             MessageBase[] messages = batch.Messages;
             if (messages.Length == 0)

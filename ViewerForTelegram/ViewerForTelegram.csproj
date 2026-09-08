@@ -10,9 +10,22 @@
     <AssemblyName>ViewerForTelegram</AssemblyName>
     <StartupObject>ViewerForTelegram.Program</StartupObject>
     <MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
-    <!-- Compared against GitHub release tags (vX.Y.Z) by AppUpdater at startup. -->
-    <Version>1.0.0</Version>
     <ApplicationIcon>app.ico</ApplicationIcon>
+
+    <!-- Shown on the exe's "Details" tab. Version is also what AppUpdater
+         compares against the GitHub release tags (vX.Y.Z) at startup. -->
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>1.0.0</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Product>Viewer for Telegram</Product>
+    <AssemblyTitle>Viewer for Telegram</AssemblyTitle>
+    <Company>Erik Wink</Company>
+    <Authors>Erik Wink</Authors>
+    <Copyright>© 2026 Erik Wink</Copyright>
+    <Description>Lists and plays the audio messages posted in a Telegram group or channel you belong to.</Description>
+    <RepositoryUrl>https://github.com/Erik513/ViewerForTelegram</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
   <ItemGroup>

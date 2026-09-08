@@ -1207,6 +1207,12 @@ public sealed class MainForm : StyledForm
     private static string FileExtension(AudioMessage a) =>
         System.IO.Path.GetExtension(a.FileName).ToLowerInvariant();
 
+    // Windows' Media Foundation has no decoder for these - they can be saved
+    // ("Save a copy") but not played in-app.
+    private static readonly string[] SaveOnlyExtensions = { ".ogg", ".opus" };
+    private static bool CanPlay(AudioMessage a) =>
+        !SaveOnlyExtensions.Contains(FileExtension(a));
+
     // ---------- playback ----------
     private AudioMessage? SelectedAudio =>
         _list.SelectedRows.Count > 0
@@ -1324,6 +1330,12 @@ public sealed class MainForm : StyledForm
             return;
         }
 
+        if (!CanPlay(audio))
+        {
+            Toast(Loc.T("status.saveOnly", FileExtension(audio).TrimStart('.').ToUpperInvariant()));
+            return;
+        }
+
         // Not loaded: play from cache if it's there, otherwise download first.
         if (_cache.Contains(audio))
         {
@@ -1344,6 +1356,7 @@ public sealed class MainForm : StyledForm
         }
         catch (Exception ex)
         {
+            AppLog.Error("Audio", $"Load failed for {audio.FileName}: {ex}");
             PlaybackStatus(Loc.T("status.cannotPlay", Path.GetExtension(audio.FileName), ex.Message));
             return;
         }
@@ -1468,6 +1481,7 @@ public sealed class MainForm : StyledForm
         }
         catch (Exception ex)
         {
+            AppLog.Error("Audio", $"Load failed for {audio.FileName}: {ex}");
             PlaybackStatus(Loc.T("status.cannotPlayElsewhere", Path.GetExtension(audio.FileName), ex.Message));
             ShowSelected();
             return;
@@ -1519,16 +1533,43 @@ public sealed class MainForm : StyledForm
         HighlightPlayingRow();
     }
 
-    private void SaveSelected()
+    private async void SaveSelected()
     {
         if (SelectedAudio is not { } audio)
         {
             return;
         }
+
+        // Not cached yet - fetch it first (works for the save-only formats too,
+        // which can never be cached by playing them).
         if (!_cache.Contains(audio))
         {
-            Toast(Loc.S("toast.playFirst"));
-            return;
+            _pendingFileId = audio.FileId;
+            PlaybackStatus(Loc.T("status.loadingFile", audio.DisplayName));
+            var dlProgress = new Progress<int>(p =>
+            {
+                if (_pendingFileId == audio.FileId)
+                {
+                    PlaybackStatus(Loc.T("status.loadingFileProgress", audio.DisplayName, p));
+                }
+            });
+            try
+            {
+                await _downloader.EnsureLocalAsync(audio, dlProgress, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                _pendingFileId = 0;
+                AppLog.Error("Download", $"{audio.FileName}: {ex.Message}");
+                Toast(Loc.T("status.downloadFailed", ex.Message));
+                return;
+            }
+            _pendingFileId = 0;
+            PushCacheInfo();
+            if (!_cache.Contains(audio))
+            {
+                return;
+            }
         }
 
         string source = _cache.GetPath(audio);

@@ -442,13 +442,19 @@ public sealed class TelegramSource : ITelegramSource
         }
     }
 
+    // Only used when the document has no filename of its own - give the file a
+    // real extension so the player (and Media Foundation) can route it.
     private static string MimeToExtension(string? mime) => mime?.ToLowerInvariant() switch
     {
-        "audio/mpeg" => ".mp3",
-        "audio/mp4" or "audio/x-m4a" => ".m4a",
-        "audio/ogg" => ".ogg",
+        "audio/mpeg" or "audio/mp3" or "audio/x-mp3" => ".mp3",
+        "audio/mp4" or "audio/x-m4a" or "audio/m4a"
+            or "audio/aac" or "audio/x-aac" or "audio/aacp" => ".m4a",
+        "audio/opus" or "audio/x-opus+ogg" => ".opus",
+        "audio/ogg" or "application/ogg" or "audio/vorbis" or "audio/x-vorbis+ogg" => ".ogg",
         "audio/flac" or "audio/x-flac" => ".flac",
-        "audio/wav" or "audio/x-wav" => ".wav",
+        "audio/wav" or "audio/x-wav" or "audio/wave" or "audio/vnd.wave" => ".wav",
+        "audio/aiff" or "audio/x-aiff" => ".aiff",
+        "audio/x-ms-wma" or "audio/wma" => ".wma",
         _ => ".bin"
     };
 

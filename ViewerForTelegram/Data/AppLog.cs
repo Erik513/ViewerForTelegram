@@ -10,6 +10,10 @@ public static class AppLog
 {
     private static readonly object Lock = new();
 
+    // Cap each log file; the previous contents roll to "<name>.1", so a
+    // long-lived install keeps at most ~2 MB of logs, not an ever-growing file.
+    private const long MaxLogBytes = 1024 * 1024;
+
     public static bool Verbose { get; set; } =
 #if DEBUG
         true;
@@ -45,8 +49,10 @@ public static class AppLog
         {
             try
             {
+                string path = Path.Combine(AppPaths.Root, file);
+                IoUtil.RollIfTooLarge(path, MaxLogBytes);
                 File.AppendAllText(
-                    Path.Combine(AppPaths.Root, file),
+                    path,
                     $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{category}] {message}{Environment.NewLine}");
             }
             catch

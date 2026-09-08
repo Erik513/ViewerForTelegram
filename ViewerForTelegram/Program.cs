@@ -105,6 +105,9 @@ static class Program
         {
             try
             {
+                // Keep crash.log bounded - full stack traces add up on a
+                // long-lived install; older entries roll to crash.log.1.
+                IoUtil.RollIfTooLarge(logPath, 1024 * 1024);
                 File.AppendAllText(
                     logPath, $"--- {DateTime.Now:u} [{source}] ---{Environment.NewLine}{error}{Environment.NewLine}{Environment.NewLine}");
             }

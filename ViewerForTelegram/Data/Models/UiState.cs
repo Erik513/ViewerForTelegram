@@ -10,7 +10,8 @@ public sealed record UiState(
     long LastChatId = 0,
     int RangeDays = 7,
     int VolumePercent = 10,
-    long LastPlayedFileId = 0)
+    long LastPlayedFileId = 0,
+    string FormatFilter = "")
 {
     public static UiState Default { get; } = new();
 }

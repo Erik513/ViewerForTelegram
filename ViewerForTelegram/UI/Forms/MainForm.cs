@@ -30,6 +30,20 @@ public sealed class MainForm : StyledForm
     private static readonly int[] RangeDayOptions =
         { 3, 7, 14, 30, 60, -50, -100, -200, -500, -1000, -2000, -3000, -4000, -5000 };
 
+    // Format-filter combo entries below "all". Key is persisted in ui-state;
+    // Ext is matched against the file name's extension (lower-case).
+    private static readonly (string Key, string Label, string[] Ext)[] FormatOptions =
+    {
+        ("mp3",  "MP3",       new[] { ".mp3" }),
+        ("m4a",  "M4A / AAC", new[] { ".m4a", ".aac", ".mp4" }),
+        ("wav",  "WAV",       new[] { ".wav" }),
+        ("flac", "FLAC",      new[] { ".flac" }),
+        ("aiff", "AIFF",      new[] { ".aiff", ".aif" }),
+        ("ogg",  "OGG",       new[] { ".ogg" }),
+        ("opus", "Opus",      new[] { ".opus" }),
+        ("wma",  "WMA",       new[] { ".wma" }),
+    };
+
     private const string UpdateRepoOwner = "Erik513";
     private const string UpdateRepoName = "ViewerForTelegram";
 
@@ -56,6 +70,7 @@ public sealed class MainForm : StyledForm
 
     private readonly ComboBox _groupCombo;
     private readonly ComboBox _rangeCombo;
+    private readonly ComboBox _formatCombo;
     private readonly TextBox _searchBox;
     private readonly Label _cacheLabel;
     private readonly Button _settingsButton;
@@ -146,6 +161,20 @@ public sealed class MainForm : StyledForm
         _rangeCombo.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _rangeCombo.SelectedIndexChanged += (_, _) => OnFilterChanged();
 
+        // Filters the already-loaded list by file format - no re-fetch, just a
+        // re-render, so it's not routed through OnFilterChanged.
+        _formatCombo = UIStyles.ComboBoxes.CreateStandard();
+        _formatCombo.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        _formatCombo.SelectedIndexChanged += (_, _) =>
+        {
+            if (_suppressComboEvents)
+            {
+                return;
+            }
+            SaveUiState();
+            RenderList();
+        };
+
         _refreshButton = UIStyles.Buttons.CreatePrimary("", Loc.S("top.refresh.tip"), new Size(30, 30));
         _refreshButton.Anchor = AnchorStyles.None;
         _refreshButton.Paint += (s, e) => GlyphIcons.DrawRefresh(
@@ -177,23 +206,25 @@ public sealed class MainForm : StyledForm
         var topRow = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            ColumnCount = 6,
+            ColumnCount = 7,
             RowCount = 1,
             Padding = new Padding(10, 6, 10, 4),
             BackColor = UIStyles.Colors.BackgroundDarkElevated
         };
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 42));
-        topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 46));
-        topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 164));
+        topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42));
+        topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150));
+        topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140));
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40));
-        topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 54));
+        topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 58));
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200));
         topRow.Controls.Add(_settingsButton, 0, 0);
         topRow.Controls.Add(_groupCombo, 1, 0);
         topRow.Controls.Add(_rangeCombo, 2, 0);
-        topRow.Controls.Add(_refreshButton, 3, 0);
-        topRow.Controls.Add(_searchBox, 4, 0);
-        topRow.Controls.Add(_cacheLabel, 5, 0);
+        topRow.Controls.Add(_formatCombo, 3, 0);
+        topRow.Controls.Add(_refreshButton, 4, 0);
+        topRow.Controls.Add(_searchBox, 5, 0);
+        topRow.Controls.Add(_cacheLabel, 6, 0);
 
         // ---- list ----
         _list = new StyledGrid
@@ -341,6 +372,15 @@ public sealed class MainForm : StyledForm
             _rangeCombo.SelectedIndex = rangeSel;
         }
 
+        int formatSel = Math.Max(0, _formatCombo.SelectedIndex);
+        _formatCombo.Items.Clear();
+        _formatCombo.Items.Add(Loc.S("top.format.all"));
+        foreach ((string _, string label, string[] _) in FormatOptions)
+        {
+            _formatCombo.Items.Add(label);
+        }
+        _formatCombo.SelectedIndex = formatSel < _formatCombo.Items.Count ? formatSel : 0;
+
         int groupSel = _groupCombo.SelectedIndex;
         _groupCombo.Items.Clear();
         foreach (TelegramChat chat in _chats)
@@ -372,6 +412,8 @@ public sealed class MainForm : StyledForm
         {
             _rangeCombo.SelectedIndex = 1; // 7 days
         }
+        int formatIdx = Array.FindIndex(FormatOptions, o => o.Key == state.FormatFilter);
+        _formatCombo.SelectedIndex = formatIdx >= 0 ? formatIdx + 1 : 0;
         _suppressComboEvents = false;
         _player.Volume = Math.Clamp(state.VolumePercent, 0, 100) / 100f;
         _audio.Volume = _player.Volume;
@@ -755,6 +797,16 @@ public sealed class MainForm : StyledForm
     private int SelectedRange =>
         _rangeCombo.SelectedIndex >= 0 ? RangeDayOptions[_rangeCombo.SelectedIndex] : 7;
 
+    /// <summary>Extensions the format combo is filtering to, or null for "all".</summary>
+    private string[]? SelectedFormatExtensions
+    {
+        get
+        {
+            int i = _formatCombo.SelectedIndex - 1;   // 0 = "all"
+            return i >= 0 && i < FormatOptions.Length ? FormatOptions[i].Ext : null;
+        }
+    }
+
     private TelegramChat? SelectedChat =>
         (_groupCombo.SelectedItem as ChatChoice)?.Chat;
 
@@ -1059,8 +1111,10 @@ public sealed class MainForm : StyledForm
         }
 
         string query = _searchBox.Text.Trim();
+        string[]? formatExt = SelectedFormatExtensions;
         var filtered = _items
-            .Where(i => query.Length == 0 || Matches(i.Audio, query))
+            .Where(i => (query.Length == 0 || Matches(i.Audio, query))
+                     && (formatExt is null || formatExt.Contains(FileExtension(i.Audio))))
             .ToList();
 
         _suppressListEvents = true;
@@ -1137,7 +1191,7 @@ public sealed class MainForm : StyledForm
         {
             Status(_connected ? Loc.S("status.noAudioRange") : Loc.S("status.notSignedIn"));
         }
-        else if (query.Length == 0)
+        else if (filtered.Count == _items.Count)
         {
             Status(afterLoad ? Loc.T("status.loadingFinished", _items.Count) : Loc.T("status.count", _items.Count));
         }
@@ -1149,6 +1203,9 @@ public sealed class MainForm : StyledForm
 
     private static bool Matches(AudioMessage a, string query) =>
         $"{a.Performer} {a.Title} {a.FileName}".Contains(query, StringComparison.OrdinalIgnoreCase);
+
+    private static string FileExtension(AudioMessage a) =>
+        System.IO.Path.GetExtension(a.FileName).ToLowerInvariant();
 
     // ---------- playback ----------
     private AudioMessage? SelectedAudio =>
@@ -1664,7 +1721,10 @@ public sealed class MainForm : StyledForm
             LastChatId: SelectedChat?.Id ?? 0,
             RangeDays: SelectedRange,
             VolumePercent: (int)Math.Round(_player.Volume * 100),
-            LastPlayedFileId: _lastTrackId));
+            LastPlayedFileId: _lastTrackId,
+            FormatFilter: _formatCombo.SelectedIndex >= 1
+                ? FormatOptions[_formatCombo.SelectedIndex - 1].Key
+                : ""));
     }
 
     private void Status(string text) => _player.SetStatus(text);

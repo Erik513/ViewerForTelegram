@@ -404,6 +404,16 @@
         <member name="P:ErikwnkWFUI.Controls.SliderBar.IsDragging">
             <summary>True while the user is dragging the thumb - callers can pause external updates.</summary>
         </member>
+        <member name="P:ErikwnkWFUI.Controls.SliderBar.Accent">
+            <summary>
+            True = the filled part and thumb follow the live theme accent
+            (<see cref="P:ErikwnkWFUI.UIStyles.Colors.Primary"/>); false (the default) = a fixed
+            neutral grey. Ignored when <see cref="P:ErikwnkWFUI.Controls.SliderBar.FillColor"/> is set.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.SliderBar.FillColor">
+            <summary>An explicit fill/thumb colour, overriding <see cref="P:ErikwnkWFUI.Controls.SliderBar.Accent"/>. Null (the default) uses the accent/grey rule.</summary>
+        </member>
         <member name="P:ErikwnkWFUI.Controls.SliderBar.Value">
             <summary>Setting this from code updates the display without raising <see cref="E:ErikwnkWFUI.Controls.SliderBar.ValueChanged"/>.</summary>
         </member>
@@ -429,6 +439,30 @@
             smoothly between them. For a "status/health" bar where the color
             itself communicates good/bad, not just the fill amount.
             </summary>
+        </member>
+        <member name="T:ErikwnkWFUI.Controls.Spinner">
+            <summary>
+            An indeterminate loading spinner: an accent-coloured arc rotating over a
+            faint full ring. Owner-drawn, theme-aware, transparent background. Only
+            animates while it is actually visible, so an off-screen or hidden one
+            costs nothing.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.Spinner.Thickness">
+            <summary>Stroke width in pixels. 0 (the default) scales it to the control's size.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.Spinner.Accent">
+            <summary>
+            True = the arc follows the live theme accent
+            (<see cref="P:ErikwnkWFUI.UIStyles.Colors.Primary"/>); false (the default) = a
+            fixed neutral grey. Ignored when <see cref="P:ErikwnkWFUI.Controls.Spinner.ArcColor"/> is set.
+            </summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.Spinner.ArcColor">
+            <summary>An explicit arc colour, overriding <see cref="P:ErikwnkWFUI.Controls.Spinner.Accent"/>. Null (the default) uses the accent/grey rule.</summary>
+        </member>
+        <member name="P:ErikwnkWFUI.Controls.Spinner.ArcSweep">
+            <summary>How much of the circle the moving arc covers, in degrees (10..350, default 300).</summary>
         </member>
         <member name="T:ErikwnkWFUI.Controls.TitleBarControl">
             <summary>
@@ -1262,8 +1296,31 @@
         <member name="T:ErikwnkWFUI.UIStyles.SliderBars">
             <summary>A slim, theme-matching horizontal <see cref="T:ErikwnkWFUI.Controls.SliderBar"/> (WinForms has none of its own).</summary>
         </member>
+        <member name="M:ErikwnkWFUI.UIStyles.SliderBars.CreateStandard(System.Double,System.Double)">
+            <summary>A fixed neutral-grey slider. Any other colour: set <see cref="P:ErikwnkWFUI.Controls.SliderBar.FillColor"/> on one of these.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.SliderBars.CreatePrimary(System.Double,System.Double)">
+            <summary>Same, but the fill and thumb follow the theme accent.</summary>
+        </member>
         <member name="T:ErikwnkWFUI.UIStyles.VolumeSliders">
             <summary>A <see cref="T:ErikwnkWFUI.Controls.VolumeSlider"/> - a <see cref="T:ErikwnkWFUI.Controls.SliderBar"/> fixed to 0..1 that shows the current percentage in a small popup while dragged.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.VolumeSliders.CreateStandard(System.Double)">
+            <summary>A fixed neutral-grey volume slider. Any other colour: set <see cref="P:ErikwnkWFUI.Controls.SliderBar.FillColor"/> on one of these.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.VolumeSliders.CreatePrimary(System.Double)">
+            <summary>Same, but the fill and thumb follow the theme accent.</summary>
+        </member>
+        <member name="T:ErikwnkWFUI.UIStyles.Spinners">
+            <summary>An indeterminate <see cref="T:ErikwnkWFUI.Controls.Spinner"/> - a rotating accent arc for "loading …" states. Only animates while visible.</summary>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.Spinners.CreateStandard(System.Int32,System.Int32)">
+            <summary>A fixed neutral-grey spinner.</summary>
+            <param name="size">Width and height in px (the spinner is always square).</param>
+            <param name="thickness">Stroke width in px; 0 scales it to <paramref name="size"/>.</param>
+        </member>
+        <member name="M:ErikwnkWFUI.UIStyles.Spinners.CreatePrimary(System.Int32,System.Int32)">
+            <summary>Same, but the arc follows the theme accent. Any other colour: set <see cref="P:ErikwnkWFUI.Controls.Spinner.ArcColor"/> on a <see cref="M:ErikwnkWFUI.UIStyles.Spinners.CreateStandard(System.Int32,System.Int32)"/> one.</summary>
         </member>
         <member name="T:ErikwnkWFUI.UIStyles.Icons">
             <summary>

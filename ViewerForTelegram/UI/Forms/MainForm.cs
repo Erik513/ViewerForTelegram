@@ -252,6 +252,7 @@ public sealed class MainForm : StyledForm
         AddColumn(Loc.S("col.artist"), fill: 38);
         AddColumn(Loc.S("col.length"), width: 64);
         AddColumn(Loc.S("col.size"), width: 90, alignRight: true);
+        AddCachedColumn();   // last: a check for tracks already downloaded
         // The list only shows info. The player's one button does the work:
         // download / cancel / play / pause on the selected row.
         // ShowCellToolTips (WinForms default) shows a tooltip only for a cell
@@ -364,6 +365,7 @@ public sealed class MainForm : StyledForm
         _list.Columns[2].HeaderText = Loc.S("col.artist");
         _list.Columns[3].HeaderText = Loc.S("col.length");
         _list.Columns[4].HeaderText = Loc.S("col.size");
+        _list.Columns[CachedColumnIndex].ToolTipText = Loc.S("col.cached");
 
         _suppressComboEvents = true;
 
@@ -1052,6 +1054,25 @@ public sealed class MainForm : StyledForm
     }
 
     /// <summary>Add a column: pass <paramref name="fill"/> for a stretchy column, or <paramref name="width"/> for a fixed one.</summary>
+    private const int CachedColumnIndex = 5;
+
+    private void AddCachedColumn()
+    {
+        var column = new DataGridViewTextBoxColumn
+        {
+            HeaderText = "",
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
+            Width = 26,
+            MinimumWidth = 26,
+            SortMode = DataGridViewColumnSortMode.NotSortable,
+            Resizable = DataGridViewTriState.False,
+            ToolTipText = Loc.S("col.cached"),
+        };
+        column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+        column.DefaultCellStyle.ForeColor = UIStyles.Colors.GreenLight;
+        _list.Columns.Add(column);
+    }
+
     private void AddColumn(string header, int fill = 0, int width = 0, bool alignRight = false)
     {
         bool isFill = fill > 0;
@@ -1146,6 +1167,8 @@ public sealed class MainForm : StyledForm
                      && (formatExt is null || formatExt.Contains(FileExtension(i.Audio))))
             .ToList();
 
+        IReadOnlySet<long> cachedIds = _cache.CachedFileIds();
+
         _suppressListEvents = true;
         _list.SuspendLayout();
         int scrollBefore = Math.Max(0, _list.FirstDisplayedScrollingRowIndex);
@@ -1166,7 +1189,8 @@ public sealed class MainForm : StyledForm
                 a.Title,
                 a.Performer,
                 a.Duration is { } d ? $"{(int)d.TotalMinutes}:{d.Seconds:00}" : "–",
-                $"{a.SizeBytes / 1024d / 1024d:0.0} MB");
+                $"{a.SizeBytes / 1024d / 1024d:0.0} MB",
+                cachedIds.Contains(a.FileId) ? "✓" : "");
             row.Tag = a.FileId;
             if (mark is long m && a.FileId == m)
             {
@@ -1469,6 +1493,19 @@ public sealed class MainForm : StyledForm
         }
     }
 
+    /// <summary>Put the "downloaded" check on a row after its file lands, without a full re-render.</summary>
+    private void MarkRowCached(long fileId)
+    {
+        foreach (DataGridViewRow row in _list.Rows)
+        {
+            if (row.Tag is long rf && rf == fileId)
+            {
+                row.Cells[CachedColumnIndex].Value = "✓";
+                break;
+            }
+        }
+    }
+
     private async Task DownloadAndPlayAsync(AudioMessage audio)
     {
         _playCts?.Cancel();
@@ -1532,6 +1569,7 @@ public sealed class MainForm : StyledForm
 
         _pendingFileId = 0;
         PushCacheInfo();
+        MarkRowCached(audio.FileId);
 
         StopCurrent();
         try
@@ -1624,6 +1662,7 @@ public sealed class MainForm : StyledForm
             }
             _pendingFileId = 0;
             PushCacheInfo();
+            MarkRowCached(audio.FileId);
             if (!_cache.Contains(audio))
             {
                 return;

@@ -14,6 +14,13 @@ public interface IMediaCache
     bool Contains(AudioMessage message);
 
     /// <summary>
+    /// The FileIds of every file currently in the cache - one snapshot for a
+    /// bulk "is this cached?" check (per-row list rendering) without a
+    /// filesystem stat per item. Not size-verified, unlike <see cref="Contains"/>.
+    /// </summary>
+    IReadOnlySet<long> CachedFileIds();
+
+    /// <summary>
     /// Full path where the file lives or should live - regardless of whether it
     /// is already there. Used as the download target.
     /// </summary>

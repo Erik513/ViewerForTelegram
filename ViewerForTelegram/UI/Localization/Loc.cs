@@ -68,6 +68,7 @@ public static class Loc
         ["col.artist"] = "Artist",
         ["col.length"] = "Length",
         ["col.size"] = "Size",
+        ["col.cached"] = "Downloaded",
 
         // --- cache label ---
         ["cache.initial"] = "Cache: –",
@@ -238,6 +239,7 @@ public static class Loc
         ["col.artist"] = "Interpret",
         ["col.length"] = "Länge",
         ["col.size"] = "Größe",
+        ["col.cached"] = "Heruntergeladen",
 
         ["cache.initial"] = "Cache: –",
         ["cache.label"] = "Cache {0} · {1}",

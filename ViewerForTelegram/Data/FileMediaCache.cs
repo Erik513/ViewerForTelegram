@@ -61,6 +61,20 @@ public sealed class FileMediaCache : IMediaCache
         return File.Exists(path) && new FileInfo(path).Length == message.SizeBytes;
     }
 
+    public IReadOnlySet<long> CachedFileIds()
+    {
+        var ids = new HashSet<long>();
+        foreach (FileInfo f in Files())
+        {
+            int sep = f.Name.IndexOf("__", StringComparison.Ordinal);
+            if (sep > 0 && long.TryParse(f.Name.AsSpan(0, sep), out long id))
+            {
+                ids.Add(id);
+            }
+        }
+        return ids;
+    }
+
     public (int Count, long TotalBytes) GetStats()
     {
         FileInfo[] files = Files();

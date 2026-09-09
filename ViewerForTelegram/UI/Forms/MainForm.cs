@@ -117,6 +117,7 @@ public sealed class MainForm : StyledForm
     private int _sortColumn = -1;   // -1 = feed order (newest first); else a column index
     private bool _sortAscending;
     private bool _scrollToTopNextRender;
+    private bool _scrollToKeptRowNextRender;   // chat switch: land on the last-played row (or top), not the old scroll offset
 
     private long? _dragFileId;      // row armed for a file drag-out (only if cached)
     private Rectangle _dragBox;     // move past this before a drag actually starts
@@ -187,6 +188,9 @@ public sealed class MainForm : StyledForm
             // term - start fresh (clears before the load so no stale filter
             // flashes over the new list).
             _searchBox.Clear();
+            // Land on the last-played row in the new list (or its top), not
+            // wherever this chat's predecessor happened to be scrolled.
+            _scrollToKeptRowNextRender = true;
             OnFilterChanged();
         };
 
@@ -1303,27 +1307,40 @@ public sealed class MainForm : StyledForm
         // re-render; on the first load fall back to the track from ui-state.
         long? keep = _selectedFileId ?? _currentFileId
             ?? (_lastTrackId != 0 ? _lastTrackId : (long?)null);
+        int keptIdx = -1;
         if (keep is long fid)
         {
-            int idx = _view.FindIndex(i => i.Audio.FileId == fid);
-            if (idx >= 0)
+            keptIdx = _view.FindIndex(i => i.Audio.FileId == fid);
+            if (keptIdx >= 0)
             {
-                _list.CurrentCell = _list.Rows[idx].Cells[0];
-                _list.Rows[idx].Selected = true;
+                _list.CurrentCell = _list.Rows[keptIdx].Cells[0];
+                _list.Rows[keptIdx].Selected = true;
             }
         }
         _list.ResumeLayout();
 
-        // Setting CurrentCell scrolls the row into view - don't jump the list
-        // for it, just mark it. Restore the scroll position (0 on a fresh load);
-        // after a re-sort the old offset is meaningless, so go to the top.
+        // Setting CurrentCell scrolls the row into view - don't jump the list for
+        // it, just mark it. Then place the viewport:
+        //  - after a re-sort: the old offset is meaningless -> top
+        //  - on a chat switch: on the last-played row, or the top if it isn't in
+        //    this list (NOT wherever the previous chat was scrolled to)
+        //  - otherwise (live text / format filter): keep the user's place
         if (_list.RowCount > 0)
         {
-            int target = _scrollToTopNextRender ? 0 : Math.Min(scrollBefore, _list.RowCount - 1);
+            int target =
+                _scrollToTopNextRender ? 0
+                : _scrollToKeptRowNextRender ? Math.Max(0, keptIdx)
+                : Math.Min(scrollBefore, _list.RowCount - 1);
             try { _list.FirstDisplayedScrollingRowIndex = target; }
             catch { /* not scrollable yet */ }
         }
         _scrollToTopNextRender = false;
+        // Hold the "land on the kept row" intent across the progressive renders
+        // of a still-loading list; clear it on any settled render.
+        if (announceStatus)
+        {
+            _scrollToKeptRowNextRender = false;
+        }
 
         _suppressListEvents = false;
         ShowSelected();   // the playing-row tint comes from OnCellFormatting

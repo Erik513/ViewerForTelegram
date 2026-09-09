@@ -112,6 +112,8 @@ public sealed class MainForm : StyledForm
 
     private long? _dragFileId;      // row armed for a file drag-out (only if cached)
     private Rectangle _dragBox;     // move past this before a drag actually starts
+
+    private int _newSinceLastVisit; // tracks the last load pulled in that weren't already known - badged on the refresh button
     private bool _suppressListEvents;
 
     private bool _started;
@@ -200,8 +202,15 @@ public sealed class MainForm : StyledForm
 
         _refreshButton = UIStyles.Buttons.CreatePrimary("", Loc.S("top.refresh.tip"), new Size(30, 30));
         _refreshButton.Anchor = AnchorStyles.None;
-        _refreshButton.Paint += (s, e) => GlyphIcons.DrawRefresh(
-            e.Graphics, ((Control)s!).ClientRectangle, ((Control)s).ForeColor);
+        _refreshButton.Paint += (s, e) =>
+        {
+            var ctl = (Control)s!;
+            GlyphIcons.DrawRefresh(e.Graphics, ctl.ClientRectangle, ctl.ForeColor);
+            if (_newSinceLastVisit > 0)
+            {
+                DrawNewBadge(e.Graphics, ctl.ClientRectangle, _newSinceLastVisit);
+            }
+        };
         _refreshButton.Click += async (_, _) => await RefreshAsync();
 
         // No factory placeholder - that variant writes the placeholder string
@@ -388,7 +397,9 @@ public sealed class MainForm : StyledForm
     {
         FormTitle = Loc.S("app.title");
         UIStyles.Buttons.UpdateTooltip(_settingsButton, Loc.S("top.settings.tip"));
-        UIStyles.Buttons.UpdateTooltip(_refreshButton, Loc.S("top.refresh.tip"));
+        UIStyles.Buttons.UpdateTooltip(_refreshButton, _newSinceLastVisit > 0
+            ? Loc.T("top.refresh.tipNew", _newSinceLastVisit)
+            : Loc.S("top.refresh.tip"));
         _searchBox.PlaceholderText = Loc.S("top.filter.placeholder");
 
         _list.Columns[0].HeaderText = Loc.S("col.date");
@@ -885,12 +896,30 @@ public sealed class MainForm : StyledForm
         CancellationToken token = (_feedCts = new CancellationTokenSource()).Token;
         int seq = ++_feedSeq;
         long chatId = chat.Id;
+
+        // Don't leave a stale "N new" badge up while the (possibly different)
+        // chat reloads - SetNewCount refreshes it when the load finishes.
+        if (_newSinceLastVisit != 0)
+        {
+            _newSinceLastVisit = 0;
+            _refreshButton.Invalidate();
+        }
         int range = SelectedRange;
 
         // Switching to a chat we haven't touched yet this session picks up its
         // own persisted list (if any) - so revisiting an earlier chat is just
         // as cheap as restarting the app on the current one.
         EnsureLargestFor(chatId);
+
+        // The newest message id this chat's list already reached before the
+        // load. Anything above it that the load pulls in is genuinely new (not
+        // just older history being fetched) and gets counted on the refresh
+        // button. On startup this is the restored feed cache, so the count is
+        // "arrived since you last closed the app".
+        int highestKnown = (_largestItems.Count > _items.Count ? _largestItems : _items)
+            .Select(i => i.Audio.MessageId)
+            .DefaultIfEmpty(0)
+            .Max();
 
         // While a feed load is running, its progress is more important than a
         // playback status update (e.g. "Playing: X") - PlaybackStatus defers
@@ -1007,7 +1036,14 @@ public sealed class MainForm : StyledForm
 
         RenderList(afterLoad: true);
         EndFeedLoading();
-        Toast(Loc.T("toast.listUpdated", Loc.Files(_items.Count)));
+
+        int newCount = highestKnown == 0
+            ? 0   // no prior list for this chat - nothing is "new" yet
+            : loaded.Count(i => i.Audio.MessageId > highestKnown);
+        SetNewCount(newCount);
+        Toast(newCount > 0
+            ? Loc.T("toast.listUpdatedNew", newCount, Loc.Files(_items.Count))
+            : Loc.T("toast.listUpdated", Loc.Files(_items.Count)));
 
         // So a restart (or switching back to this chat) can show the list
         // instantly and only fetch what's changed, instead of re-pulling e.g.
@@ -1495,6 +1531,39 @@ public sealed class MainForm : StyledForm
     /// Once the audio engine has decoded it we know the real duration - write it
     /// back into the model, the list and the cache so it survives a reload.
     /// </summary>
+    private static void DrawNewBadge(Graphics g, Rectangle bounds, int count)
+    {
+        string text = count > 9 ? "9+" : count.ToString();
+        const int d = 15;
+        var circle = new Rectangle(bounds.Right - d, bounds.Top, d, d);
+
+        var oldSmoothing = g.SmoothingMode;
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        using (var fill = new SolidBrush(UIStyles.Colors.RedLight))
+        {
+            g.FillEllipse(fill, circle);
+        }
+        using (var font = new Font("Segoe UI", 7f, FontStyle.Bold))
+        using (var sf = new StringFormat
+               {
+                   Alignment = StringAlignment.Center,
+                   LineAlignment = StringAlignment.Center
+               })
+        {
+            g.DrawString(text, font, Brushes.White, circle, sf);
+        }
+        g.SmoothingMode = oldSmoothing;
+    }
+
+    private void SetNewCount(int count)
+    {
+        _newSinceLastVisit = count;
+        _refreshButton.Invalidate();
+        UIStyles.Buttons.UpdateTooltip(_refreshButton, count > 0
+            ? Loc.T("top.refresh.tipNew", count)
+            : Loc.S("top.refresh.tip"));
+    }
+
     // Drag a cached track's file out onto Explorer / a DAW / a chat app.
     // Only cached rows are draggable - the FileDrop format needs a real path
     // (the "downloaded" check column shows which rows qualify).

@@ -53,6 +53,7 @@ public static class Loc
         // --- top bar ---
         ["top.settings.tip"] = "Settings",
         ["top.refresh.tip"] = "Reload chats and list",
+        ["top.refresh.tipNew"] = "{0} new since your last visit – click to reload",
         ["top.filter.placeholder"] = "Filter …",
         ["top.format.all"] = "All audio files",
         ["range.days"] = "Last {0} days",
@@ -114,6 +115,7 @@ public static class Loc
         ["toast.playFirst"] = "Download failed – play the track first so it is cached.",
         ["toast.downloaded"] = "Downloaded: {0}",
         ["toast.listUpdated"] = "List updated: {0}",
+        ["toast.listUpdatedNew"] = "List updated: {0} new ({1})",
         ["toast.cacheCleared"] = "Cache cleared: {0} ({1})",
         ["save.filter"] = "Audio file|*{0}|All files|*.*",
 
@@ -225,6 +227,7 @@ public static class Loc
 
         ["top.settings.tip"] = "Einstellungen",
         ["top.refresh.tip"] = "Chats und Liste neu laden",
+        ["top.refresh.tipNew"] = "{0} neu seit deinem letzten Besuch – zum Neuladen klicken",
         ["top.filter.placeholder"] = "Filtern …",
         ["top.format.all"] = "Alle Audiodateien",
         ["range.days"] = "Letzte {0} Tage",
@@ -281,6 +284,7 @@ public static class Loc
         ["toast.playFirst"] = "Download fehlgeschlagen – zuerst den Titel abspielen, damit er im Cache liegt.",
         ["toast.downloaded"] = "Heruntergeladen: {0}",
         ["toast.listUpdated"] = "Liste aktualisiert: {0}",
+        ["toast.listUpdatedNew"] = "Liste aktualisiert: {0} neu ({1})",
         ["toast.cacheCleared"] = "Cache geleert: {0} ({1})",
         ["save.filter"] = "Audiodatei|*{0}|Alle Dateien|*.*",
 

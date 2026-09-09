@@ -84,6 +84,14 @@ public sealed class MainForm : StyledForm
 
     private List<TelegramChat> _chats = new();
     private List<FeedItem> _items = new();
+
+    // The rows actually on screen: _items after the format / text filter and the
+    // column sort, index-aligned with the grid. The grid runs in VirtualMode and
+    // pulls cell values from here via CellValueNeeded, so only the ~30 visible
+    // rows are ever realised - filtering a 5000-track list stays instant.
+    private List<FeedItem> _view = new();
+    private IReadOnlySet<long> _cachedIds = new HashSet<long>();
+
     private readonly Dictionary<long, AudioMessage> _byFileId = new();
     private long? _currentFileId;   // loaded in the audio player (playing / paused)
     private long? _selectedFileId;  // the row the player panel is showing
@@ -264,7 +272,7 @@ public sealed class MainForm : StyledForm
             Dock = DockStyle.Fill,
             ReadOnly = true,
             MultiSelect = false,
-            AllowUserToAddRows = false,      // no phantom row; also lets Rows.AddRange work
+            AllowUserToAddRows = false,      // no phantom row (and lets RowCount go to 0 in VirtualMode)
             AllowUserToDeleteRows = false,
             AllowUserToResizeColumns = false,
             AllowUserToOrderColumns = false,
@@ -272,7 +280,10 @@ public sealed class MainForm : StyledForm
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
             ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
             ScrollBars = ScrollBars.Vertical,   // no horizontal scrollbar, ever
+            VirtualMode = true,   // cell values come from _view via CellValueNeeded
         };
+        _list.CellValueNeeded += OnCellValueNeeded;
+        _list.CellFormatting += OnCellFormatting;
         _list.RowTemplate.Height = 26;
         AddColumn(Loc.S("col.date"), width: 84);
         AddColumn(Loc.S("col.title"), fill: 62);
@@ -1186,24 +1197,23 @@ public sealed class MainForm : StyledForm
             return;
         }
 
-        foreach (DataGridViewRow row in _list.Rows)
+        long? previous = _tintedFileId;
+        _tintedFileId = mark;   // OnCellFormatting reads PlayingMark; just repaint the two rows
+        InvalidateRowFor(previous);
+        InvalidateRowFor(mark);
+    }
+
+    private void InvalidateRowFor(long? fileId)
+    {
+        if (fileId is not long f)
         {
-            if (row.Tag is not long fid)
-            {
-                continue;
-            }
-            if (fid == _tintedFileId)
-            {
-                row.DefaultCellStyle.BackColor = Color.Empty;
-                row.DefaultCellStyle.ForeColor = Color.Empty;
-            }
-            else if (mark is long m && fid == m)
-            {
-                row.DefaultCellStyle.BackColor = PlayingRowBack;
-                row.DefaultCellStyle.ForeColor = PlayingRowFore;
-            }
+            return;
         }
-        _tintedFileId = mark;
+        int idx = _view.FindIndex(i => i.Audio.FileId == f);
+        if (idx >= 0)
+        {
+            _list.InvalidateRow(idx);
+        }
     }
 
     /// <summary>Reindexes <see cref="_byFileId"/> from the current <see cref="_items"/>.</summary>
@@ -1213,6 +1223,44 @@ public sealed class MainForm : StyledForm
         foreach (FeedItem item in _items)
         {
             _byFileId[item.Audio.FileId] = item.Audio;
+        }
+    }
+
+    // VirtualMode: the grid asks for each visible cell's text here.
+    private void OnCellValueNeeded(object? sender, DataGridViewCellValueEventArgs e)
+    {
+        if (e.RowIndex < 0 || e.RowIndex >= _view.Count)
+        {
+            return;
+        }
+
+        AudioMessage a = _view[e.RowIndex].Audio;
+        e.Value = e.ColumnIndex switch
+        {
+            0 => AppDateFormatter.Format(a.DateUtc.ToLocalTime()),
+            1 => a.Title,
+            2 => a.Performer,
+            3 => a.Duration is { } d ? $"{(int)d.TotalMinutes}:{d.Seconds:00}" : "–",
+            4 => $"{a.SizeBytes / 1024d / 1024d:0.0} MB",
+            CachedColumnIndex => _cachedIds.Contains(a.FileId) ? "✓" : "",
+            _ => "",
+        };
+    }
+
+    // The muted-blue tint for the track sitting in the player. VirtualMode shares
+    // one row object, so the tint can't live on a row style - it's re-applied per
+    // paint here, and HighlightPlayingRow just invalidates the rows that change.
+    private void OnCellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+    {
+        if (e.RowIndex < 0 || e.RowIndex >= _view.Count || e.CellStyle is null)
+        {
+            return;
+        }
+
+        if (PlayingMark is long m && _view[e.RowIndex].Audio.FileId == m)
+        {
+            e.CellStyle.BackColor = PlayingRowBack;
+            e.CellStyle.ForeColor = PlayingRowFore;
         }
     }
 
@@ -1228,50 +1276,28 @@ public sealed class MainForm : StyledForm
 
         string[] queryTerms = TrackSearch.Terms(_searchBox.Text);
         string[]? formatExt = SelectedFormatExtensions;
-        var filtered = ApplySort(_items
+        _view = ApplySort(_items
             .Where(i => (queryTerms.Length == 0
                          || TrackSearch.Matches($"{i.Audio.Performer} {i.Audio.Title} {i.Audio.FileName}", queryTerms))
                      && (formatExt is null || formatExt.Contains(FileExtension(i.Audio)))))
             .ToList();
 
-        IReadOnlySet<long> cachedIds = _cache.CachedFileIds();
+        _cachedIds = _cache.CachedFileIds();
 
         _suppressListEvents = true;
         _list.SuspendLayout();
         int scrollBefore = Math.Max(0, _list.FirstDisplayedScrollingRowIndex);
-        _list.Rows.Clear();
 
         long? mark = PlayingMark;
         _tintedFileId = mark;
 
-        // Build the rows first and add them in one call - Rows.Add in a loop
-        // re-lays-out per row and is painfully slow at a few thousand rows.
-        var rows = new DataGridViewRow[filtered.Count];
-        for (int r = 0; r < filtered.Count; r++)
-        {
-            AudioMessage a = filtered[r].Audio;
-            var row = new DataGridViewRow { Height = _list.RowTemplate.Height };
-            row.CreateCells(_list,
-                AppDateFormatter.Format(a.DateUtc.ToLocalTime()),
-                a.Title,
-                a.Performer,
-                a.Duration is { } d ? $"{(int)d.TotalMinutes}:{d.Seconds:00}" : "–",
-                $"{a.SizeBytes / 1024d / 1024d:0.0} MB",
-                cachedIds.Contains(a.FileId) ? "✓" : "");
-            row.Tag = a.FileId;
-            if (mark is long m && a.FileId == m)
-            {
-                row.DefaultCellStyle.BackColor = PlayingRowBack;
-                row.DefaultCellStyle.ForeColor = PlayingRowFore;
-            }
-            rows[r] = row;
-        }
-        if (rows.Length > 0)
-        {
-            _list.Rows.AddRange(rows);
-        }
+        // VirtualMode: just tell the grid how many rows there are and let it pull
+        // the ~30 visible cells from _view. Drop CurrentCell first so shrinking
+        // the count past the old selection can't throw.
+        try { _list.CurrentCell = null; } catch { }
+        _list.RowCount = _view.Count;
         _list.ClearSelection();
-        try { _list.CurrentCell = null; } catch { }   // no auto-selected row 0
+        _list.Invalidate();   // re-fetch every visible value
 
         // Keep the previously-selected (or playing) row selected across a
         // re-render; on the first load fall back to the track from ui-state.
@@ -1279,14 +1305,11 @@ public sealed class MainForm : StyledForm
             ?? (_lastTrackId != 0 ? _lastTrackId : (long?)null);
         if (keep is long fid)
         {
-            foreach (DataGridViewRow row in _list.Rows)
+            int idx = _view.FindIndex(i => i.Audio.FileId == fid);
+            if (idx >= 0)
             {
-                if (row.Tag is long rf && rf == fid)
-                {
-                    _list.CurrentCell = row.Cells[0];
-                    row.Selected = true;
-                    break;
-                }
+                _list.CurrentCell = _list.Rows[idx].Cells[0];
+                _list.Rows[idx].Selected = true;
             }
         }
         _list.ResumeLayout();
@@ -1303,7 +1326,7 @@ public sealed class MainForm : StyledForm
         _scrollToTopNextRender = false;
 
         _suppressListEvents = false;
-        ShowSelected();   // playing-row tint was applied inline while building
+        ShowSelected();   // the playing-row tint comes from OnCellFormatting
 
         if (!announceStatus)
         {
@@ -1314,13 +1337,13 @@ public sealed class MainForm : StyledForm
         {
             Status(_connected ? Loc.S("status.noAudioRange") : Loc.S("status.notSignedIn"));
         }
-        else if (filtered.Count == _items.Count)
+        else if (_view.Count == _items.Count)
         {
             Status(afterLoad ? Loc.T("status.loadingFinished", Loc.Files(_items.Count)) : Loc.Files(_items.Count));
         }
         else
         {
-            Status(Loc.T("status.filtered", filtered.Count, Loc.Files(_items.Count)));
+            Status(Loc.T("status.filtered", _view.Count, Loc.Files(_items.Count)));
         }
     }
 
@@ -1336,9 +1359,9 @@ public sealed class MainForm : StyledForm
     // ---------- playback ----------
     private AudioMessage? SelectedAudio =>
         _list.SelectedRows.Count > 0
-        && _list.SelectedRows[0].Tag is long fid
-        && _byFileId.TryGetValue(fid, out AudioMessage? a)
-            ? a
+        && _list.SelectedRows[0].Index is int i
+        && i >= 0 && i < _view.Count
+            ? _view[i].Audio
             : null;
 
     private void OnListKeyDown(object? sender, KeyEventArgs e)
@@ -1577,14 +1600,13 @@ public sealed class MainForm : StyledForm
 
         var hit = _list.HitTest(e.X, e.Y);
         if (hit.RowIndex < 0
-            || _list.Rows[hit.RowIndex].Tag is not long fid
-            || !_byFileId.TryGetValue(fid, out AudioMessage? a)
-            || !File.Exists(_cache.GetPath(a)))
+            || hit.RowIndex >= _view.Count
+            || !File.Exists(_cache.GetPath(_view[hit.RowIndex].Audio)))
         {
             return;
         }
 
-        _dragFileId = fid;
+        _dragFileId = _view[hit.RowIndex].Audio.FileId;
         Size ds = SystemInformation.DragSize;
         _dragBox = new Rectangle(e.X - ds.Width / 2, e.Y - ds.Height / 2, ds.Width, ds.Height);
     }
@@ -1695,26 +1717,25 @@ public sealed class MainForm : StyledForm
             }
         }
 
-        foreach (DataGridViewRow row in _list.Rows)
+        int idx = _view.FindIndex(i => i.Audio.FileId == fileId);
+        if (idx >= 0)
         {
-            if (row.Tag is long rf && rf == fileId)
-            {
-                row.Cells[3].Value = $"{(int)duration.TotalMinutes}:{duration.Seconds:00}";
-                break;
-            }
+            _view[idx] = _view[idx] with { Audio = updated };
+            _list.InvalidateRow(idx);
         }
     }
 
     /// <summary>Put the "downloaded" check on a row after its file lands, without a full re-render.</summary>
     private void MarkRowCached(long fileId)
     {
-        foreach (DataGridViewRow row in _list.Rows)
+        if (!_cachedIds.Contains(fileId))
         {
-            if (row.Tag is long rf && rf == fileId)
-            {
-                row.Cells[CachedColumnIndex].Value = "✓";
-                break;
-            }
+            _cachedIds = new HashSet<long>(_cachedIds) { fileId };
+        }
+        int idx = _view.FindIndex(i => i.Audio.FileId == fileId);
+        if (idx >= 0)
+        {
+            _list.InvalidateCell(CachedColumnIndex, idx);
         }
     }
 
@@ -2040,7 +2061,9 @@ public sealed class MainForm : StyledForm
         _groupCombo.Items.Clear();
         _suppressComboEvents = false;
         _suppressListEvents = true;
-        _list.Rows.Clear();
+        try { _list.CurrentCell = null; } catch { }
+        _view = new();
+        _list.RowCount = 0;
         _suppressListEvents = false;
         _selectedFileId = null;
         _player.SetIdle();

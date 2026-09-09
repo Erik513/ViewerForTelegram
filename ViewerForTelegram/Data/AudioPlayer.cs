@@ -159,8 +159,9 @@ public sealed class AudioPlayer : IAudioPlayer
                 // float through ACM - a WAVE_FORMAT_EXTENSIBLE .wav (common for
                 // 24-bit / multichannel exports) then fails with
                 // "NoDriver calling acmFormatSuggest". Media Foundation decodes
-                // those (and m4a/aac/wma) directly.
-                AppLog.Error("Audio",
+                // those (and m4a/aac/wma) directly. A routine, silent fallback -
+                // verbose log only; a real failure surfaces from the caller.
+                AppLog.Line("Audio",
                     $"AudioFileReader failed for {Path.GetExtension(filePath)}: " +
                     $"{ex.GetType().Name}: {ex.Message} - falling back to Media Foundation");
 
@@ -195,7 +196,7 @@ public sealed class AudioPlayer : IAudioPlayer
         catch (Exception ex)
         {
             long skip = LeadingId3v2Length(filePath);
-            AppLog.Error("Audio",
+            AppLog.Line("Audio",
                 $"FlacReader failed: {ex.GetType().Name}: {ex.Message}" +
                 (skip > 0 ? $" - retrying past a {skip}-byte ID3v2 tag" : " - falling back to Media Foundation"));
 
@@ -211,7 +212,7 @@ public sealed class AudioPlayer : IAudioPlayer
                 }
                 catch (Exception ex2)
                 {
-                    AppLog.Error("Audio", $"FlacReader still failed past the tag: {ex2.Message} - Media Foundation");
+                    AppLog.Line("Audio", $"FlacReader still failed past the tag: {ex2.Message} - Media Foundation");
                 }
             }
 

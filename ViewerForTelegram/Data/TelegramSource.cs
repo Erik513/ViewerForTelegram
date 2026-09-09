@@ -32,6 +32,10 @@ public sealed class TelegramSource : ITelegramSource
     // needs an InputPeer, not just the id.
     private Dictionary<long, InputPeer>? _peers;
 
+    // From GetChatsAsync: chatId -> kind. Bot / Saved Messages chats get pulled
+    // with plain history instead of the "music" search filter (see below).
+    private readonly Dictionary<long, TelegramChatKind> _chatKinds = new();
+
     // From GetAudioMessagesSinceAsync: FileId -> the real Telegram document.
     // DownloadFileAsync needs the whole Document (access_hash, file_reference,
     // dc_id), not just our FileId.
@@ -177,6 +181,7 @@ public sealed class TelegramSource : ITelegramSource
             if (!_peers.ContainsKey(id))
             {
                 _peers[id] = peer;
+                _chatKinds[id] = kind;
                 result.Add(new TelegramChat(id, title, kind));
             }
             else
@@ -264,6 +269,15 @@ public sealed class TelegramSource : ITelegramSource
             ? MaxPages
             : MaxMessages / HistoryPageSize;
 
+        // Bot / Saved Messages chats: pull plain history, not the "music" search
+        // filter. That filter only matches posts tagged as music and misses
+        // tracks sent "as a file" (audio/* mime, no audio attribute), which some
+        // bots do and TryMapAudio still accepts. These chats are audio-dense and
+        // rarely huge, so scanning unfiltered pages is affordable here; groups
+        // and channels keep the filter for its big efficiency win.
+        bool plainHistory = _chatKinds.TryGetValue(chatId, out TelegramChatKind kind)
+            && kind is TelegramChatKind.Bot or TelegramChatKind.SavedMessages;
+
         var result = new List<AudioMessage>();
         int offsetId = beforeMessageId; // 0 = from the newest message; else start just before this id
 
@@ -283,10 +297,14 @@ public sealed class TelegramSource : ITelegramSource
             // Messages_GetHistory to reach even a few hundred tracks; each
             // page here is (close to) all audio, so the same page budget
             // reaches much further and needs far fewer requests overall
-            // (less FLOOD_WAIT risk too).
-            Messages_MessagesBase batch = await _client!.Messages_Search(
-                peer, q: "", filter: new InputMessagesFilterMusic(),
-                offset_id: offsetId, limit: HistoryPageSize);
+            // (less FLOOD_WAIT risk too). Bot / Saved Messages chats use plain
+            // history instead - see 'plainHistory' above.
+            Messages_MessagesBase batch = plainHistory
+                ? await _client!.Messages_GetHistory(
+                    peer, offset_id: offsetId, limit: HistoryPageSize)
+                : await _client!.Messages_Search(
+                    peer, q: "", filter: new InputMessagesFilterMusic(),
+                    offset_id: offsetId, limit: HistoryPageSize);
 
             MessageBase[] messages = batch.Messages;
             if (messages.Length == 0)

@@ -599,6 +599,42 @@ public sealed class TelegramSource : ITelegramSource
 
         try
         {
+            await DownloadToPartAsync(doc, partPath, cb, ct);
+        }
+        catch (RpcException rpc) when (
+            !ct.IsCancellationRequested
+            && rpc.Message.Contains("FILE_REFERENCE_EXPIRED", StringComparison.Ordinal))
+        {
+            // The file_reference baked into the cached Document has aged out - a
+            // long gap between listing / prefetch and hitting Play. Drop it,
+            // re-fetch the message for a fresh reference and try once more.
+            LogLine($"Download: file_reference expired for {message.FileName} - re-fetching the message");
+            _documents.Remove(message.FileId);
+            await TryFetchDocumentAsync(message.ChatId, message.MessageId, ct);
+            if (!_documents.TryGetValue(message.FileId, out doc))
+            {
+                throw;
+            }
+            await DownloadToPartAsync(doc, partPath, cb, ct);
+        }
+
+        ct.ThrowIfCancellationRequested();   // safe here - we are back on our own await path
+
+        if (File.Exists(targetPath))
+        {
+            File.Delete(targetPath);
+        }
+        File.Move(partPath, targetPath);
+
+        LogLine($"Download complete: {Path.GetFileName(targetPath)} " +
+                $"({new FileInfo(targetPath).Length} bytes)");
+    }
+
+    private async Task DownloadToPartAsync(
+        Document doc, string partPath, WTelegram.Client.ProgressCallback? cb, CancellationToken ct)
+    {
+        try
+        {
             await using FileStream fs = new(
                 partPath, FileMode.Create, FileAccess.Write, FileShare.None);
             // Cancel: close the FileStream -> the next write in DownloadFileAsync
@@ -618,17 +654,6 @@ public sealed class TelegramSource : ITelegramSource
             IoUtil.TryDelete(partPath);
             throw;
         }
-
-        ct.ThrowIfCancellationRequested();   // safe here - we are back on our own await path
-
-        if (File.Exists(targetPath))
-        {
-            File.Delete(targetPath);
-        }
-        File.Move(partPath, targetPath);
-
-        LogLine($"Download complete: {Path.GetFileName(targetPath)} " +
-                $"({new FileInfo(targetPath).Length} bytes)");
     }
 
 

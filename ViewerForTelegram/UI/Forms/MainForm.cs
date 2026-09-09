@@ -105,6 +105,10 @@ public sealed class MainForm : StyledForm
     private CancellationTokenSource? _playCts;
     private CancellationTokenSource? _feedCts;
     private CancellationTokenSource? _prefetchCts;   // background document warm-up for the selected row
+
+    private int _sortColumn = -1;   // -1 = feed order (newest first); else a column index
+    private bool _sortAscending;
+    private bool _scrollToTopNextRender;
     private bool _suppressListEvents;
 
     private bool _started;
@@ -269,8 +273,19 @@ public sealed class MainForm : StyledForm
         // ShowCellToolTips (WinForms default) shows a tooltip only for a cell
         // whose text is clipped - no explicit ToolTipText, so nothing else.
         _list.ShowCellToolTips = true;
+        for (int c = 0; c <= 4; c++)
+        {
+            _list.Columns[c].SortMode = DataGridViewColumnSortMode.Programmatic;
+        }
+        _list.ColumnHeaderMouseClick += OnColumnHeaderClick;
         _list.SelectionChanged += (_, _) => ShowSelected();
-        _list.CellMouseDoubleClick += (_, _) => OnMainButton();
+        _list.CellMouseDoubleClick += (_, e) =>
+        {
+            if (e.RowIndex >= 0)   // not a header / row-header double-click
+            {
+                OnMainButton();
+            }
+        };
         _list.KeyDown += OnListKeyDown;
 
         // ---- player ----
@@ -1172,10 +1187,10 @@ public sealed class MainForm : StyledForm
 
         string[] queryTerms = TrackSearch.Terms(_searchBox.Text);
         string[]? formatExt = SelectedFormatExtensions;
-        var filtered = _items
+        var filtered = ApplySort(_items
             .Where(i => (queryTerms.Length == 0
                          || TrackSearch.Matches($"{i.Audio.Performer} {i.Audio.Title} {i.Audio.FileName}", queryTerms))
-                     && (formatExt is null || formatExt.Contains(FileExtension(i.Audio))))
+                     && (formatExt is null || formatExt.Contains(FileExtension(i.Audio)))))
             .ToList();
 
         IReadOnlySet<long> cachedIds = _cache.CachedFileIds();
@@ -1236,12 +1251,15 @@ public sealed class MainForm : StyledForm
         _list.ResumeLayout();
 
         // Setting CurrentCell scrolls the row into view - don't jump the list
-        // for it, just mark it. Restore the scroll position (0 on a fresh load).
+        // for it, just mark it. Restore the scroll position (0 on a fresh load);
+        // after a re-sort the old offset is meaningless, so go to the top.
         if (_list.RowCount > 0)
         {
-            try { _list.FirstDisplayedScrollingRowIndex = Math.Min(scrollBefore, _list.RowCount - 1); }
+            int target = _scrollToTopNextRender ? 0 : Math.Min(scrollBefore, _list.RowCount - 1);
+            try { _list.FirstDisplayedScrollingRowIndex = target; }
             catch { /* not scrollable yet */ }
         }
+        _scrollToTopNextRender = false;
 
         _suppressListEvents = false;
         ShowSelected();   // playing-row tint was applied inline while building
@@ -1472,6 +1490,66 @@ public sealed class MainForm : StyledForm
     /// Once the audio engine has decoded it we know the real duration - write it
     /// back into the model, the list and the cache so it survives a reload.
     /// </summary>
+    private void OnColumnHeaderClick(object? sender, DataGridViewCellMouseEventArgs e)
+    {
+        if (e.ColumnIndex is < 0 or > 4)
+        {
+            return;   // Cached column and out-of-range: not sortable
+        }
+
+        // Three-state cycle per column: ascending -> descending -> off (feed order).
+        if (_sortColumn != e.ColumnIndex)
+        {
+            _sortColumn = e.ColumnIndex;
+            _sortAscending = true;
+        }
+        else if (_sortAscending)
+        {
+            _sortAscending = false;
+        }
+        else
+        {
+            _sortColumn = -1;
+        }
+
+        for (int c = 0; c <= 4; c++)
+        {
+            _list.Columns[c].HeaderCell.SortGlyphDirection =
+                c == _sortColumn
+                    ? (_sortAscending ? SortOrder.Ascending : SortOrder.Descending)
+                    : SortOrder.None;
+        }
+
+        _scrollToTopNextRender = true;
+        RenderList();
+    }
+
+    private IEnumerable<FeedItem> ApplySort(IEnumerable<FeedItem> items)
+    {
+        if (_sortColumn < 0)
+        {
+            return items;   // feed order, newest first
+        }
+
+        Func<FeedItem, object> key = _sortColumn switch
+        {
+            0 => i => i.Audio.DateUtc,
+            1 => i => i.Audio.Title ?? "",
+            2 => i => i.Audio.Performer ?? "",
+            3 => i => i.Audio.Duration ?? TimeSpan.Zero,
+            _ => i => i.Audio.SizeBytes,
+        };
+
+        IComparer<object> comparer = _sortColumn is 1 or 2
+            ? Comparer<object>.Create((a, b) =>
+                string.Compare((string)a, (string)b, StringComparison.CurrentCultureIgnoreCase))
+            : Comparer<object>.Default;
+
+        return _sortAscending
+            ? items.OrderBy(key, comparer)
+            : items.OrderByDescending(key, comparer);
+    }
+
     private void BackfillDuration(long fileId, TimeSpan duration)
     {
         if (duration <= TimeSpan.Zero

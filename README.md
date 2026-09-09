@@ -1,10 +1,11 @@
 # Viewer for Telegram
 
-A small Windows desktop app that lists the **audio messages** posted in a
-Telegram group or channel you are a member of. Pick a chat, choose either a
-rolling time window (last 3 / 7 / 14 / 30 / 60 days) or a fixed count
-("Newest 50" up to "Newest 5000"), double-click a track to play it in the
-player at the bottom, and save the ones you want to keep.
+A small Windows desktop app that lists the **audio messages** shared in a
+Telegram group or channel you're in – or in your own **Saved Messages** or a
+**bot chat**. Pick a chat, choose either a rolling time window
+(last 3 / 7 / 14 / 30 / 60 days) or a fixed count ("Newest 50" up to
+"Newest 5000"), double-click a track to play it in the player at the bottom,
+and save the ones you want to keep.
 
 It signs in as **you** via Telegram's MTProto API (like the official clients),
 so it can see full history with no bot restrictions and no file-size limit.
@@ -25,6 +26,8 @@ app checks for newer releases on startup and can update itself.
 
 ## Features
 
+- Reads from any group or channel you're in, plus your **Saved Messages** and
+  your **bot chats** (person-to-person DMs are left out on purpose)
 - One player docked at the bottom: play/pause, seek, volume, "Save a copy"
 - Plays mp3, m4a/aac, wav, wma, aiff/aif and (on Windows 10+) flac; ogg/opus
   can be saved but not played in-app
@@ -77,7 +80,7 @@ The **api_hash is like a password** – do not share it, and never commit it.
    `+491701234567`), then click **Sign in**.
 3. Enter the login code Telegram sends you. If your account has a **cloud
    password** (two-factor authentication), you'll be asked for that too.
-4. Pick a group/channel and a time range – the list loads automatically.
+4. Pick a chat and a time range – the list loads automatically.
 5. Double-click a row to download (if needed) and play it.
 
 After that the app signs in silently from the stored session; you only need the

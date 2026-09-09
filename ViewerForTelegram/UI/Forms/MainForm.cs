@@ -1151,7 +1151,11 @@ public sealed class MainForm : StyledForm
             ToolTipText = Loc.S("col.cached"),
         };
         column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-        column.DefaultCellStyle.ForeColor = UIStyles.Colors.GreenLight;
+        // The ✓ is white on a plain or selected row (SelectionForeColor keeps it
+        // white under the selection bar); on the player-tinted row it goes blue
+        // with the rest of that row via OnCellFormatting.
+        column.DefaultCellStyle.ForeColor = Color.White;
+        column.DefaultCellStyle.SelectionForeColor = Color.White;
         _list.Columns.Add(column);
     }
 
@@ -1264,7 +1268,7 @@ public sealed class MainForm : StyledForm
         if (PlayingMark is long m && _view[e.RowIndex].Audio.FileId == m)
         {
             e.CellStyle.BackColor = PlayingRowBack;
-            e.CellStyle.ForeColor = PlayingRowFore;
+            e.CellStyle.ForeColor = PlayingRowFore;   // whole row, ✓ included, goes blue
         }
     }
 

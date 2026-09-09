@@ -37,7 +37,15 @@ app checks for newer releases on startup and can update itself.
   restarting the app doesn't re-download everything from scratch; on refresh
   the app also detects tracks that were deleted on Telegram and fills the gap
   back up from older history
+- A ✓ column marks the tracks already in the local cache
+- Drag a downloaded track straight out of the list into Explorer, a music
+  app or a chat window
+- Click a column header to sort by date, title, artist, length or size
+  (click again to reverse, once more for the normal newest-first order)
+- After a load or refresh, the refresh button badges how many tracks came
+  in that you hadn't seen yet
 - Filter the list by file format, plus a live text filter over performer / title / file name
+  (the text filter clears when you switch chats)
 - Volume, last chat, time range and format filter remembered between sessions
 - UI language: English or German, switches instantly, no restart needed
 - Save to a fixed folder or via a save dialog, original file name preserved

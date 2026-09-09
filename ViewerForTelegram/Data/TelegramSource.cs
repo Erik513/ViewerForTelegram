@@ -22,6 +22,7 @@ public sealed class TelegramSource : ITelegramSource
 
     private WTelegram.Client? _client;
     private Func<Task<string>>? _requestCode;
+    private Func<string?, Task<string>>? _requestPassword;
 
     // The signed-in account's own user id - set on connect, used to offer
     // "Saved Messages" (the 1:1 chat with yourself) in GetChatsAsync.
@@ -45,9 +46,11 @@ public sealed class TelegramSource : ITelegramSource
 
     public async Task ConnectAsync(
         Func<Task<string>> requestVerificationCode,
+        Func<string?, Task<string>> requestCloudPassword,
         CancellationToken ct)
     {
         _requestCode = requestVerificationCode;
+        _requestPassword = requestCloudPassword;
 
         // Read the config fresh from the store - so a change just saved in the
         // settings form takes effect immediately, without rebuilding this class.
@@ -126,15 +129,34 @@ public sealed class TelegramSource : ITelegramSource
         "phone_number" => _config.PhoneNumber,
         "session_pathname" => _sessionPath,
 
-        // The code is only known at runtime. This method is synchronous, so we
-        // block here waiting for the (asynchronous) UI dialog. Harmless because
-        // this call runs on a worker thread.
+        // The code / cloud password are only known at runtime. This method is
+        // synchronous, so we block here waiting for the (asynchronous) UI
+        // dialog. Harmless because this call runs on a worker thread. WTelegram
+        // re-queries "password" when the last one was wrong.
         "verification_code" => _requestCode!().GetAwaiter().GetResult(),
-
-        "password" => throw new TwoFactorAuthNotSupportedException(),
+        "password" => RequestCloudPassword(),
 
         _ => null
     };
+
+    private string RequestCloudPassword()
+    {
+        // The hint the user set when enabling 2FA - fetched right before the
+        // prompt, the way the official clients do it. Optional; a failure just
+        // means no hint is shown.
+        string? hint = null;
+        try
+        {
+            TL.Account_Password pwd = _client!.Account_GetPassword().GetAwaiter().GetResult();
+            hint = string.IsNullOrWhiteSpace(pwd?.hint) ? null : pwd.hint;
+        }
+        catch (Exception ex)
+        {
+            LogLine($"Account_GetPassword (hint) failed: {ex.Message}");
+        }
+
+        return _requestPassword!(hint).GetAwaiter().GetResult();
+    }
 
     public async Task<IReadOnlyList<TelegramChat>> GetChatsAsync(CancellationToken ct)
     {

@@ -62,8 +62,10 @@ internal sealed class FakeTelegramSource : ITelegramSource
         progress?.Report(100);
     }
 
-    public Task ConnectAsync(Func<Task<string>> requestVerificationCode, CancellationToken ct) =>
-        Task.CompletedTask;
+    public Task ConnectAsync(
+        Func<Task<string>> requestVerificationCode,
+        Func<string?, Task<string>> requestCloudPassword,
+        CancellationToken ct) => Task.CompletedTask;
 
     public Task<IReadOnlyList<TelegramChat>> GetChatsAsync(CancellationToken ct) =>
         Task.FromResult<IReadOnlyList<TelegramChat>>(new List<TelegramChat>());

@@ -121,22 +121,21 @@ public static class Loc
                                        + "Enter them again?",
         ["msg.credsIncomplete.title"] = "Credentials incomplete",
 
-        // --- two-factor (cloud password) not supported ---
-        ["msg.twoFactor.title"] = "Two-factor authentication",
-        // The message box does not word-wrap - the lines are pre-broken and
-        // it's shown at the Large size preset (see MainForm.ConnectAsync).
-        ["msg.twoFactor.body"] = "This account is protected by a cloud password\r\n"
-                                 + "(two-factor authentication), which this app\r\n"
-                                 + "can't sign in with yet.\r\n\r\n"
-                                 + "You can sign in with an account that has no\r\n"
-                                 + "cloud password, or turn the cloud password off in\r\n"
-                                 + "Telegram under Settings › Privacy and Security.",
+        // --- cloud-password (2FA) prompt ---
+        ["pwd.title"] = "Cloud password",
+        ["pwd.prompt"] = "This account has two-factor authentication.\r\n"
+                         + "Enter your Telegram cloud password.",
+        ["pwd.retry"] = "Wrong password – try again.",
+        ["pwd.hint"] = "Hint: {0}",
+        ["pwd.confirm"] = "Sign in",
+        ["pwd.show"] = "Show password",
+        ["pwd.hide"] = "Hide password",
 
         // --- exceptions surfaced to the user ---
         ["err.credentialsMissing"] = "Credentials are missing.",
         ["err.noCode"] = "No login code entered.",
+        ["err.noPassword"] = "No cloud password entered.",
         ["err.signinCancelled"] = "Sign-in cancelled.",
-        ["err.twoFactorUnsupported"] = "Sign-in failed: this account uses a cloud password (2FA), which isn't supported yet.",
 
         // --- player ---
         ["player.nothingSelected"] = "Nothing selected",
@@ -287,20 +286,19 @@ public static class Loc
                                        + "Erneut eingeben?",
         ["msg.credsIncomplete.title"] = "Zugangsdaten unvollständig",
 
-        ["msg.twoFactor.title"] = "Zwei-Faktor-Authentifizierung",
-        // Die MessageBox bricht Text nicht um - die Zeilen sind vorgebrochen,
-        // Anzeige in der großen Größe (siehe MainForm.ConnectAsync).
-        ["msg.twoFactor.body"] = "Dieses Konto ist mit einem Cloud-Passwort\r\n"
-                                 + "(Zwei-Faktor-Authentifizierung) geschützt, mit\r\n"
-                                 + "dem sich diese App noch nicht anmelden kann.\r\n\r\n"
-                                 + "Melde dich mit einem Konto ohne Cloud-Passwort an,\r\n"
-                                 + "oder deaktiviere das Cloud-Passwort in Telegram\r\n"
-                                 + "unter Einstellungen › Datenschutz und Sicherheit.",
+        ["pwd.title"] = "Cloud-Passwort",
+        ["pwd.prompt"] = "Dieses Konto hat Zwei-Faktor-Authentifizierung.\r\n"
+                         + "Gib dein Telegram-Cloud-Passwort ein.",
+        ["pwd.retry"] = "Falsches Passwort – bitte erneut versuchen.",
+        ["pwd.hint"] = "Hinweis: {0}",
+        ["pwd.confirm"] = "Anmelden",
+        ["pwd.show"] = "Passwort anzeigen",
+        ["pwd.hide"] = "Passwort verbergen",
 
         ["err.credentialsMissing"] = "Zugangsdaten fehlen.",
         ["err.noCode"] = "Kein Anmeldecode eingegeben.",
+        ["err.noPassword"] = "Kein Cloud-Passwort eingegeben.",
         ["err.signinCancelled"] = "Anmeldung abgebrochen.",
-        ["err.twoFactorUnsupported"] = "Anmeldung fehlgeschlagen: Dieses Konto nutzt ein Cloud-Passwort (2FA), das noch nicht unterstützt wird.",
 
         ["player.nothingSelected"] = "Nichts ausgewählt",
         ["player.vol"] = "Vol",

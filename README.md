@@ -75,15 +75,16 @@ The **api_hash is like a password** – do not share it, and never commit it.
 1. Start the app. With no credentials stored it opens **Settings** directly.
 2. Enter api_id, api_hash and your phone number (international format, e.g.
    `+491701234567`), then click **Sign in**.
-3. Enter the login code Telegram sends you.
+3. Enter the login code Telegram sends you. If your account has a **cloud
+   password** (two-factor authentication), you'll be asked for that too.
 4. Pick a group/channel and a time range – the list loads automatically.
 5. Double-click a row to download (if needed) and play it.
 
 After that the app signs in silently from the stored session; you only need the
-code again if you sign out.
+code (and password) again if you sign out.
 
-**Two-factor authentication (cloud password) is not supported yet** – accounts
-with 2FA enabled cannot currently sign in.
+If you've *forgotten* your cloud password, recover it in the official Telegram
+app first – this app doesn't do the e-mail recovery flow.
 
 ## Where your data lives
 

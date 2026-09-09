@@ -504,38 +504,12 @@ public sealed class MainForm : StyledForm
         catch (Exception ex)
         {
             _connected = false;
-            if (FindInner<TwoFactorAuthNotSupportedException>(ex) is not null)
-            {
-                Status(Loc.S("err.twoFactorUnsupported"));
-                // Large: the message box can't word-wrap, so the body is
-                // pre-wrapped and needs the room.
-                StyledMessageBox.Show(
-                    Loc.S("msg.twoFactor.body"),
-                    Loc.S("msg.twoFactor.title"),
-                    MessageBoxButtons.OK, MessageBoxIcon.Info, this, MessageBoxSize.Large);
-            }
-            else
-            {
-                Status(DescribeFailure("signin", ex));
-            }
+            Status(DescribeFailure("signin", ex));
         }
         finally
         {
             _connecting = false;
         }
-    }
-
-    /// <summary>Walks the <see cref="Exception.InnerException"/> chain for a <typeparamref name="T"/>.</summary>
-    private static T? FindInner<T>(Exception? ex) where T : Exception
-    {
-        for (; ex is not null; ex = ex.InnerException)
-        {
-            if (ex is T match)
-            {
-                return match;
-            }
-        }
-        return null;
     }
 
     private const int NetworkRetries = 3;
@@ -592,14 +566,6 @@ public sealed class MainForm : StyledForm
         {
             return Loc.T("status.rateLimit", seconds);
         }
-        if (FindInner<TwoFactorAuthNotSupportedException>(ex) is not null)
-        {
-            return Loc.S("err.twoFactorUnsupported");
-        }
-        if (ex is NotSupportedException)
-        {
-            return ex.Message;
-        }
         return Loc.T("status.opFailed", Loc.S("op." + what), ex.Message);
     }
 
@@ -611,7 +577,8 @@ public sealed class MainForm : StyledForm
         }
 
         Status(Loc.S("status.connecting"));
-        await _telegram.ConnectAsync(AskForCodeAsync, CancellationToken.None);
+        _passwordAttempts = 0;
+        await _telegram.ConnectAsync(AskForCodeAsync, AskForPasswordAsync, CancellationToken.None);
         await ListChatsAndLoadAsync();
     }
 
@@ -811,6 +778,30 @@ public sealed class MainForm : StyledForm
                 throw new OperationCanceledException(Loc.S("err.noCode"));
             });
             return Task.FromResult(code);
+        }
+        catch (Exception ex) when (ex is ObjectDisposedException or InvalidOperationException)
+        {
+            throw new OperationCanceledException(Loc.S("err.signinCancelled"));
+        }
+    }
+
+    private int _passwordAttempts;   // reset per connect; a retry means the last one was wrong
+
+    private Task<string> AskForPasswordAsync(string? hint)
+    {
+        try
+        {
+            string password = Invoke(() =>
+            {
+                bool retry = _passwordAttempts++ > 0;
+                using var form = new CloudPasswordForm(hint, retry);
+                if (form.ShowDialog(this) == DialogResult.OK && !string.IsNullOrEmpty(form.Password))
+                {
+                    return form.Password!;
+                }
+                throw new OperationCanceledException(Loc.S("err.noPassword"));
+            });
+            return Task.FromResult(password);
         }
         catch (Exception ex) when (ex is ObjectDisposedException or InvalidOperationException)
         {

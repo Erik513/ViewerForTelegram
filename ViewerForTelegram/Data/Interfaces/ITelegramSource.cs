@@ -19,8 +19,14 @@ public interface ITelegramSource : IAsyncDisposable
     /// <param name="requestVerificationCode">
     /// Callback the UI backs with an input dialog and that returns the code.
     /// </param>
+    /// <param name="requestCloudPassword">
+    /// Callback for accounts with two-factor auth: given the (optional) password
+    /// hint, returns the account's cloud password. Called again if the last one
+    /// was wrong. The password is used only transiently and never stored.
+    /// </param>
     Task ConnectAsync(
         Func<Task<string>> requestVerificationCode,
+        Func<string?, Task<string>> requestCloudPassword,
         CancellationToken ct);
 
     /// <summary>

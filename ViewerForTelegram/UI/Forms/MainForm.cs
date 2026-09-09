@@ -1145,10 +1145,11 @@ public sealed class MainForm : StyledForm
             _list.ShowCellToolTips = true;
         }
 
-        string query = _searchBox.Text.Trim();
+        string[] queryTerms = TrackSearch.Terms(_searchBox.Text);
         string[]? formatExt = SelectedFormatExtensions;
         var filtered = _items
-            .Where(i => (query.Length == 0 || Matches(i.Audio, query))
+            .Where(i => (queryTerms.Length == 0
+                         || TrackSearch.Matches($"{i.Audio.Performer} {i.Audio.Title} {i.Audio.FileName}", queryTerms))
                      && (formatExt is null || formatExt.Contains(FileExtension(i.Audio))))
             .ToList();
 
@@ -1235,9 +1236,6 @@ public sealed class MainForm : StyledForm
             Status(Loc.T("status.filtered", filtered.Count, Loc.Files(_items.Count)));
         }
     }
-
-    private static bool Matches(AudioMessage a, string query) =>
-        $"{a.Performer} {a.Title} {a.FileName}".Contains(query, StringComparison.OrdinalIgnoreCase);
 
     private static string FileExtension(AudioMessage a) =>
         System.IO.Path.GetExtension(a.FileName).ToLowerInvariant();

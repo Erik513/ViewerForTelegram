@@ -232,6 +232,13 @@ public sealed class TelegramSource : ITelegramSource
     private const int MaxPages = 50;       // date-window mode
     private const int MaxMessages = 15000; // hard message ceiling ("newest N" mode: ~150 pages)
 
+    // A short breather between pages of the big "Newest N" pull. Firing the page
+    // requests back to back trips Telegram's rate limiter, and WTelegramClient
+    // then auto-sleeps the full FLOOD_WAIT (20-30 s each in the logs). Pacing at
+    // this rate keeps us under the limit, so a 5000-track pull finishes faster
+    // overall despite the added delay.
+    private static readonly TimeSpan InterPageDelay = TimeSpan.FromMilliseconds(250);
+
     public async Task<IReadOnlyList<AudioMessage>> GetAudioMessagesSinceAsync(
         long chatId, DateTime sinceUtc, CancellationToken ct, int maxAudios = int.MaxValue,
         IProgress<int>? progress = null, int beforeMessageId = 0,
@@ -263,6 +270,11 @@ public sealed class TelegramSource : ITelegramSource
         for (int page = 0; page < maxPages; page++)
         {
             ct.ThrowIfCancellationRequested();
+
+            if (page > 0)
+            {
+                await Task.Delay(InterPageDelay, ct);
+            }
 
             // Server-side "music" filter (the same one Telegram's own clients
             // use for a chat's shared-media "Audio" tab) instead of paging

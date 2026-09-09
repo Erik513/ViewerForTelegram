@@ -1725,18 +1725,16 @@ public sealed class MainForm : StyledForm
         }
     }
 
-    /// <summary>Put the "downloaded" check on a row after its file lands, without a full re-render.</summary>
-    private void MarkRowCached(long fileId)
+    /// <summary>
+    /// Re-read which files are in the cache and repaint the "downloaded" check
+    /// column, without a full re-render. Run after a download (which may have
+    /// pruned the oldest file to stay under the size limit) and after the cache
+    /// is cleared from Settings.
+    /// </summary>
+    private void RefreshCachedColumn()
     {
-        if (!_cachedIds.Contains(fileId))
-        {
-            _cachedIds = new HashSet<long>(_cachedIds) { fileId };
-        }
-        int idx = _view.FindIndex(i => i.Audio.FileId == fileId);
-        if (idx >= 0)
-        {
-            _list.InvalidateCell(CachedColumnIndex, idx);
-        }
+        _cachedIds = _cache.CachedFileIds();
+        _list.InvalidateColumn(CachedColumnIndex);
     }
 
     private async Task DownloadAndPlayAsync(AudioMessage audio)
@@ -1802,7 +1800,7 @@ public sealed class MainForm : StyledForm
 
         _pendingFileId = 0;
         PushCacheInfo();
-        MarkRowCached(audio.FileId);
+        RefreshCachedColumn();
 
         StopCurrent();
         try
@@ -1895,7 +1893,7 @@ public sealed class MainForm : StyledForm
             }
             _pendingFileId = 0;
             PushCacheInfo();
-            MarkRowCached(audio.FileId);
+            RefreshCachedColumn();
             if (!_cache.Contains(audio))
             {
                 return;
@@ -1968,6 +1966,14 @@ public sealed class MainForm : StyledForm
 
             dlg.ShowDialog(this);
             PushCacheInfo();
+
+            if (dlg.CacheCleared)
+            {
+                // The ✓ column and the player's play/download state both read the
+                // cache - refresh them now instead of waiting for the next render.
+                RefreshCachedColumn();
+                ShowSelected();
+            }
 
             if (dlg.Action == SettingsAction.Wipe)
             {

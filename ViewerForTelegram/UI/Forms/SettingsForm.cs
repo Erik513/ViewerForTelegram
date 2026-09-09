@@ -74,6 +74,9 @@ public sealed class SettingsForm : StyledForm
     /// <summary>What was triggered on close.</summary>
     public SettingsAction Action { get; private set; } = SettingsAction.None;
 
+    /// <summary>The user cleared the media cache while this dialog was open.</summary>
+    public bool CacheCleared { get; private set; }
+
     public SettingsForm(TelegramConfig current, IMediaCache cache, bool isConnected)
         : base(StyledFormOptions.CreateSettings(
             Loc.S("settings.title"), icon: AppAssets.TitleBarLogo, windowIcon: AppAssets.WindowIcon))
@@ -399,6 +402,7 @@ public sealed class SettingsForm : StyledForm
             == DialogResult.Yes)
         {
             _cache.Clear();
+            CacheCleared = true;
             UpdateCacheLabel();
             ToastForm.ShowToast(Loc.T("toast.cacheCleared", Loc.Files(count), Mb(bytes)), this);
         }

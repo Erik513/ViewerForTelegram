@@ -402,6 +402,8 @@ public sealed class MainForm : StyledForm
             _filterDebounce.Stop();
             _audio.Stop();
             SaveUiState();
+            try { if (Directory.Exists(DragTempDir)) { Directory.Delete(DragTempDir, recursive: true); } }
+            catch { /* temp files - the OS clears %TEMP% eventually anyway */ }
         };
     }
 
@@ -1647,14 +1649,55 @@ public sealed class MainForm : StyledForm
             return;
         }
 
-        string path = _cache.GetPath(a);
-        if (File.Exists(path))
+        string cachePath = _cache.GetPath(a);
+        if (!File.Exists(cachePath))
         {
-            _list.DoDragDrop(
-                new DataObject(DataFormats.FileDrop, new[] { path }),
-                DragDropEffects.Copy);
+            return;
         }
+
+        // The cache file is named "<FileId>__<name>.<ext>" - dropping that
+        // straight out leaves the numeric prefix on the copy. Drag a copy under
+        // the clean file name instead, same one "Save a copy" uses.
+        string dragPath = cachePath;
+        try
+        {
+            dragPath = PrepareDragFile(a, cachePath);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Line("Drag", $"could not stage a clean copy of {a.FileName}: {ex.Message}");
+        }
+
+        _list.DoDragDrop(
+            new DataObject(DataFormats.FileDrop, new[] { dragPath }),
+            DragDropEffects.Copy);
     }
+
+    // Copies under %TEMP%\ViewerForTelegram\drag so a drag-out lands with a
+    // human file name. Refreshed per drag; the folder is wiped on close.
+    private static readonly string DragTempDir =
+        Path.Combine(Path.GetTempPath(), "ViewerForTelegram", "drag");
+
+    private static string PrepareDragFile(AudioMessage a, string cachePath)
+    {
+        string name = CleanFileName(a);
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            name = $"{a.FileId}{Path.GetExtension(cachePath)}";
+        }
+
+        Directory.CreateDirectory(DragTempDir);
+        string dest = Path.Combine(DragTempDir, name);
+        if (!File.Exists(dest) || new FileInfo(dest).Length != new FileInfo(cachePath).Length)
+        {
+            File.Copy(cachePath, dest, overwrite: true);
+        }
+        return dest;
+    }
+
+    /// <summary>The track's own file name, stripped of characters Windows rejects.</summary>
+    private static string CleanFileName(AudioMessage a) =>
+        string.Join("_", a.FileName.Split(Path.GetInvalidFileNameChars()));
 
     private void OnColumnHeaderClick(object? sender, DataGridViewCellMouseEventArgs e)
     {
@@ -1922,7 +1965,7 @@ public sealed class MainForm : StyledForm
         }
 
         string source = _cache.GetPath(audio);
-        string name = string.Join("_", audio.FileName.Split(Path.GetInvalidFileNameChars()));
+        string name = CleanFileName(audio);
         TelegramConfig cfg = _configStore.Load();
 
         try

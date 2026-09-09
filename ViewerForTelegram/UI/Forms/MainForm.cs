@@ -622,7 +622,8 @@ public sealed class MainForm : StyledForm
         long keepChatId = SelectedChat?.Id ?? _uiStateStore.Load().LastChatId;
 
         _chats = (await _telegram.GetChatsAsync(CancellationToken.None))
-            .OrderBy(c => c.Title)
+            .OrderBy(c => c.Kind == TelegramChatKind.SavedMessages ? 0 : 1)
+            .ThenBy(c => c.Title)
             .ToList();
 
         // A chat the user has left/been removed from no longer shows up here -
@@ -1822,7 +1823,12 @@ public sealed class MainForm : StyledForm
 
     private sealed record ChatChoice(TelegramChat Chat)
     {
-        public override string ToString() =>
-            $"[{Loc.S(Chat.Kind == TelegramChatKind.Channel ? "chat.channel" : "chat.group")}] {Chat.Title}";
+        public override string ToString() => Chat.Kind switch
+        {
+            TelegramChatKind.SavedMessages => Loc.S("chat.saved"),
+            TelegramChatKind.Bot => $"[{Loc.S("chat.bot")}] {Chat.Title}",
+            TelegramChatKind.Channel => $"[{Loc.S("chat.channel")}] {Chat.Title}",
+            _ => $"[{Loc.S("chat.group")}] {Chat.Title}",
+        };
     }
 }

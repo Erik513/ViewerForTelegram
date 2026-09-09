@@ -54,6 +54,8 @@ public static class Loc
         ["range.newest"] = "Newest {0} files",
         ["chat.group"] = "Group",
         ["chat.channel"] = "Channel",
+        ["chat.bot"] = "Bot",
+        ["chat.saved"] = "Saved Messages",
 
         // --- list columns ---
         ["col.date"] = "Date",
@@ -225,6 +227,8 @@ public static class Loc
         ["range.newest"] = "Neueste {0} Dateien",
         ["chat.group"] = "Gruppe",
         ["chat.channel"] = "Kanal",
+        ["chat.bot"] = "Bot",
+        ["chat.saved"] = "Gespeicherte Nachrichten",
 
         ["col.date"] = "Datum",
         ["col.title"] = "Titel",

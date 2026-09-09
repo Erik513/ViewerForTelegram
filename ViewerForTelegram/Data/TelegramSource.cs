@@ -23,6 +23,10 @@ public sealed class TelegramSource : ITelegramSource
     private WTelegram.Client? _client;
     private Func<Task<string>>? _requestCode;
 
+    // The signed-in account's own user id - set on connect, used to offer
+    // "Saved Messages" (the 1:1 chat with yourself) in GetChatsAsync.
+    private long _selfId;
+
     // From GetChatsAsync: chatId -> addressable Telegram peer. Messages_Search
     // needs an InputPeer, not just the id.
     private Dictionary<long, InputPeer>? _peers;
@@ -78,6 +82,7 @@ public sealed class TelegramSource : ITelegramSource
 
         _client = new WTelegram.Client(ProvideConfigValue);
         User me = await _client.LoginUserIfNeeded();
+        _selfId = me.id;
 
         LogLine($"Signed in as {me.first_name} (id {me.id}). " +
                 $"Session now: {(File.Exists(_sessionPath) ? new FileInfo(_sessionPath).Length + " bytes" : "MISSING")}");
@@ -140,6 +145,30 @@ public sealed class TelegramSource : ITelegramSource
         var result = new List<TelegramChat>();
         _peers = new Dictionary<long, InputPeer>();
 
+        void Add(long id, string title, TelegramChatKind kind, InputPeer peer)
+        {
+            // Raw Telegram ids for users, basic groups and channels live in
+            // separate id spaces that *can* collide numerically. A real clash
+            // in one person's dialog list is astronomically unlikely; if it
+            // ever happens, keep the first entry and skip the rest rather than
+            // silently address the wrong peer.
+            if (!_peers.ContainsKey(id))
+            {
+                _peers[id] = peer;
+                result.Add(new TelegramChat(id, title, kind));
+            }
+            else
+            {
+                LogLine($"GetChats: id {id} already taken, skipping '{title}' ({kind})");
+            }
+        }
+
+        // Saved Messages - the 1:1 chat with yourself.
+        if (_selfId != 0)
+        {
+            Add(_selfId, "Saved Messages", TelegramChatKind.SavedMessages, new InputPeerSelf());
+        }
+
         foreach (ChatBase chat in dialogs.chats.Values)
         {
             if (!chat.IsActive)
@@ -151,8 +180,27 @@ public sealed class TelegramSource : ITelegramSource
                 ? TelegramChatKind.Channel
                 : TelegramChatKind.Group;
 
-            result.Add(new TelegramChat(chat.ID, chat.Title ?? "", kind));
-            _peers[chat.ID] = chat.ToInputPeer();
+            Add(chat.ID, chat.Title ?? "", kind, chat.ToInputPeer());
+        }
+
+        // Chats with bots (music-search bots etc.) - a user dialog whose peer
+        // is a bot account. Regular person-to-person DMs are deliberately left
+        // out; this app is about following a feed, not reading conversations.
+        foreach (DialogBase dialogBase in dialogs.dialogs)
+        {
+            if (dialogBase is not Dialog dialog
+                || dialog.peer is not PeerUser peerUser
+                || !dialogs.users.TryGetValue(peerUser.user_id, out User? user)
+                || !user.IsBot
+                || user.id == _selfId)
+            {
+                continue;
+            }
+
+            string title = string.IsNullOrWhiteSpace(user.first_name)
+                ? (user.username ?? "Bot")
+                : user.first_name;
+            Add(user.id, title, TelegramChatKind.Bot, user.ToInputPeer());
         }
 
         return result;

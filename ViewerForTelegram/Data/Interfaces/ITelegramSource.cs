@@ -23,7 +23,11 @@ public interface ITelegramSource : IAsyncDisposable
         Func<Task<string>> requestVerificationCode,
         CancellationToken ct);
 
-    /// <summary>All groups and channels the signed-in account can see.</summary>
+    /// <summary>
+    /// Everything the signed-in account can pull audio from: its groups and
+    /// channels, its own "Saved Messages", and its chats with bots. Regular
+    /// person-to-person DMs are deliberately excluded.
+    /// </summary>
     Task<IReadOnlyList<TelegramChat>> GetChatsAsync(CancellationToken ct);
 
     /// <summary>

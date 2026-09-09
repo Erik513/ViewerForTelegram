@@ -109,6 +109,9 @@ public sealed class MainForm : StyledForm
     private int _sortColumn = -1;   // -1 = feed order (newest first); else a column index
     private bool _sortAscending;
     private bool _scrollToTopNextRender;
+
+    private long? _dragFileId;      // row armed for a file drag-out (only if cached)
+    private Rectangle _dragBox;     // move past this before a drag actually starts
     private bool _suppressListEvents;
 
     private bool _started;
@@ -287,6 +290,8 @@ public sealed class MainForm : StyledForm
             }
         };
         _list.KeyDown += OnListKeyDown;
+        _list.MouseDown += OnListMouseDown;
+        _list.MouseMove += OnListMouseMove;
 
         // ---- player ----
         _player = new PlayerPanel();
@@ -1490,6 +1495,55 @@ public sealed class MainForm : StyledForm
     /// Once the audio engine has decoded it we know the real duration - write it
     /// back into the model, the list and the cache so it survives a reload.
     /// </summary>
+    // Drag a cached track's file out onto Explorer / a DAW / a chat app.
+    // Only cached rows are draggable - the FileDrop format needs a real path
+    // (the "downloaded" check column shows which rows qualify).
+    private void OnListMouseDown(object? sender, MouseEventArgs e)
+    {
+        _dragFileId = null;
+        if (e.Button != MouseButtons.Left)
+        {
+            return;
+        }
+
+        var hit = _list.HitTest(e.X, e.Y);
+        if (hit.RowIndex < 0
+            || _list.Rows[hit.RowIndex].Tag is not long fid
+            || !_byFileId.TryGetValue(fid, out AudioMessage? a)
+            || !File.Exists(_cache.GetPath(a)))
+        {
+            return;
+        }
+
+        _dragFileId = fid;
+        Size ds = SystemInformation.DragSize;
+        _dragBox = new Rectangle(e.X - ds.Width / 2, e.Y - ds.Height / 2, ds.Width, ds.Height);
+    }
+
+    private void OnListMouseMove(object? sender, MouseEventArgs e)
+    {
+        if (_dragFileId is not long fid
+            || e.Button != MouseButtons.Left
+            || _dragBox.Contains(e.X, e.Y))
+        {
+            return;
+        }
+
+        _dragFileId = null;
+        if (!_byFileId.TryGetValue(fid, out AudioMessage? a))
+        {
+            return;
+        }
+
+        string path = _cache.GetPath(a);
+        if (File.Exists(path))
+        {
+            _list.DoDragDrop(
+                new DataObject(DataFormats.FileDrop, new[] { path }),
+                DragDropEffects.Copy);
+        }
+    }
+
     private void OnColumnHeaderClick(object? sender, DataGridViewCellMouseEventArgs e)
     {
         if (e.ColumnIndex is < 0 or > 4)

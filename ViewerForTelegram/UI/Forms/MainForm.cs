@@ -160,7 +160,18 @@ public sealed class MainForm : StyledForm
 
         _groupCombo = UIStyles.ComboBoxes.CreateStandard();
         _groupCombo.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-        _groupCombo.SelectedIndexChanged += (_, _) => OnFilterChanged();
+        _groupCombo.SelectedIndexChanged += (_, _) =>
+        {
+            if (_suppressComboEvents)
+            {
+                return;
+            }
+            // A different chat's list has nothing to do with the old search
+            // term - start fresh (clears before the load so no stale filter
+            // flashes over the new list).
+            _searchBox.Clear();
+            OnFilterChanged();
+        };
 
         _rangeCombo = UIStyles.ComboBoxes.CreateStandard();
         _rangeCombo.Anchor = AnchorStyles.Left | AnchorStyles.Right;

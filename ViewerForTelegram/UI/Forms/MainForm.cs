@@ -104,6 +104,7 @@ public sealed class MainForm : StyledForm
     private int _lastProgress;
     private CancellationTokenSource? _playCts;
     private CancellationTokenSource? _feedCts;
+    private CancellationTokenSource? _prefetchCts;   // background document warm-up for the selected row
     private bool _suppressListEvents;
 
     private bool _started;
@@ -339,6 +340,7 @@ public sealed class MainForm : StyledForm
             Loc.Changed -= OnLanguageChanged;
             _playCts?.Cancel();
             _feedCts?.Cancel();
+            _prefetchCts?.Cancel();
             _positionTimer.Stop();
             _feedDebounce.Stop();
             _filterDebounce.Stop();
@@ -1327,7 +1329,40 @@ public sealed class MainForm : StyledForm
         else
         {
             _player.ShowTrack(audio, PlayerButton.Play, cached);
+            PrefetchDocument(audio, cached);
         }
+    }
+
+    /// <summary>
+    /// While the user looks at a freshly-selected, not-yet-cached row, quietly
+    /// fetch its Telegram document in the background - so pressing Play doesn't
+    /// then pay a round-trip first (older tracks restored from the on-disk feed
+    /// cache have no document in memory). Best-effort; a new selection cancels
+    /// the previous warm-up.
+    /// </summary>
+    private void PrefetchDocument(AudioMessage audio, bool cached)
+    {
+        if (cached || !_connected)
+        {
+            return;
+        }
+
+        _prefetchCts?.Cancel();
+        _prefetchCts?.Dispose();
+        _prefetchCts = new CancellationTokenSource();
+        CancellationToken token = _prefetchCts.Token;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _telegram.PrefetchAsync(audio, token);
+            }
+            catch
+            {
+                // warm-up only - the download re-fetches if this didn't land
+            }
+        });
     }
 
     /// <summary>The one player button: download / cancel / play / pause the selected track.</summary>
@@ -1735,6 +1770,7 @@ public sealed class MainForm : StyledForm
     {
         _playCts?.Cancel();
         _feedCts?.Cancel();
+        _prefetchCts?.Cancel();
         _downloader.CancelAll();
         _playSeq++;              // abandon any in-flight PlayAsync
         _feedSeq++;              // and any in-flight feed load

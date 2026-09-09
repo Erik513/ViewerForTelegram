@@ -521,6 +521,17 @@ public sealed class TelegramSource : ITelegramSource
         _ => ".bin"
     };
 
+    public async Task PrefetchAsync(AudioMessage message, CancellationToken ct)
+    {
+        if (_client is null || _documents.ContainsKey(message.FileId))
+        {
+            return; // not connected, or already have it
+        }
+        LogLine($"Prefetch: fetching document for message {message.MessageId} in chat {message.ChatId}");
+        await TryFetchDocumentAsync(message.ChatId, message.MessageId, ct);
+        LogLine($"Prefetch: message {message.MessageId} -> {(_documents.ContainsKey(message.FileId) ? "document ready" : "not found")}");
+    }
+
     public async Task DownloadAsync(
         AudioMessage message, string targetPath, IProgress<int>? progress, CancellationToken ct)
     {

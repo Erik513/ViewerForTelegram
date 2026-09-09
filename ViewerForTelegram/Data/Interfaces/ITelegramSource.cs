@@ -73,6 +73,16 @@ public interface ITelegramSource : IAsyncDisposable
         CancellationToken ct);
 
     /// <summary>
+    /// Best-effort warm-up: makes sure the Telegram document behind
+    /// <paramref name="message"/> is in hand, so a later
+    /// <see cref="DownloadAsync"/> doesn't have to fetch it first. Called when a
+    /// row is selected. Safe to call often; a no-op once cached, and swallows
+    /// any failure (the download re-fetches anyway). Default: does nothing.
+    /// </summary>
+    Task PrefetchAsync(AudioMessage message, CancellationToken ct) =>
+        Task.CompletedTask;
+
+    /// <summary>
     /// Which of <paramref name="messageIds"/> (from <paramref name="chatId"/>)
     /// no longer exist on Telegram - re-queried explicitly, since a deletion
     /// that happened while this app wasn't connected is never pushed as an

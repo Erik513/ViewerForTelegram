@@ -393,14 +393,14 @@ public sealed class SettingsForm : StyledForm
         }
 
         if (MessageBox.Show(
-                Loc.T("settings.msg.clearCache.body", count, Mb(bytes)),
+                Loc.T("settings.msg.clearCache.body", Loc.Files(count), Mb(bytes)),
                 Loc.S("settings.msg.clearCache.title"),
                 MessageBoxButtons.YesNo, MessageBoxIcon.Question, this)
             == DialogResult.Yes)
         {
             _cache.Clear();
             UpdateCacheLabel();
-            ToastForm.ShowToast(Loc.T("toast.cacheCleared", count, Mb(bytes)), this);
+            ToastForm.ShowToast(Loc.T("toast.cacheCleared", Loc.Files(count), Mb(bytes)), this);
         }
     }
 

@@ -26,6 +26,11 @@ public static class Loc
     /// <summary><see cref="S"/> run through <see cref="string.Format(string,object[])"/>.</summary>
     public static string T(string key, params object[] args) => AppLocalization.Get(key, args);
 
+    /// <summary>Localised "N file" / "N files" count phrase - picks the singular for 1.</summary>
+    public static string Files(int count) => Current == AppLanguage.German
+        ? (count == 1 ? "1 Datei" : $"{count} Dateien")
+        : (count == 1 ? "1 file" : $"{count} files");
+
     public static AppLanguage Current
     {
         get => AppLocalization.Language;
@@ -83,12 +88,11 @@ public static class Loc
         ["status.loading"] = "Loading …",
         ["status.checkingNew"] = "Checking for new files …",
         ["status.loadingProgress"] = "Loading … {0} / {1} files",
-        ["status.loadingCount"] = "Loading … {0} files",
-        ["status.loadingFinished"] = "Loading … finished, {0} files",
+        ["status.loadingCount"] = "Loading … {0}",
+        ["status.loadingFinished"] = "Loading … finished, {0}",
         ["status.noAudioRange"] = "No files in this time range.",
         ["status.notSignedIn"] = "Not signed in – open Settings.",
-        ["status.count"] = "{0} files",
-        ["status.filtered"] = "{0} of {1} files",
+        ["status.filtered"] = "{0} of {1}",
         ["status.retry"] = "{0} failed, retrying ({1}/{2}) …",
         ["status.rateLimit"] = "Telegram rate limit – wait {0}s, then Settings › Sign in.",
         ["status.opFailed"] = "{0} failed ({1}). Settings › Sign in to retry.",
@@ -108,8 +112,8 @@ public static class Loc
         // --- toasts / save ---
         ["toast.playFirst"] = "Download failed – play the track first so it is cached.",
         ["toast.downloaded"] = "Downloaded: {0}",
-        ["toast.listUpdated"] = "List updated: {0} files",
-        ["toast.cacheCleared"] = "Cache cleared: {0} files ({1})",
+        ["toast.listUpdated"] = "List updated: {0}",
+        ["toast.cacheCleared"] = "Cache cleared: {0} ({1})",
         ["save.filter"] = "Audio file|*{0}|All files|*.*",
 
         // --- credentials-incomplete prompt ---
@@ -179,7 +183,7 @@ public static class Loc
         ["settings.cache.used"] = "{0} / {1} ({2} files)",
         ["settings.msg.signout.body"] = "Sign out? The stored login is deleted.\r\nThe credentials are kept.",
         ["settings.msg.signout.title"] = "Sign out",
-        ["settings.msg.clearCache.body"] = "Delete {0} files ({1}) from the cache?",
+        ["settings.msg.clearCache.body"] = "Delete {0} ({1}) from the cache?",
         ["settings.msg.clearCache.title"] = "Clear cache",
         ["settings.msg.wipe.body"] = "Really delete api_id, api_hash, phone number, cached files and saved lists, and sign out?",
         ["settings.msg.wipe.title"] = "Delete data",
@@ -252,12 +256,11 @@ public static class Loc
         ["status.loading"] = "Lade …",
         ["status.checkingNew"] = "Suche nach neuen Dateien …",
         ["status.loadingProgress"] = "Lade … {0} / {1} Dateien",
-        ["status.loadingCount"] = "Lade … {0} Dateien",
-        ["status.loadingFinished"] = "Laden … fertig, {0} Dateien",
+        ["status.loadingCount"] = "Lade … {0}",
+        ["status.loadingFinished"] = "Laden … fertig, {0}",
         ["status.noAudioRange"] = "Keine Dateien in diesem Zeitraum.",
         ["status.notSignedIn"] = "Nicht angemeldet – Einstellungen öffnen.",
-        ["status.count"] = "{0} Dateien",
-        ["status.filtered"] = "{0} von {1} Dateien",
+        ["status.filtered"] = "{0} von {1}",
         ["status.retry"] = "{0} fehlgeschlagen, neuer Versuch ({1}/{2}) …",
         ["status.rateLimit"] = "Telegram-Ratenlimit – {0}s warten, dann Einstellungen › Anmelden.",
         ["status.opFailed"] = "{0} fehlgeschlagen ({1}). Einstellungen › Anmelden zum erneuten Versuch.",
@@ -276,8 +279,8 @@ public static class Loc
 
         ["toast.playFirst"] = "Download fehlgeschlagen – zuerst den Titel abspielen, damit er im Cache liegt.",
         ["toast.downloaded"] = "Heruntergeladen: {0}",
-        ["toast.listUpdated"] = "Liste aktualisiert: {0} Dateien",
-        ["toast.cacheCleared"] = "Cache geleert: {0} Dateien ({1})",
+        ["toast.listUpdated"] = "Liste aktualisiert: {0}",
+        ["toast.cacheCleared"] = "Cache geleert: {0} ({1})",
         ["save.filter"] = "Audiodatei|*{0}|Alle Dateien|*.*",
 
         ["msg.credsIncomplete.body"] = "api_id, api_hash und Telefonnummer müssen alle ausgefüllt sein.\r\n"
@@ -342,7 +345,7 @@ public static class Loc
         ["settings.cache.used"] = "{0} / {1} ({2} Dateien)",
         ["settings.msg.signout.body"] = "Abmelden? Die gespeicherte Anmeldung wird gelöscht.\r\nDie Zugangsdaten bleiben erhalten.",
         ["settings.msg.signout.title"] = "Abmelden",
-        ["settings.msg.clearCache.body"] = "{0} Dateien ({1}) aus dem Cache löschen?",
+        ["settings.msg.clearCache.body"] = "{0} ({1}) aus dem Cache löschen?",
         ["settings.msg.clearCache.title"] = "Cache leeren",
         ["settings.msg.wipe.body"] = "Wirklich api_id, api_hash, Telefonnummer, heruntergeladene Dateien und gespeicherte Listen löschen und abmelden?",
         ["settings.msg.wipe.title"] = "Daten löschen",

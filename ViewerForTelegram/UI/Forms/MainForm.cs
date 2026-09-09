@@ -434,7 +434,7 @@ public sealed class MainForm : StyledForm
             _items = _largestItems;
             RebuildByFileId();
             RenderList();
-            Toast(Loc.T("toast.listUpdated", _items.Count));
+            Toast(Loc.T("toast.listUpdated", Loc.Files(_items.Count)));
         }
 
         PushCacheInfo();
@@ -909,7 +909,7 @@ public sealed class MainForm : StyledForm
             }
             Status(target > 0
                 ? Loc.T("status.loadingProgress", Math.Min(n, target), target)
-                : Loc.T("status.loadingCount", n));
+                : Loc.T("status.loadingCount", Loc.Files(n)));
         });
 
         // A large fresh "newest N" pull (or growing a reused list, e.g. Newest
@@ -981,7 +981,7 @@ public sealed class MainForm : StyledForm
 
         RenderList(afterLoad: true);
         EndFeedLoading();
-        Toast(Loc.T("toast.listUpdated", _items.Count));
+        Toast(Loc.T("toast.listUpdated", Loc.Files(_items.Count)));
 
         // So a restart (or switching back to this chat) can show the list
         // instantly and only fetch what's changed, instead of re-pulling e.g.
@@ -1228,11 +1228,11 @@ public sealed class MainForm : StyledForm
         }
         else if (filtered.Count == _items.Count)
         {
-            Status(afterLoad ? Loc.T("status.loadingFinished", _items.Count) : Loc.T("status.count", _items.Count));
+            Status(afterLoad ? Loc.T("status.loadingFinished", Loc.Files(_items.Count)) : Loc.Files(_items.Count));
         }
         else
         {
-            Status(Loc.T("status.filtered", filtered.Count, _items.Count));
+            Status(Loc.T("status.filtered", filtered.Count, Loc.Files(_items.Count)));
         }
     }
 

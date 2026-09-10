@@ -116,8 +116,11 @@ public sealed class MainForm : StyledForm
 
     private int _sortColumn = -1;   // -1 = feed order (newest first); else a column index
     private bool _sortAscending;
-    private bool _scrollToTopNextRender;
-    private bool _scrollToKeptRowNextRender;   // chat switch: land on the last-played row (or top), not the old scroll offset
+    // Where the next RenderList should leave the viewport. KeepOffset is the
+    // norm (a live filter keystroke); Top follows a re-sort; KeptRow follows a
+    // chat switch (land on the last-played row, or the top if it dropped out).
+    private enum NextScroll { KeepOffset, Top, KeptRow }
+    private NextScroll _nextScroll = NextScroll.KeepOffset;
 
     private long? _dragFileId;      // row armed for a file drag-out (only if cached)
     private Rectangle _dragBox;     // move past this before a drag actually starts
@@ -190,7 +193,7 @@ public sealed class MainForm : StyledForm
             _searchBox.Clear();
             // Land on the last-played row in the new list (or its top), not
             // wherever this chat's predecessor happened to be scrolled.
-            _scrollToKeptRowNextRender = true;
+            _nextScroll = NextScroll.KeptRow;
             OnFilterChanged();
         };
 
@@ -1250,8 +1253,8 @@ public sealed class MainForm : StyledForm
             0 => AppDateFormatter.Format(a.DateUtc.ToLocalTime()),
             1 => a.Title,
             2 => a.Performer,
-            3 => a.Duration is { } d ? $"{(int)d.TotalMinutes}:{d.Seconds:00}" : "–",
-            4 => $"{a.SizeBytes / 1024d / 1024d:0.0} MB",
+            3 => a.Duration is { } d ? TrackFormat.Duration(d) : "–",
+            4 => TrackFormat.SizeMb(a.SizeBytes),
             CachedColumnIndex => _cachedIds.Contains(a.FileId) ? "✓" : "",
             _ => "",
         };
@@ -1274,88 +1277,116 @@ public sealed class MainForm : StyledForm
         }
     }
 
+    /// <param name="afterLoad">The render that ends a feed load - the status line then reads "… finished".</param>
+    /// <param name="announceStatus">
+    /// False for a progressive render mid-load: the loading-progress line owns
+    /// the status, and the "land on the kept row" request is kept for the final render.
+    /// </param>
     private void RenderList(bool afterLoad = false, bool announceStatus = true)
     {
-        // Dismiss a truncation tooltip still showing over a row we're about to
-        // remove (WinForms would otherwise leave it hanging).
-        if (_list.ShowCellToolTips)
-        {
-            _list.ShowCellToolTips = false;
-            _list.ShowCellToolTips = true;
-        }
+        DismissHangingCellTooltip();
 
-        string[] queryTerms = TrackSearch.Terms(_searchBox.Text);
-        string[]? formatExt = SelectedFormatExtensions;
-        _view = ApplySort(_items
-            .Where(i => (queryTerms.Length == 0
-                         || TrackSearch.Matches($"{i.Audio.Performer} {i.Audio.Title} {i.Audio.FileName}", queryTerms))
-                     && (formatExt is null || formatExt.Contains(FileExtension(i.Audio)))))
-            .ToList();
-
+        _view = BuildView();
         _cachedIds = _cache.CachedFileIds();
 
         _suppressListEvents = true;
         _list.SuspendLayout();
         int scrollBefore = Math.Max(0, _list.FirstDisplayedScrollingRowIndex);
+        _tintedFileId = PlayingMark;
 
-        long? mark = PlayingMark;
-        _tintedFileId = mark;
-
-        // VirtualMode: just tell the grid how many rows there are and let it pull
-        // the ~30 visible cells from _view. Drop CurrentCell first so shrinking
-        // the count past the old selection can't throw.
+        // VirtualMode: just tell the grid the row count and let it pull the ~30
+        // visible cells from _view. Drop CurrentCell first so shrinking the
+        // count past the old selection can't throw.
         try { _list.CurrentCell = null; } catch { }
         _list.RowCount = _view.Count;
         _list.ClearSelection();
         _list.Invalidate();   // re-fetch every visible value
 
-        // Keep the previously-selected (or playing) row selected across a
-        // re-render; on the first load fall back to the track from ui-state.
-        long? keep = _selectedFileId ?? _currentFileId
-            ?? (_lastTrackId != 0 ? _lastTrackId : (long?)null);
-        int keptIdx = -1;
-        if (keep is long fid)
-        {
-            keptIdx = _view.FindIndex(i => i.Audio.FileId == fid);
-            if (keptIdx >= 0)
-            {
-                _list.CurrentCell = _list.Rows[keptIdx].Cells[0];
-                _list.Rows[keptIdx].Selected = true;
-            }
-        }
+        int keptIdx = RestoreKeptSelection();
         _list.ResumeLayout();
 
-        // Setting CurrentCell scrolls the row into view - don't jump the list for
-        // it, just mark it. Then place the viewport:
-        //  - after a re-sort: the old offset is meaningless -> top
-        //  - on a chat switch: on the last-played row, or the top if it isn't in
-        //    this list (NOT wherever the previous chat was scrolled to)
-        //  - otherwise (live text / format filter): keep the user's place
-        if (_list.RowCount > 0)
-        {
-            int target =
-                _scrollToTopNextRender ? 0
-                : _scrollToKeptRowNextRender ? Math.Max(0, keptIdx)
-                : Math.Min(scrollBefore, _list.RowCount - 1);
-            try { _list.FirstDisplayedScrollingRowIndex = target; }
-            catch { /* not scrollable yet */ }
-        }
-        _scrollToTopNextRender = false;
-        // Hold the "land on the kept row" intent across the progressive renders
-        // of a still-loading list; clear it on any settled render.
-        if (announceStatus)
-        {
-            _scrollToKeptRowNextRender = false;
-        }
+        PositionViewport(keptIdx, scrollBefore, settled: announceStatus);
 
         _suppressListEvents = false;
         ShowSelected();   // the playing-row tint comes from OnCellFormatting
 
-        if (!announceStatus)
+        if (announceStatus)
         {
-            return;   // a progressive render mid-load - the loading-progress line owns the status
+            AnnounceListStatus(afterLoad);
+        }
+    }
+
+    // Dismiss a truncation tooltip still showing over a row we're about to
+    // remove - WinForms would otherwise leave it hanging.
+    private void DismissHangingCellTooltip()
+    {
+        if (_list.ShowCellToolTips)
+        {
+            _list.ShowCellToolTips = false;
+            _list.ShowCellToolTips = true;
+        }
+    }
+
+    /// <summary><see cref="_items"/> after the format + text filter and the column sort.</summary>
+    private List<FeedItem> BuildView()
+    {
+        string[] queryTerms = TrackSearch.Terms(_searchBox.Text);
+        string[]? formatExt = SelectedFormatExtensions;
+        return ApplySort(_items
+            .Where(i => (queryTerms.Length == 0
+                         || TrackSearch.Matches($"{i.Audio.Performer} {i.Audio.Title} {i.Audio.FileName}", queryTerms))
+                     && (formatExt is null || formatExt.Contains(FileExtension(i.Audio)))))
+            .ToList();
+    }
+
+    // Re-select the row of the track that's selected / playing / was last played
+    // (ui-state on a fresh launch), if it survived the filter. Returns its index
+    // in _view, or -1.
+    private int RestoreKeptSelection()
+    {
+        long? keep = _selectedFileId ?? _currentFileId
+            ?? (_lastTrackId != 0 ? _lastTrackId : (long?)null);
+        if (keep is not long fid)
+        {
+            return -1;
         }
 
+        int idx = _view.FindIndex(i => i.Audio.FileId == fid);
+        if (idx >= 0)
+        {
+            _list.CurrentCell = _list.Rows[idx].Cells[0];
+            _list.Rows[idx].Selected = true;
+        }
+        return idx;
+    }
+
+    // Place the viewport after a rebuild. Setting CurrentCell in
+    // RestoreKeptSelection already scrolled the kept row into view, so even
+    // "keep the offset" has to actively override that.
+    private void PositionViewport(int keptIdx, int scrollBefore, bool settled)
+    {
+        if (_list.RowCount > 0)
+        {
+            int target = _nextScroll switch
+            {
+                NextScroll.Top => 0,
+                NextScroll.KeptRow => Math.Max(0, keptIdx),
+                _ => Math.Min(scrollBefore, _list.RowCount - 1),
+            };
+            try { _list.FirstDisplayedScrollingRowIndex = target; }
+            catch { /* not scrollable yet */ }
+        }
+
+        // A one-shot request: consumed on the first settled render, but kept
+        // through the progressive renders of a still-loading list.
+        if (settled || _nextScroll == NextScroll.Top)
+        {
+            _nextScroll = NextScroll.KeepOffset;
+        }
+    }
+
+    private void AnnounceListStatus(bool afterLoad)
+    {
         if (_items.Count == 0)
         {
             Status(_connected ? Loc.S("status.noAudioRange") : Loc.S("status.notSignedIn"));
@@ -1729,7 +1760,7 @@ public sealed class MainForm : StyledForm
                     : SortOrder.None;
         }
 
-        _scrollToTopNextRender = true;
+        _nextScroll = NextScroll.Top;
         RenderList();
     }
 

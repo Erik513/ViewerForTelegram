@@ -330,7 +330,7 @@ public sealed class PlayerPanel : Panel
         _title.Text = string.IsNullOrWhiteSpace(a.Title) ? a.FileName : a.Title;
         _performer.Text = a.Performer;
         _sizeBytes = a.SizeBytes;
-        _fileSize.Text = $"{a.SizeBytes / 1024d / 1024d:0.0} MB";
+        _fileSize.Text = TrackFormat.SizeMb(a.SizeBytes);
         _bitrate.Text = a.BitrateKbps is { } kb ? $"{kb} kbps" : "";
         _fileFormat.Text = Path.GetExtension(a.FileName).TrimStart('.').ToUpperInvariant();
         _saveTipFileName = a.FileName;
@@ -480,5 +480,5 @@ public sealed class PlayerPanel : Panel
     }
 
     private static string Fmt(TimeSpan t) =>
-        t <= TimeSpan.Zero ? "0:00" : $"{(int)t.TotalMinutes}:{t.Seconds:00}";
+        t <= TimeSpan.Zero ? "0:00" : TrackFormat.Duration(t);
 }

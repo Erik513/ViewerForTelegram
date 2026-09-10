@@ -425,9 +425,11 @@ public sealed class TelegramSource : ITelegramSource
         // refresh runs this check again.
         if (_client is null || _peers is null || !_peers.TryGetValue(chatId, out InputPeer? peer))
         {
+            LogLine($"FindDeletedMessages: not ready for chat {chatId} (no client/peers) - skipping");
             return Array.Empty<int>();
         }
 
+        LogLine($"FindDeletedMessages: checking {messageIds.Count} ids in chat {chatId}");
         var deleted = new List<int>();
 
         try

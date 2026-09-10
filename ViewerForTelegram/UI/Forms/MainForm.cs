@@ -187,6 +187,10 @@ public sealed class MainForm : StyledForm
 
         _groupCombo = UIStyles.ComboBoxes.CreateStandard();
         _groupCombo.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        // Long chat names get clipped in the narrow box - show the full one in a
+        // tooltip, and widen the dropdown list so it isn't clipped there too.
+        _groupCombo.SelectedIndexChanged += (_, _) => UpdateGroupComboTooltip();
+        _groupCombo.SizeChanged += (_, _) => UpdateGroupComboTooltip();
         _groupCombo.SelectedIndexChanged += (_, _) =>
         {
             if (_suppressComboEvents)
@@ -469,6 +473,7 @@ public sealed class MainForm : StyledForm
         }
 
         _suppressComboEvents = false;
+        RefreshGroupComboHints();
 
         _player.ApplyTexts();
         PushCacheInfo();
@@ -476,6 +481,41 @@ public sealed class MainForm : StyledForm
         {
             RenderList();   // refresh the "{n} audios" status line
         }
+    }
+
+    /// <summary>
+    /// Widen the chat dropdown to fit its longest entry, and refresh the
+    /// clipped-name tooltip on the closed box.
+    /// </summary>
+    private void RefreshGroupComboHints()
+    {
+        if (_groupCombo.Items.Count == 0)
+        {
+            _groupCombo.DropDownWidth = _groupCombo.Width;
+        }
+        else
+        {
+            int widest = _groupCombo.Width;
+            foreach (object item in _groupCombo.Items)
+            {
+                int w = TextRenderer.MeasureText(item.ToString(), _groupCombo.Font).Width;
+                if (w > widest)
+                {
+                    widest = w;
+                }
+            }
+            _groupCombo.DropDownWidth = widest + SystemInformation.VerticalScrollBarWidth + 6;
+        }
+
+        UpdateGroupComboTooltip();
+    }
+
+    private void UpdateGroupComboTooltip()
+    {
+        string text = _groupCombo.SelectedItem?.ToString() ?? "";
+        int fits = _groupCombo.Width - SystemInformation.VerticalScrollBarWidth - 6;   // less the drop arrow
+        bool clipped = text.Length > 0 && TextRenderer.MeasureText(text, _groupCombo.Font).Width > fits;
+        _toolTip.SetToolTip(_groupCombo, clipped ? text : "");
     }
 
     // ---------- startup / connect ----------
@@ -679,6 +719,7 @@ public sealed class MainForm : StyledForm
         int idx = _chats.FindIndex(c => c.Id == keepChatId);
         _groupCombo.SelectedIndex = idx >= 0 ? idx : (_chats.Count > 0 ? 0 : -1);
         _suppressComboEvents = false;
+        RefreshGroupComboHints();
 
         Status(Loc.T("status.signedIn", _chats.Count));
 
@@ -2227,6 +2268,7 @@ public sealed class MainForm : StyledForm
         _suppressComboEvents = true;
         _groupCombo.Items.Clear();
         _suppressComboEvents = false;
+        RefreshGroupComboHints();
         _suppressListEvents = true;
         try { _list.CurrentCell = null; } catch { }
         _view = new();

@@ -55,9 +55,13 @@ internal static class GlyphIcons
         float thick = Math.Max(2f, s * 0.11f);
 
         const float startDeg = -35f, sweepDeg = 280f;
-        using (var pen = new Pen(color, thick) { StartCap = LineCap.Round, EndCap = LineCap.Flat })
+        // Draw the arc a few degrees past where the head sits, with a round cap,
+        // so the stroke ends *under* the filled head. Butting a flat cap against
+        // the triangle base on the same line leaves an antialiased seam (the
+        // same join the download arrow had).
+        using (var pen = new Pen(color, thick) { StartCap = LineCap.Round, EndCap = LineCap.Round })
         {
-            g.DrawArc(pen, cx - r, cy - r, r * 2, r * 2, startDeg, sweepDeg);
+            g.DrawArc(pen, cx - r, cy - r, r * 2, r * 2, startDeg, sweepDeg + 8f);
         }
 
         // filled arrowhead at the far end of the arc, pointing along the sweep

@@ -106,6 +106,12 @@ public sealed class MainForm : StyledForm
     // grow (or the next app start) doesn't re-fetch what was already known.
     // Basis for incremental reuse and what gets persisted to disk.
     private const int MaxLargestAudios = ViewerForTelegram.Data.JsonFeedCacheStore.MaxAudiosPerChat;
+
+    // Below this many known audios a count-mode reload re-fetches the chat in
+    // full instead of reusing the cached list - cheap at this size, and unlike
+    // the incremental path it drops tracks deleted from inside the known range.
+    private const int IncrementalReuseFloor = 250;
+
     private long _largestChatId;
     private int _largestRange;      // informational: -_largestItems.Count
     private List<FeedItem> _largestItems = new();
@@ -962,8 +968,18 @@ public sealed class MainForm : StyledForm
         // Reuse the biggest count-mode list known for this chat - then only new
         // posts (and any extra older ones) are fetched, regardless of whether
         // what's currently on screen is smaller (a previous "shrink").
+        //
+        // But only when that list is actually large: the incremental fetch can
+        // add newer/older messages, yet never notices one deleted from *inside*
+        // the range it already covers. A short list (a bot chat, Saved Messages,
+        // a small group) is re-fetched in full instead - a page or three, and it
+        // drops anything that's gone. The shortcut is for the genuine "Newest
+        // thousands" case where re-pulling everything would hurt.
+        int wantCount = range < 0 ? -range : 0;
+        bool worthReusing = _largestItems.Count >= wantCount
+            || _largestItems.Count > IncrementalReuseFloor;
         List<FeedItem>? previousItems =
-            range <= 0 && chatId == _largestChatId && _largestItems.Count > 0
+            range <= 0 && chatId == _largestChatId && _largestItems.Count > 0 && worthReusing
                 ? _largestItems
                 : null;
         IReadOnlyList<AudioMessage>? previous = previousItems?.Select(i => i.Audio).ToList();
@@ -1073,7 +1089,13 @@ public sealed class MainForm : StyledForm
         if (range <= 0)
         {
             _largestChatId = chatId;
-            _largestItems = MergeLargest(_largestItems, loaded);
+            // A full re-fetch (previousItems null) is the authoritative current
+            // list - replace, so a deleted track can't linger. An incremental
+            // grow only added to previousItems, so union it in (a smaller N here
+            // must not shrink the remembered superset).
+            _largestItems = previousItems is null
+                ? loaded
+                : MergeLargest(_largestItems, loaded);
             _largestRange = -_largestItems.Count;
             _feedCacheStore.Save(new PersistedFeed(
                 chatId, _largestRange, _largestItems.Select(i => i.Audio).ToList()));

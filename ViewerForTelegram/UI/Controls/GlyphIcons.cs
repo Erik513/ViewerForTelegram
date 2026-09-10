@@ -86,19 +86,24 @@ internal static class GlyphIcons
 
         float shaftHalf = Math.Max(1.2f, s * 0.07f);
         float shaftTop = cy - s * 0.30f;
-        float headTopY = cy - s * 0.06f;
+        float shoulderY = cy - s * 0.06f;
         float headHalf = s * 0.19f;
         float tipY = cy + s * 0.16f;
 
         using var brush = new SolidBrush(color);
 
-        // shaft + arrow head
-        g.FillRectangle(brush, cx - shaftHalf, shaftTop, shaftHalf * 2, headTopY - shaftTop);
+        // Shaft + arrow head as one polygon. Two separate fills (a rectangle and
+        // a triangle) butting together leave a faint antialiased seam across the
+        // arrow; a single fill has no interior edge.
         g.FillPolygon(brush, new[]
         {
-            new PointF(cx - headHalf, headTopY),
-            new PointF(cx + headHalf, headTopY),
+            new PointF(cx - shaftHalf, shaftTop),
+            new PointF(cx + shaftHalf, shaftTop),
+            new PointF(cx + shaftHalf, shoulderY),
+            new PointF(cx + headHalf, shoulderY),
             new PointF(cx, tipY),
+            new PointF(cx - headHalf, shoulderY),
+            new PointF(cx - shaftHalf, shoulderY),
         });
 
         // tray under it

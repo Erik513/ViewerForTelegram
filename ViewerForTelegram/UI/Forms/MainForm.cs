@@ -1475,22 +1475,26 @@ public sealed class MainForm : StyledForm
 
         _selectedFileId = audio.FileId;
         bool cached = _cache.Contains(audio);
+        // "Save a copy" downloads an un-cached file on demand, so it's usable
+        // whenever the track is cached or we're still connected - this is the
+        // only way to get a save-only format (ogg/opus) out, since Play can't.
+        bool canSave = cached || _connected;
 
         if (_pendingFileId == audio.FileId)
         {
-            _player.ShowTrack(audio, PlayerButton.Cancel, cached: false);
+            _player.ShowTrack(audio, PlayerButton.Cancel, canSave: false);
             _player.SetDownloadProgress(_lastProgress);
         }
         else if (_currentFileId == audio.FileId)
         {
             bool playing = _audio.State == PlaybackState.Playing;
-            _player.ShowTrack(audio, playing ? PlayerButton.Pause : PlayerButton.Play, cached);
+            _player.ShowTrack(audio, playing ? PlayerButton.Pause : PlayerButton.Play, canSave);
             _player.SetLoaded(_audio.Duration, _audio.BitrateKbps);
             _player.SetPosition(_audio.Position);
         }
         else
         {
-            _player.ShowTrack(audio, PlayerButton.Play, cached);
+            _player.ShowTrack(audio, PlayerButton.Play, canSave);
             PrefetchDocument(audio, cached);
         }
     }
@@ -1604,31 +1608,43 @@ public sealed class MainForm : StyledForm
     }
 
     /// <summary>
-    /// Telegram sometimes doesn't report a track's length (posted "as a file").
-    /// Once the audio engine has decoded it we know the real duration - write it
-    /// back into the model, the list and the cache so it survives a reload.
+    /// The little red count on the refresh button: how many tracks the last
+    /// load pulled in that the user hadn't seen ("new since last visit"). Drawn
+    /// as a capsule sized to the text so a two-digit count isn't clipped.
     /// </summary>
     private static void DrawNewBadge(Graphics g, Rectangle bounds, int count)
     {
-        string text = count > 9 ? "9+" : count.ToString();
-        const int d = 15;
-        var circle = new Rectangle(bounds.Right - d, bounds.Top, d, d);
+        string text = count > 99 ? "99+" : count.ToString();
+        const int h = 13;
 
         var oldSmoothing = g.SmoothingMode;
         g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+        using var font = new Font("Segoe UI", 6.5f, FontStyle.Bold);
+        int textWidth = (int)Math.Ceiling(g.MeasureString(text, font).Width);
+        int w = Math.Max(h, textWidth + 4);
+        // Top-right corner, kept inside the button - the Paint clip would cut off
+        // anything drawn past the edge.
+        var badge = new Rectangle(bounds.Right - w, bounds.Top, w, h);
+
         using (var fill = new SolidBrush(UIStyles.Colors.RedLight))
         {
-            g.FillEllipse(fill, circle);
+            g.FillEllipse(fill, badge.Left, badge.Top, h, h);
+            g.FillEllipse(fill, badge.Right - h, badge.Top, h, h);
+            g.FillRectangle(fill, badge.Left + h / 2, badge.Top, badge.Width - h, h);
         }
-        using (var font = new Font("Segoe UI", 7f, FontStyle.Bold))
+
         using (var sf = new StringFormat
                {
                    Alignment = StringAlignment.Center,
-                   LineAlignment = StringAlignment.Center
+                   LineAlignment = StringAlignment.Center,
+                   FormatFlags = StringFormatFlags.NoWrap | StringFormatFlags.NoClip,
+                   Trimming = StringTrimming.None,
                })
         {
-            g.DrawString(text, font, Brushes.White, circle, sf);
+            g.DrawString(text, font, Brushes.White, badge, sf);
         }
+
         g.SmoothingMode = oldSmoothing;
     }
 
@@ -1790,6 +1806,11 @@ public sealed class MainForm : StyledForm
             : items.OrderByDescending(key, comparer);
     }
 
+    /// <summary>
+    /// Telegram sometimes doesn't report a track's length (posted "as a file").
+    /// Once the audio engine has decoded it we know the real duration - write it
+    /// back into the model, the list and the cache so it survives a reload.
+    /// </summary>
     private void BackfillDuration(long fileId, TimeSpan duration)
     {
         if (duration <= TimeSpan.Zero

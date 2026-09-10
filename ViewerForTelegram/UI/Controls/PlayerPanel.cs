@@ -325,7 +325,12 @@ public sealed class PlayerPanel : Panel
     }
 
     /// <summary>Show a track's details and set the button to <paramref name="button"/>.</summary>
-    public void ShowTrack(AudioMessage a, PlayerButton button, bool cached)
+    /// <param name="canSave">
+    /// Whether the save button works for this track - true when it is cached or
+    /// can still be downloaded on demand (connected). "Save a copy" itself
+    /// fetches an un-cached file first, so this need not wait for a download.
+    /// </param>
+    public void ShowTrack(AudioMessage a, PlayerButton button, bool canSave)
     {
         _title.Text = string.IsNullOrWhiteSpace(a.Title) ? a.FileName : a.Title;
         _performer.Text = a.Performer;
@@ -337,7 +342,7 @@ public sealed class PlayerPanel : Panel
         _tips.SetToolTip(_saveButton, Loc.T("player.tip.downloadFile", a.FileName));
 
         SetButton(button);
-        _saveButton.Enabled = cached;
+        _saveButton.Enabled = canSave;
 
         if (button != PlayerButton.Cancel)
         {

@@ -1551,6 +1551,15 @@ public sealed class MainForm : StyledForm
             return;
         }
 
+        // Only reached on a genuine user selection (a re-render's own selection
+        // restore runs under _suppressListEvents above) - acknowledge the "N
+        // new" badge the moment the user actually looks at the list, not only
+        // when the next refresh happens to reset it.
+        if (_newSinceLastVisit > 0)
+        {
+            SetNewCount(0);
+        }
+
         if (SelectedAudio is not { } audio)
         {
             _selectedFileId = null;

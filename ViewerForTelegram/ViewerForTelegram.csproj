@@ -14,9 +14,9 @@
 
     <!-- Shown on the exe's "Details" tab. Version is also what AppUpdater
          compares against the GitHub release tags (vX.Y.Z) at startup. -->
-    <Version>1.2.0</Version>
-    <FileVersion>1.2.0.0</FileVersion>
-    <InformationalVersion>1.2.0</InformationalVersion>
+    <Version>1.2.1</Version>
+    <FileVersion>1.2.1.0</FileVersion>
+    <InformationalVersion>1.2.1</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Product>Viewer for Telegram</Product>
     <AssemblyTitle>Viewer for Telegram</AssemblyTitle>

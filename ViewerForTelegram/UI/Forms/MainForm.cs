@@ -725,56 +725,43 @@ public sealed class MainForm : StyledForm
 
         if (_groupCombo.SelectedIndex >= 0)
         {
-            await LoadFeedAsync();   // toasts internally; schedules the deletion check itself
+            await LoadFeedAsync();   // toasts internally on success
+
+            // Correction pass, in the background: catches audios deleted from
+            // the chat while this app wasn't connected (no update event for
+            // those ever arrives after the fact). Deliberately only here - on
+            // startup and on Refresh - not on every ordinary range/chat switch,
+            // since re-verifying the whole known list isn't free.
+            if (SelectedChat is { } loadedChat)
+            {
+                _ = CheckForDeletedAsync(loadedChat.Id);
+            }
         }
     }
 
     private long _correctingChatId;   // != 0 while a correction pass (below) is running
-    private readonly Dictionary<long, DateTime> _deletionCheckedAt = new();
-
-    // How long a chat's deletion check stays "fresh" - a reload inside this
-    // window skips it. Keeps rapid refreshing from firing a getMessages batch
-    // per press; a real deletion is still noticed on the next reload past it.
-    private static readonly TimeSpan DeletionCheckCooldown = TimeSpan.FromMinutes(2);
-
-    // Verify only the newest N known ids (one getMessages call per 100). A
-    // deletion deep in old history is rarely what the user is looking at, and
-    // checking all 5000 every time is what provokes FLOOD_WAIT.
-    private const int DeletionCheckMaxIds = 2000;
 
     /// <summary>
-    /// Re-verifies the newest known audios for <paramref name="chatId"/> still
-    /// exist on Telegram (the incremental reload never notices one deleted from
-    /// inside the range it reuses). Anything gone is dropped, and - so "Newest
-    /// 1000" still means 1000 once that many exist - the shortfall is refilled
-    /// with the next-older ones. Updates <see cref="_largestItems"/> (persisted
-    /// cache included) and, if shown, <see cref="_items"/>. Best-effort:
-    /// throttled per chat, and any failure is logged and ignored.
+    /// Re-verifies every audio known for <paramref name="chatId"/> still exists
+    /// on Telegram. Anything gone is dropped, and - so "Newest 1000" still
+    /// means 1000 once that many exist, not quietly fewer - the shortfall is
+    /// refilled with the next-older ones via the normal incremental "grow"
+    /// fetch. Updates <see cref="_largestItems"/> (persisted cache included)
+    /// and, if currently shown, <see cref="_items"/>. Best-effort: any failure
+    /// is silently ignored, nothing here is critical.
     /// </summary>
     private async Task CheckForDeletedAsync(long chatId)
     {
         if (_correctingChatId != 0 || chatId != _largestChatId || _largestItems.Count == 0)
         {
-            AppLog.Line("DeletionCheck", $"skip chat {chatId}: busy / not the loaded chat / nothing known");
             return;
-        }
-        if (_deletionCheckedAt.TryGetValue(chatId, out DateTime last)
-            && DateTime.UtcNow - last < DeletionCheckCooldown)
-        {
-            return;   // checked this chat recently
         }
 
         _correctingChatId = chatId;
         try
         {
-            _deletionCheckedAt[chatId] = DateTime.UtcNow;
-
             int targetCount = _largestItems.Count;   // refill back up to this, not just "minus deleted"
-            List<int> ids = _largestItems
-                .OrderByDescending(i => i.Audio.MessageId)
-                .Take(DeletionCheckMaxIds)
-                .Select(i => i.Audio.MessageId)
-                .ToList();
+            List<int> ids = _largestItems.Select(i => i.Audio.MessageId).ToList();
             IReadOnlyList<int> deletedIds;
             try
             {
@@ -792,7 +779,6 @@ public sealed class MainForm : StyledForm
                 return;
             }
 
-            AppLog.Line("DeletionCheck", $"chat {chatId}: {deletedIds.Count} of {ids.Count} checked are gone - dropping");
             var deletedSet = new HashSet<int>(deletedIds);
             List<FeedItem> corrected = _largestItems.Where(i => !deletedSet.Contains(i.Audio.MessageId)).ToList();
 
@@ -1170,14 +1156,6 @@ public sealed class MainForm : StyledForm
         else
         {
             _feedCacheStore.Save(new PersistedFeed(chatId, range, _items.Select(i => i.Audio).ToList()));
-        }
-
-        // Verify the reused entries still exist. Skipped when previousItems is
-        // null - that was a full re-fetch, already authoritative. Runs in the
-        // background, throttled per chat.
-        if (range <= 0 && previousItems is not null && chatId == _largestChatId)
-        {
-            _ = CheckForDeletedAsync(chatId);
         }
     }
 
@@ -2272,7 +2250,6 @@ public sealed class MainForm : StyledForm
         _items = new();
         _largestChatId = 0;
         _largestItems = new();
-        _deletionCheckedAt.Clear();
         _byFileId.Clear();
         _suppressComboEvents = true;
         _groupCombo.Items.Clear();

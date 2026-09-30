@@ -121,10 +121,16 @@ dotnet build ViewerForTelegram.sln
 dotnet test  ViewerForTelegram.sln
 ```
 
-The shared UI library (`ErikwnkWFUI.dll` + `ErikwnkCore.dll`) is checked in
-under `lib/ErikwnkWFUI/`, so the solution builds without any extra setup.
-`lib/update-erikwnk-libs.ps1` re-copies those DLLs from the sibling
-`ErikwnkWFUI` repo if you are developing that library too.
+The shared UI library is a `ProjectReference` to the sibling `ErikwnkWFUI`
+repo (which itself references `ErikwnkCore`), so both are expected to be
+checked out next to this one:
+
+```
+source/repos/
+├── ViewerForTelegram/
+├── ErikwnkWFUI/
+└── ErikwnkCore/
+```
 
 The release build is one self-contained exe:
 

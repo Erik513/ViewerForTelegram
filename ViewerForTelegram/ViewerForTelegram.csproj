@@ -43,14 +43,10 @@
        Dependency direction by convention only:  UI -> Logic -> Data -->
 
   <ItemGroup>
-    <!-- Shared UI library as fixed DLLs from lib\. ErikwnkCore must be listed
-         explicitly (DLL references do not pull in dependencies). -->
-    <Reference Include="ErikwnkWFUI">
-      <HintPath>..\lib\ErikwnkWFUI\ErikwnkWFUI.dll</HintPath>
-    </Reference>
-    <Reference Include="ErikwnkCore">
-      <HintPath>..\lib\ErikwnkWFUI\ErikwnkCore.dll</HintPath>
-    </Reference>
+    <!-- Shared UI library, built from source. ErikwnkCore comes along
+         transitively (ErikwnkWFUI.csproj references it), no separate entry
+         needed. Assumes the sibling repo checkout ..\..\ErikwnkWFUI. -->
+    <ProjectReference Include="..\..\ErikwnkWFUI\ErikwnkWFUI\ErikwnkWFUI.csproj" />
   </ItemGroup>
 
   <ItemGroup>

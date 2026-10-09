@@ -12,6 +12,7 @@ using ViewerForTelegram.UI;
 using MessageBox = ErikwnkWFUI.Forms.MessageBox;
 using MessageBoxButtons = ErikwnkWFUI.Forms.MessageBoxButtons;
 using MessageBoxIcon = ErikwnkWFUI.Forms.MessageBoxIcon;
+using ComboBox = System.Windows.Forms.ComboBox;
 
 namespace ViewerForTelegram.UI.Forms;
 
@@ -146,11 +147,11 @@ public sealed class SettingsForm : StyledForm
             Loc.S("settings.toggle.clearCache.off"));
         _clearCacheOnStart.TabStop = false;
 
-        _browse = UIStyles.Buttons.CreateBrowse(Loc.S("settings.btn.chooseFolder"));
+        _browse = UIStyles.Buttons.CreateSymbol(UIStyles.Buttons.Presets.Browse, Loc.S("settings.btn.chooseFolder"));
         _browse.TabStop = false;
         _browse.Click += (_, _) => Browse();
 
-        _cacheSizeLabel = UIStyles.Labels.CreateNormal("");
+        _cacheSizeLabel = UIStyles.Labels.CreateStandard("");
         _clearCacheButton = UIStyles.Buttons.CreateRed(Loc.S("settings.btn.clearCache"), size: ButtonSize);
         _clearCacheButton.TabStop = false;
         _clearCacheButton.Click += (_, _) => ClearCache();
@@ -160,7 +161,7 @@ public sealed class SettingsForm : StyledForm
         _cacheFolder.TabStop = false;
         _toolTip.SetToolTip(_cacheFolder, AppPaths.CacheDir);
 
-        _cacheBrowse = UIStyles.Buttons.CreateBrowse(Loc.S("settings.btn.openCache"));
+        _cacheBrowse = UIStyles.Buttons.CreateSymbol(UIStyles.Buttons.Presets.Browse, Loc.S("settings.btn.openCache"));
         _cacheBrowse.TabStop = false;
         _cacheBrowse.Click += (_, _) => OpenCacheFolder();
 
@@ -309,7 +310,7 @@ public sealed class SettingsForm : StyledForm
         _clearCacheButton.Text = Loc.S("settings.btn.clearCache");
         _wipe.Text = Loc.S("settings.btn.delete");
 
-        // CreateBrowse keeps a folder glyph in .Text - only its tooltip is text.
+        // The browse buttons are symbol buttons - only their tooltip is text.
         UIStyles.Buttons.UpdateTooltip(_browse, Loc.S("settings.btn.chooseFolder"));
         UIStyles.Buttons.UpdateTooltip(_cacheBrowse, Loc.S("settings.btn.openCache"));
 
@@ -477,7 +478,7 @@ public sealed class SettingsForm : StyledForm
     /// </summary>
     private Label Desc(string text)
     {
-        Label l = UIStyles.Labels.CreateNormal(text);
+        Label l = UIStyles.Labels.CreateStandard(text);
         l.Anchor = AnchorStyles.Left;
         _toolTip.SetToolTip(l, text);
         return l;

@@ -16,6 +16,7 @@ using StyledGrid = ErikwnkWFUI.Controls.DataGridView;
 using StyledMessageBox = ErikwnkWFUI.Forms.MessageBox;
 using MessageBoxButtons = ErikwnkWFUI.Forms.MessageBoxButtons;
 using MessageBoxIcon = ErikwnkWFUI.Forms.MessageBoxIcon;
+using ComboBox = System.Windows.Forms.ComboBox;
 
 namespace ViewerForTelegram.UI.Forms;
 
@@ -298,6 +299,7 @@ public sealed class MainForm : StyledForm
             ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
             ScrollBars = ScrollBars.Vertical,   // no horizontal scrollbar, ever
             VirtualMode = true,   // cell values come from _view via CellValueNeeded
+            ContextMenuStrip = null,   // this list has no cut/copy/paste/insert affordances of its own
         };
         _list.CellValueNeeded += OnCellValueNeeded;
         _list.CellFormatting += OnCellFormatting;
@@ -1840,14 +1842,7 @@ public sealed class MainForm : StyledForm
             _sortColumn = -1;
         }
 
-        for (int c = 0; c <= 4; c++)
-        {
-            _list.Columns[c].HeaderCell.SortGlyphDirection =
-                c == _sortColumn
-                    ? (_sortAscending ? SortOrder.Ascending : SortOrder.Descending)
-                    : SortOrder.None;
-        }
-
+        // (The arrow in the header is drawn by the list itself, with the same three-state cycle.)
         _nextScroll = NextScroll.Top;
         RenderList();
     }

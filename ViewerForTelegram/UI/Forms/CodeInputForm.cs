@@ -26,7 +26,7 @@ public sealed class CodeInputForm : StyledForm
         Size = new Size(380, 230);
         StartPosition = FormStartPosition.CenterScreen;
 
-        Label label = UIStyles.Labels.CreateNormal(Loc.S("code.prompt"));
+        Label label = UIStyles.Labels.CreateStandard(Loc.S("code.prompt"));
         label.SetBounds(24, 16, 320, 48);
 
         _codeBox = UIStyles.TextBoxes.CreateStandard("", "12345");

@@ -76,14 +76,10 @@ public sealed class PlayerPanel : Panel
         _saveButton.Paint += (s, e) => GlyphIcons.DrawDownload(
             e.Graphics, ((Control)s!).ClientRectangle, GlyphColor(_saveButton));
 
-        // The library's yellow browse button - kept yellow, but the folder icon
-        // is redrawn so it matches the weight/centring of the other icons.
-        _browseButton = UIStyles.Buttons.CreateBrowse(Loc.S("player.tip.browse"), new Size(34, 34));
-        _browseButton.Text = "";
+        // The library's yellow browse button; it draws its folder symbol itself.
+        _browseButton = UIStyles.Buttons.CreateSymbol(UIStyles.Buttons.Presets.Browse, Loc.S("player.tip.browse"), new Size(34, 34));
         _browseButton.Anchor = AnchorStyles.None;
         _browseButton.Click += (_, _) => BrowseFolder?.Invoke();
-        _browseButton.Paint += (s, e) => GlyphIcons.DrawFolder(
-            e.Graphics, ((Control)s!).ClientRectangle, ((Control)s).ForeColor);
 
         // Title / artist as read-only text boxes (white) so they can be selected
         // and copied.

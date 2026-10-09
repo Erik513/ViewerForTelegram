@@ -35,7 +35,7 @@ public sealed class CloudPasswordForm : StyledForm
         const int x = 24;
         const int w = width - 2 * x;   // 332
 
-        Label prompt = UIStyles.Labels.CreateNormal(retry ? Loc.S("pwd.retry") : Loc.S("pwd.prompt"));
+        Label prompt = UIStyles.Labels.CreateStandard(retry ? Loc.S("pwd.retry") : Loc.S("pwd.prompt"));
         prompt.SetBounds(x, 14, w, 44);
         if (retry)
         {

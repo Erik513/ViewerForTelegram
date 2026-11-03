@@ -180,7 +180,7 @@ public sealed class MainForm : AppForm
         _filterDebounce.Tick += (_, _) => { _filterDebounce.Stop(); RenderList(); };
 
         // ---- top bar ----
-        _settingsButton = UIStyles.Buttons.CreateSymbol(UIStyles.Buttons.Presets.Settings, Loc.S("top.settings.tip"), new Size(30, 30));
+        _settingsButton = UIStyles.Buttons.CreateSymbol(UIStyles.Buttons.Presets.Settings.WithColors(UIStyles.Colors.Sets.Primary), Loc.S("top.settings.tip"), new Size(30, 30));
         _settingsButton.Anchor = AnchorStyles.None;   // square, centred in its cell, no clipping
         _settingsButton.Click += async (_, _) => await OpenSettingsAsync(isStartup: false);
 

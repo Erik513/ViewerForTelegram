@@ -39,7 +39,7 @@ public enum SettingsAction
 /// close. Every string comes from <see cref="Loc"/> and refreshes live when the
 /// language changes.
 /// </summary>
-public sealed class SettingsForm : AppForm
+public sealed class SettingsForm : OptionsForm
 {
     private const int RowH = 40;
 
@@ -48,7 +48,6 @@ public sealed class SettingsForm : AppForm
 
     private readonly IMediaCache _cache;
     private readonly PropertyTable _table;
-    private readonly Panel _host;
     private readonly ToolTip _toolTip;
 
     private readonly ComboBox _language;
@@ -61,6 +60,7 @@ public sealed class SettingsForm : AppForm
     private readonly ToggleSwitch _clearCacheOnStart;
     private readonly Label _cacheSizeLabel;
     private readonly Button _help;
+    private Button? _themeButton;
     private readonly Button _browse;
     private readonly Button _cacheBrowse;
     private readonly Button _clearCacheButton;
@@ -80,9 +80,18 @@ public sealed class SettingsForm : AppForm
     public bool CacheCleared { get; private set; }
 
     public SettingsForm(TelegramConfig current, IMediaCache cache, bool isConnected)
-        : base(FormOptions.CreateSettings(
-            Loc.S("settings.title"), icon: AppAssets.TitleBarLogo, windowIcon: AppAssets.WindowIcon))
+        : base(
+            FormOptions.CreateSettings(
+                Loc.S("settings.title"), icon: AppAssets.TitleBarLogo, windowIcon: AppAssets.WindowIcon),
+            // The library's own option we use: the theme button in the corner. Language
+            // is the combo box below (the app keeps it in its config); accent color,
+            // always on top and start with Windows make no sense for this app.
+            new[] { OptionsPreset.Theme })
     {
+        ShowButtons = false;   // changes apply at once and are stored on close, as before
+        ShowToasts = false;
+        _table = PropertyTable;
+
         _cache = cache;
         _isConnected = isConnected;
         Result = current;
@@ -91,31 +100,15 @@ public sealed class SettingsForm : AppForm
         _toolTip = UIStyles.ToolTips.CreateToolTip();
         _toolTip.ReviveOnFormActivate(this);
 
-        // Background a touch lighter than the PropertyTable (which sits on
-        // BackgroundMedium) - so it stands out as a "card".
-        ContentPanel.BackColor = UIStyles.Colors.BackgroundMediumElevated;
-
-        // ---- help bar on top ----
-        Panel top = UIStyles.Panels.CreateMedium();
-        top.BackColor = UIStyles.Colors.BackgroundMediumElevated;
-        top.Dock = DockStyle.Top;
-        top.Height = 46;
-
-        _help = UIStyles.Buttons.CreateSymbol(UIStyles.Buttons.Presets.Help, Loc.S("settings.guide.tip"), SymbolSize);
+        // ---- help button: next to the theme button, same size ----
+        _help = UIStyles.Buttons.CreateSymbol(UIStyles.Buttons.Presets.Help.WithColors(UIStyles.Colors.Sets.Primary), Loc.S("settings.guide.tip"));
         _help.TabStop = false;
-        _help.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-        _help.Location = new Point(top.Width - SymbolSize.Width - 16, 8);
         _help.Click += (_, _) =>
         {
             using var h = new TelegramApiHelpForm();
             h.ShowDialog(this);
         };
-        top.Controls.Add(_help);
-
-        // ---- PropertyTable ----
-        _table = UIStyles.PropertyTables.CreateStandard();
-        _table.Dock = DockStyle.Top;
-        _table.Padding = new Padding(5);
+        PlaceHelpNextToThemeButton();
 
         _language = UIStyles.ComboBoxes.CreatePrimary();
         _language.DropDownStyle = ComboBoxStyle.DropDownList;
@@ -149,13 +142,13 @@ public sealed class SettingsForm : AppForm
         _downloadFolder.ReadOnly = true;
         _downloadFolder.TabStop = false;
 
-        _useDownloadFolder = UIStyles.ToggleSwitches.CreateStandard(
+        _useDownloadFolder = UIStyles.ToggleSwitches.CreatePrimary(
             current.UseDownloadFolder,
             Loc.S("settings.toggle.folder.on"),
             Loc.S("settings.toggle.folder.off"));
         _useDownloadFolder.TabStop = false;
 
-        _clearCacheOnStart = UIStyles.ToggleSwitches.CreateStandard(
+        _clearCacheOnStart = UIStyles.ToggleSwitches.CreatePrimary(
             current.ClearCacheOnStart,
             Loc.S("settings.toggle.clearCache.on"),
             Loc.S("settings.toggle.clearCache.off"));
@@ -180,7 +173,8 @@ public sealed class SettingsForm : AppForm
         _cacheBrowse.Click += (_, _) => OpenCacheFolder();
 
         _loginBtn = UIStyles.Buttons.CreateSymbol(
-            isConnected ? UIStyles.Buttons.Presets.Logout : UIStyles.Buttons.Presets.Login, "");
+            (isConnected ? UIStyles.Buttons.Presets.Logout : UIStyles.Buttons.Presets.Login)
+                .WithColors(UIStyles.Colors.Sets.Primary), "");
         _loginBtn.TabStop = false;
         _loginBtn.Click += (_, _) =>
         {
@@ -210,29 +204,10 @@ public sealed class SettingsForm : AppForm
         _toolTip.SetToolTip(_downloadFolder, current.EffectiveDownloadFolder);
 
         BuildTable();
-        FixTableSize();
-
-        _host = new Panel
-        {
-            Dock = DockStyle.Fill,
-            BackColor = UIStyles.Colors.BackgroundMediumElevated,
-            AutoScroll = true
-        };
-        _host.Controls.Add(_table);
-        _host.Resize += (_, _) => Recenter();
-
-        ContentPanel.Controls.Add(_host);
-        ContentPanel.Controls.Add(top);
-
-        ClientSize = new Size(
-            _table.Width + 220,
-            top.Height + _table.Height + TitleBar.Height + 40 + (VersionStrip?.Height ?? 0));
 
         ApplyTexts();
-        FixTableSize();
-        Recenter();
+        FitToContent();
         Loc.Changed += OnLanguageChanged;
-        Shown += (_, _) => Recenter();
 
         FormClosing += (_, _) => Save();
         Disposed += (_, _) =>
@@ -246,25 +221,33 @@ public sealed class SettingsForm : AppForm
         this.WithRedrawSuspended(() =>
         {
             ApplyTexts();
-            FixTableSize();
-            Recenter();
+            FitToContent();
         });
 
-    private void Recenter() =>
-        _table.Left = Math.Max(16, (_host.ClientSize.Width - _table.Width) / 2);
-
-    private void FixTableSize()
+    // The library puts its theme button in a strip at the top right. The help button
+    // goes into the same strip, to the left of it, as big as it.
+    private void PlaceHelpNextToThemeButton()
     {
-        _table.AutoSize = true;
-        _table.Dock = DockStyle.Top;
-        _table.PerformLayout();
-        Size size = _table.PreferredSize;
+        Panel? strip = ContentPanel.Controls.OfType<Panel>()
+            .FirstOrDefault(p => p.Dock == DockStyle.Top && p.Controls.OfType<Button>().Any());
+        Button? theme = strip?.Controls.OfType<Button>().FirstOrDefault();
+        if (strip is null || theme is null)
+        {
+            return;
+        }
 
-        _table.AutoSize = false;
-        _table.Dock = DockStyle.None;
-        _table.Size = new Size(Math.Max(540, size.Width), size.Height);
-        _table.Anchor = AnchorStyles.Top;
-        _table.Top = 16;
+        _themeButton = theme;
+        strip.Controls.Add(_help);
+
+        void Place()
+        {
+            _help.Size = theme.Size;
+            _help.Location = new Point(theme.Left - _help.Width - 6, theme.Top);
+        }
+
+        Place();
+        theme.LocationChanged += (_, _) => Place();
+        theme.SizeChanged += (_, _) => Place();
     }
 
     /// <summary>
@@ -440,6 +423,8 @@ public sealed class SettingsForm : AppForm
         {
             return;
         }
+
+        UIStyles.SaveAppearance();   // the theme and accent chosen in the corner / the options rows
 
         int.TryParse(_apiId.Text.Trim(), out int id);
 

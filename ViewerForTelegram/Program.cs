@@ -37,6 +37,10 @@ static class Program
         // visible here and survives any future change to the library default.
         UIStyles.Colors.ApplyTheme(UIThemes.Dark);
         UIStyles.Colors.SetAccent(UIColors.Primary);
+        // The theme / accent the user picked in the settings window (loaded now,
+        // written when the settings are closed). The language is not taken from
+        // here: the app's own config below decides it.
+        UIStyles.RememberAppearance();
 
         HookCrashLogging();
 

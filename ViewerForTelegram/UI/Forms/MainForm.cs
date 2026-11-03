@@ -12,7 +12,7 @@ using ViewerForTelegram.Logic.Services;
 using ViewerForTelegram.UI.Controls;
 using ViewerForTelegram.UI.Localization;
 using ViewerForTelegram.UI;
-using StyledGrid = ErikwnkWFUI.Controls.DataGridView;
+using StyledGrid = ErikwnkWFUI.Controls.ReadOnlyDataGridView;
 using StyledMessageBox = ErikwnkWFUI.Forms.MessageBox;
 using MessageBoxButtons = ErikwnkWFUI.Forms.MessageBoxButtons;
 using MessageBoxIcon = ErikwnkWFUI.Forms.MessageBoxIcon;
@@ -239,7 +239,7 @@ public sealed class MainForm : AppForm
 
         // No factory placeholder - that variant writes the placeholder string
         // into .Text, which would then be read as a filter. Use the native one.
-        _searchBox = UIStyles.TextBoxes.CreateStandard();
+        _searchBox = UIStyles.TextBoxes.CreatePrimary();
         _searchBox.PlaceholderText = Loc.S("top.filter.placeholder");
         _searchBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _searchBox.TextChanged += (_, _) => { _filterDebounce.Stop(); _filterDebounce.Start(); };
@@ -271,24 +271,26 @@ public sealed class MainForm : AppForm
         topRow.Controls.Add(_cacheLabel, 6, 0);
 
         // ---- list ----
-        _list = new StyledGrid
-        {
-            Dock = DockStyle.Fill,
-            ReadOnly = true,
-            MultiSelect = false,
-            AllowUserToAddRows = false,      // no phantom row (and lets RowCount go to 0 in VirtualMode)
-            AllowUserToDeleteRows = false,
-            AllowUserToResizeColumns = false,
-            AllowUserToOrderColumns = false,
-            AllowColumnResizing = false,     // the library grid has its own switches; fixed column widths
-            AllowColumnReordering = false,
-            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-            ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
-            ScrollBars = ScrollBars.Vertical,   // no horizontal scrollbar, ever
-            VirtualMode = true,   // cell values come from _view via CellValueNeeded
-            ContextMenuStrip = null,   // this list has no cut/copy/paste/insert affordances of its own
-        };
+        // The library's read-only grid with its quiet standard frame, only the
+        // selection in the accent; configured for a list that shows rows from
+        // _view (VirtualMode), no editing.
+        _list = (StyledGrid)UIStyles.DataGridViews.CreateReadOnlyStandard();
+        _list.SelectionBackColor = UIStyles.Colors.Primary;
+        _list.Dock = DockStyle.Fill;
+        _list.ReadOnly = true;
+        _list.MultiSelect = false;
+        _list.AllowUserToAddRows = false;      // no phantom row (and lets RowCount go to 0 in VirtualMode)
+        _list.AllowUserToDeleteRows = false;
+        _list.AllowUserToResizeColumns = false;
+        _list.AllowUserToOrderColumns = false;
+        _list.AllowColumnResizing = false;     // the library grid has its own switches; fixed column widths
+        _list.AllowColumnReordering = false;
+        _list.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+        _list.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+        _list.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+        _list.ScrollBars = ScrollBars.Vertical;   // no horizontal scrollbar, ever
+        _list.VirtualMode = true;              // cell values come from _view via CellValueNeeded
+        _list.ContextMenuStrip = null;         // no right-click menu: the list only shows info
         _list.ToastColors = UIStyles.Colors.Sets.Primary;   // the list's own toasts (copy) in the accent too
         _list.CellValueNeeded += OnCellValueNeeded;
         _list.CellFormatting += OnCellFormatting;

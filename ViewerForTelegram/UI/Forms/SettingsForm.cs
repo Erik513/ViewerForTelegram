@@ -140,6 +140,7 @@ public sealed class SettingsForm : OptionsForm
 
         _downloadFolder = Field(current.EffectiveDownloadFolder);
         _downloadFolder.TabStop = false;   // not the first focus (it would open with its text selected)
+        AttachTextMenu(_downloadFolder);
 
         _useDownloadFolder = UIStyles.ToggleSwitches.CreatePrimary(
             current.UseDownloadFolder,
@@ -166,6 +167,15 @@ public sealed class SettingsForm : OptionsForm
         _cacheFolder.ReadOnly = true;
         _cacheFolder.TabStop = false;
         _toolTip.SetToolTip(_cacheFolder, AppPaths.CacheDir);
+        // Read-only, so it is there to be copied: one click selects the whole path.
+        _cacheFolder.Click += (_, _) =>
+        {
+            if (_cacheFolder.SelectionLength == 0)
+            {
+                _cacheFolder.SelectAll();
+            }
+        };
+        AttachTextMenu(_cacheFolder);
 
         _cacheBrowse = UIStyles.Buttons.CreateSymbol(UIStyles.Buttons.Presets.Browse, Loc.S("settings.btn.openCache"));
         _cacheBrowse.TabStop = false;
@@ -457,6 +467,31 @@ public sealed class SettingsForm : OptionsForm
         LockableTextBox tb = UIStyles.TextBoxes.CreateLockable(value ?? "");
         tb.TabStop = false;
         return tb;
+    }
+
+    /// <summary>
+    /// The library's themed context menu (accent highlight) with the usual text
+    /// commands, in place of the unthemed Windows edit menu. Built on each open
+    /// so it follows the language and the field's state (read-only, selection).
+    /// </summary>
+    private static void AttachTextMenu(TextBox box)
+    {
+        System.Windows.Forms.ContextMenuStrip menu = UIStyles.ContextMenuStrips.CreatePrimary();
+        menu.Opening += (_, _) =>
+        {
+            menu.Items.Clear();
+            if (!box.ReadOnly)
+            {
+                menu.Items.Add(Loc.S("menu.cut"), null, (_, _) => box.Cut()).Enabled = box.SelectionLength > 0;
+            }
+            menu.Items.Add(Loc.S("menu.copy"), null, (_, _) => box.Copy()).Enabled = box.SelectionLength > 0;
+            if (!box.ReadOnly)
+            {
+                menu.Items.Add(Loc.S("menu.paste"), null, (_, _) => box.Paste()).Enabled = Clipboard.ContainsText();
+            }
+            menu.Items.Add(Loc.S("menu.selectAll"), null, (_, _) => box.SelectAll()).Enabled = box.TextLength > 0;
+        };
+        box.ContextMenuStrip = menu;
     }
 
     private static TextBox Field(string value)

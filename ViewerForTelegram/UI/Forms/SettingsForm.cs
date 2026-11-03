@@ -238,7 +238,7 @@ public sealed class SettingsForm : OptionsForm
         });
 
     // The library puts its theme button in a strip at the top right. The help button
-    // goes into the same strip, to the left of it, as big as it.
+    // goes into the same strip, as big as it, at the opposite (left) edge.
     private void PlaceHelpNextToThemeButton()
     {
         Panel? strip = ContentPanel.Controls.OfType<Panel>()
@@ -255,12 +255,14 @@ public sealed class SettingsForm : OptionsForm
         void Place()
         {
             _help.Size = theme.Size;
-            _help.Location = new Point(theme.Left - _help.Width - 6, theme.Top);
+            // The mirror image of the theme button: the same gap to the left edge as it has to the right.
+            _help.Location = new Point(strip.Width - theme.Right, theme.Top);
         }
 
         Place();
         theme.LocationChanged += (_, _) => Place();
         theme.SizeChanged += (_, _) => Place();
+        strip.Resize += (_, _) => Place();
     }
 
     /// <summary>

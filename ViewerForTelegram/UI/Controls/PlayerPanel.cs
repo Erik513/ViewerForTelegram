@@ -1,8 +1,12 @@
 using ErikwnkWFUI;
 using ErikwnkWFUI.Controls;
 using ErikwnkWFUI.Helpers;
+using ErikwnkWFUI.Styles;
 using ViewerForTelegram.Data.Models;
 using ViewerForTelegram.UI.Localization;
+using Panel = System.Windows.Forms.Panel;
+using TableLayoutPanel = System.Windows.Forms.TableLayoutPanel;
+using TrackBar = ErikwnkWFUI.Controls.TrackBar;
 
 namespace ViewerForTelegram.UI.Controls;
 
@@ -29,7 +33,11 @@ public sealed class PlayerPanel : Panel
 
     private const int StatusRowHeight = 18;
 
-    private readonly Button _mainButton;
+    private Button _mainButton;   // whichever of the three below is shown for the state
+    private readonly Button _playButton;
+    private readonly Button _pauseButton;
+    private readonly Button _cancelButton;
+    private readonly TableLayoutPanel _leftColumn;
     private readonly Button _saveButton;
     private readonly Button _browseButton;
     private readonly TextBox _title;
@@ -37,13 +45,13 @@ public sealed class PlayerPanel : Panel
     private readonly Label _fileSize;
     private readonly Label _bitrate;
     private readonly Label _fileFormat;
-    private readonly SliderBar _seek;
+    private readonly TrackBar _seek;
     private readonly SlimProgressBar _downloadBar;
     private readonly Spinner _spinner;
     private readonly TableLayoutPanel _seekRow;
     private readonly Label _time;
     private readonly Label _volLabel;
-    private readonly VolumeSlider _volume;
+    private readonly TrackBar _volume;
     private readonly TextBox _status;
     private string? _saveTipFileName;   // file name currently shown on the save button's tooltip
     private readonly ToolTip _tips = new() { AutoPopDelay = 20000 };
@@ -61,20 +69,19 @@ public sealed class PlayerPanel : Panel
         BackColor = UIStyles.Colors.BackgroundDarkElevated;
         _tips.ReviveOnFormActivate(this);
 
-        _mainButton = MakeIconButton(44, Loc.S("player.tip.main"));
-        _mainButton.Anchor = AnchorStyles.None;
-        _mainButton.Click += (_, _) => MainButton?.Invoke();
-        // Every state is drawn by hand (GlyphIcons) so the icon is pixel-centred
-        // and one consistent weight - symbol-font glyphs are not.
-        _mainButton.Paint += OnMainButtonPaint;
+        // One library preset per state; SetButton swaps the one that is shown.
+        _playButton = MakeMainButton(UIStyles.Buttons.Presets.Play);
+        _pauseButton = MakeMainButton(UIStyles.Buttons.Presets.Pause);
+        _cancelButton = MakeMainButton(UIStyles.Buttons.Presets.Cancel);
+        _mainButton = _playButton;
+        _playButton.Enabled = false;   // nothing selected yet
 
         // No factory tooltip - the tooltip (with the file name) is managed
         // through _tips only, so the button doesn't end up with two.
-        _saveButton = MakeIconButton(34, "");
+        _saveButton = UIStyles.Buttons.CreateSymbol(UIStyles.Buttons.Presets.Download, "", new Size(34, 34));
+        _saveButton.Enabled = false;
         _saveButton.Anchor = AnchorStyles.None;
         _saveButton.Click += (_, _) => Save?.Invoke();
-        _saveButton.Paint += (s, e) => GlyphIcons.DrawDownload(
-            e.Graphics, ((Control)s!).ClientRectangle, GlyphColor(_saveButton));
 
         // The library's yellow browse button; it draws its folder symbol itself.
         _browseButton = UIStyles.Buttons.CreateSymbol(UIStyles.Buttons.Presets.Browse, Loc.S("player.tip.browse"), new Size(34, 34));
@@ -94,7 +101,7 @@ public sealed class PlayerPanel : Panel
         _fileFormat = MakeLabel(UIStyles.Labels.CreateMuted(""));
         _fileFormat.TextAlign = ContentAlignment.MiddleRight;
 
-        _seek = UIStyles.SliderBars.CreatePrimary();
+        _seek = UIStyles.TrackBars.CreatePrimary();
         _seek.Enabled = false;
         _seek.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _seek.Margin = new Padding(0);
@@ -111,7 +118,7 @@ public sealed class PlayerPanel : Panel
         _downloadBar = UIStyles.SlimProgressBars.CreateStatus();
         _downloadBar.BackColor = UIStyles.Colors.BorderMedium;
         _downloadBar.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-        _downloadBar.Margin = new Padding(SliderBar.TrackInset, 0, SliderBar.TrackInset, 0);
+        _downloadBar.Margin = new Padding(TrackBar.TrackInset, 0, TrackBar.TrackInset, 0);
 
         // Sits just right of the seek bar and spins for the whole time a track
         // is loading (download + decode) - i.e. exactly while the download bar
@@ -129,7 +136,7 @@ public sealed class PlayerPanel : Panel
         _volLabel = MakeLabel(UIStyles.Labels.CreateMuted(Loc.S("player.vol")));
         _volLabel.TextAlign = ContentAlignment.MiddleRight;
 
-        _volume = UIStyles.VolumeSliders.CreatePrimary(0.1);
+        _volume = UIStyles.TrackBars.CreatePrimary(0.1, showValuePopup: true, formatValue: v => $"{v * 100:0}%");
         _volume.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _volume.ValueChanged += (_, _) => VolumeChanged?.Invoke((float)_volume.Value);
 
@@ -213,15 +220,15 @@ public sealed class PlayerPanel : Panel
         // Left column: play button pulled up to sit over the title / performer,
         // the load spinner directly under it - level with the seek row, so the
         // seek bar itself lines up with the title and performer above it.
-        var leftColumn = new TableLayoutPanel
+        _leftColumn = new TableLayoutPanel
         {
             Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2,
             Margin = new Padding(0), BackColor = Color.Transparent
         };
-        leftColumn.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));    // title + performer band
-        leftColumn.RowStyles.Add(new RowStyle(SizeType.Percent, 100));    // seek row band
-        leftColumn.Controls.Add(_mainButton, 0, 0);   // both anchored None -> centred in their band
-        leftColumn.Controls.Add(_spinner, 0, 1);
+        _leftColumn.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));    // title + performer band
+        _leftColumn.RowStyles.Add(new RowStyle(SizeType.Percent, 100));    // seek row band
+        _leftColumn.Controls.Add(_mainButton, 0, 0);   // both anchored None -> centred in their band
+        _leftColumn.Controls.Add(_spinner, 0, 1);
 
         var controls = new TableLayoutPanel
         {
@@ -231,12 +238,12 @@ public sealed class PlayerPanel : Panel
         controls.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         controls.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 52));
         controls.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        controls.Controls.Add(leftColumn, 0, 0);
+        controls.Controls.Add(_leftColumn, 0, 0);
         controls.Controls.Add(stack, 1, 0);
 
         // Status / error line along the bottom edge - read-only so the text
         // (paths, error messages) can be selected and copied. Primary accent.
-        _status = UIStyles.TextBoxes.CreateBorderstyleNone();
+        _status = UIStyles.TextBoxes.CreateBorderless();
         _status.ReadOnly = true;
         _status.TabStop = false;
         _status.Anchor = AnchorStyles.Left | AnchorStyles.Right;
@@ -271,7 +278,6 @@ public sealed class PlayerPanel : Panel
     public void ApplyTexts()
     {
         _volLabel.Text = Loc.S("player.vol");
-        UIStyles.Buttons.UpdateTooltip(_mainButton, Loc.S("player.tip.main"));
         _tips.SetToolTip(_browseButton, Loc.S("player.tip.browse"));
 
         SetButton(_state);   // re-localises the main button's tooltip
@@ -353,8 +359,22 @@ public sealed class PlayerPanel : Panel
     public void SetButton(PlayerButton button)
     {
         _state = button;
+        Button target = button switch
+        {
+            PlayerButton.Cancel => _cancelButton,
+            PlayerButton.Pause => _pauseButton,
+            _ => _playButton,   // Play + None
+        };
+        if (!ReferenceEquals(target, _mainButton))
+        {
+            _leftColumn.SuspendLayout();
+            _leftColumn.Controls.Remove(_mainButton);
+            _mainButton = target;
+            _leftColumn.Controls.Add(target, 0, 0);
+            _leftColumn.ResumeLayout();
+        }
+
         _mainButton.Enabled = button != PlayerButton.None;
-        _mainButton.Invalidate();
         UIStyles.Buttons.UpdateTooltip(_mainButton, button switch
         {
             PlayerButton.Cancel => Loc.S("player.tip.cancelDownload"),
@@ -364,24 +384,6 @@ public sealed class PlayerPanel : Panel
         });
     }
 
-    private void OnMainButtonPaint(object? sender, PaintEventArgs e)
-    {
-        if (sender is not Control b)
-        {
-            return;
-        }
-        Color c = GlyphColor(b);
-        switch (_state)
-        {
-            case PlayerButton.Cancel: GlyphIcons.DrawCancel(e.Graphics, b.ClientRectangle, c); break;
-            case PlayerButton.Pause: GlyphIcons.DrawPause(e.Graphics, b.ClientRectangle, c); break;
-            default: GlyphIcons.DrawPlay(e.Graphics, b.ClientRectangle, c); break;  // Play + None
-        }
-    }
-
-    private static Color GlyphColor(Control b) =>
-        b.Enabled ? b.ForeColor : UIStyles.Colors.TextDisabled;
-
     public void SetDownloadProgress(int percent)
     {
         SetButton(PlayerButton.Cancel);
@@ -390,7 +392,8 @@ public sealed class PlayerPanel : Panel
         ShowDownloadBar(true);
         int clamped = Math.Clamp(percent, 0, 100);
         _downloadBar.Value = clamped;
-        _spinner.Progress = clamped;   // the spinner shows the percentage now
+        _spinner.Value = clamped;
+        _spinner.ShowPercentage = true;   // the spinner shows the percentage now
         _time.Text = "–:– / –:–";
     }
 
@@ -430,7 +433,8 @@ public sealed class PlayerPanel : Panel
         _spinner.Visible = show;   // spins for the whole load (download + decode)
         if (!show)
         {
-            _spinner.Progress = null;
+            _spinner.ShowPercentage = false;
+            _spinner.Value = 0;
         }
         _seekRow.ResumeLayout();
     }
@@ -448,11 +452,11 @@ public sealed class PlayerPanel : Panel
     private void UpdateTime(TimeSpan pos) =>
         _time.Text = $"{Fmt(pos)} / {Fmt(_duration)}";
 
-    private static Button MakeIconButton(int size, string tooltip)
+    private Button MakeMainButton(UIButtonPreset preset)
     {
-        // The icon itself is drawn in the button's Paint handler (GlyphIcons).
-        Button b = UIStyles.Buttons.CreatePrimary("", tooltip, new Size(size, size));
-        b.Enabled = false;
+        Button b = UIStyles.Buttons.CreateSymbol(preset, "", new Size(44, 44));
+        b.Anchor = AnchorStyles.None;
+        b.Click += (_, _) => MainButton?.Invoke();
         return b;
     }
 
@@ -467,7 +471,7 @@ public sealed class PlayerPanel : Panel
 
     private TextBox MakeReadonlyText(bool bold)
     {
-        TextBox tb = UIStyles.TextBoxes.CreateBorderstyleNone();
+        TextBox tb = UIStyles.TextBoxes.CreateBorderless();
         tb.ReadOnly = true;
         tb.TabStop = false;
         tb.Anchor = AnchorStyles.Left | AnchorStyles.Right;

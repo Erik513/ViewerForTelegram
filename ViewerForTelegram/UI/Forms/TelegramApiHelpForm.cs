@@ -8,7 +8,7 @@ namespace ViewerForTelegram.UI.Forms;
 /// <summary>
 /// Short guide: how to create api_id / api_hash on my.telegram.org.
 /// </summary>
-public sealed class TelegramApiHelpForm : StyledForm
+public sealed class TelegramApiHelpForm : AppForm
 {
     private const string Url = "https://my.telegram.org";
 
@@ -20,7 +20,7 @@ public sealed class TelegramApiHelpForm : StyledForm
     private readonly TextBox _text;
 
     public TelegramApiHelpForm()
-        : base(StyledFormOptions.CreateDialog(
+        : base(FormOptions.CreateDialog(
             Loc.S("help.title"),
             titleTextAlign: ContentAlignment.MiddleLeft,
             icon: AppAssets.TitleBarLogo,

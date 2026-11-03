@@ -13,6 +13,7 @@ using MessageBox = ErikwnkWFUI.Forms.MessageBox;
 using MessageBoxButtons = ErikwnkWFUI.Forms.MessageBoxButtons;
 using MessageBoxIcon = ErikwnkWFUI.Forms.MessageBoxIcon;
 using ComboBox = System.Windows.Forms.ComboBox;
+using Panel = System.Windows.Forms.Panel;
 
 namespace ViewerForTelegram.UI.Forms;
 
@@ -38,14 +39,12 @@ public enum SettingsAction
 /// close. Every string comes from <see cref="Loc"/> and refreshes live when the
 /// language changes.
 /// </summary>
-public sealed class SettingsForm : StyledForm
+public sealed class SettingsForm : AppForm
 {
     private const int RowH = 40;
-    private const string Pencil = "✎";
-    private const string Check = "✓";
 
-    private static readonly Size ButtonSize = new(150, 30);
-    private const int ButtonColumn = 162;
+    private static readonly Size SymbolSize = new(44, 30);
+    private const int ButtonColumn = 44;
 
     private readonly IMediaCache _cache;
     private readonly PropertyTable _table;
@@ -53,9 +52,9 @@ public sealed class SettingsForm : StyledForm
     private readonly ToolTip _toolTip;
 
     private readonly ComboBox _language;
-    private readonly TextBox _apiId;
-    private readonly TextBox _apiHash;
-    private readonly TextBox _phone;
+    private readonly LockableTextBox _apiId;
+    private readonly LockableTextBox _apiHash;
+    private readonly LockableTextBox _phone;
     private readonly TextBox _downloadFolder;
     private readonly TextBox _cacheFolder;
     private readonly ToggleSwitch _useDownloadFolder;
@@ -79,7 +78,7 @@ public sealed class SettingsForm : StyledForm
     public bool CacheCleared { get; private set; }
 
     public SettingsForm(TelegramConfig current, IMediaCache cache, bool isConnected)
-        : base(StyledFormOptions.CreateSettings(
+        : base(FormOptions.CreateSettings(
             Loc.S("settings.title"), icon: AppAssets.TitleBarLogo, windowIcon: AppAssets.WindowIcon))
     {
         _cache = cache;
@@ -100,10 +99,10 @@ public sealed class SettingsForm : StyledForm
         top.Dock = DockStyle.Top;
         top.Height = 46;
 
-        _help = UIStyles.Buttons.CreatePrimary(Loc.S("settings.guide"), Loc.S("settings.guide.tip"), ButtonSize);
+        _help = UIStyles.Buttons.CreateSymbol(UIStyles.Buttons.Presets.Help, Loc.S("settings.guide.tip"), SymbolSize);
         _help.TabStop = false;
         _help.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-        _help.Location = new Point(top.Width - ButtonSize.Width - 16, 8);
+        _help.Location = new Point(top.Width - SymbolSize.Width - 16, 8);
         _help.Click += (_, _) =>
         {
             using var h = new TelegramApiHelpForm();
@@ -127,9 +126,9 @@ public sealed class SettingsForm : StyledForm
                 ? AppLanguage.German
                 : AppLanguage.English;
 
-        _apiId = Field(current.ApiId > 0 ? current.ApiId.ToString() : "");
-        _apiHash = Field(current.ApiHash);
-        _phone = Field(current.PhoneNumber);
+        _apiId = LockedField(current.ApiId > 0 ? current.ApiId.ToString() : "");
+        _apiHash = LockedField(current.ApiHash);
+        _phone = LockedField(current.PhoneNumber);
 
         _downloadFolder = Field(current.EffectiveDownloadFolder);
         _downloadFolder.ReadOnly = true;
@@ -152,7 +151,7 @@ public sealed class SettingsForm : StyledForm
         _browse.Click += (_, _) => Browse();
 
         _cacheSizeLabel = UIStyles.Labels.CreateStandard("");
-        _clearCacheButton = UIStyles.Buttons.CreateRed(Loc.S("settings.btn.clearCache"), size: ButtonSize);
+        _clearCacheButton = UIStyles.Buttons.CreateSymbol(UIStyles.Buttons.Presets.Remove, Loc.S("settings.btn.clearCache"));
         _clearCacheButton.TabStop = false;
         _clearCacheButton.Click += (_, _) => ClearCache();
 
@@ -165,7 +164,8 @@ public sealed class SettingsForm : StyledForm
         _cacheBrowse.TabStop = false;
         _cacheBrowse.Click += (_, _) => OpenCacheFolder();
 
-        _loginBtn = UIStyles.Buttons.CreatePrimary("", "", ButtonSize);
+        _loginBtn = UIStyles.Buttons.CreateSymbol(
+            isConnected ? UIStyles.Buttons.Presets.Logout : UIStyles.Buttons.Presets.Login, "");
         _loginBtn.TabStop = false;
         _loginBtn.Click += (_, _) =>
         {
@@ -188,7 +188,7 @@ public sealed class SettingsForm : StyledForm
             Close();
         };
 
-        _wipe = UIStyles.Buttons.CreateRed(Loc.S("settings.btn.delete"), size: ButtonSize);
+        _wipe = UIStyles.Buttons.CreateSymbol(UIStyles.Buttons.Presets.Delete, Loc.S("settings.btn.delete"));
         _wipe.TabStop = false;
         _wipe.Click += (_, _) => Wipe();
 
@@ -257,7 +257,7 @@ public sealed class SettingsForm : StyledForm
         _table.ClearRows();
 
         _table.AddSection(Loc.S("settings.sec.general"));
-        _table.AddRow(Loc.S("settings.row.language"), RowH, UIColumn.Percent(_language, 100));
+        _table.AddRow(Loc.S("settings.row.language"), RowH, PropertyColumn.Percent(_language, 100));
 
         _table.AddSection(Loc.S("settings.sec.api"));
         AddLockedRow("api_id", _apiId);
@@ -267,34 +267,34 @@ public sealed class SettingsForm : StyledForm
         _table.AddSection(Loc.S("settings.sec.signin"));
         _table.AddRow(
             Loc.S("settings.row.status"), RowH,
-            UIColumn.Percent(Desc(_isConnected
+            PropertyColumn.Percent(Desc(_isConnected
                 ? Loc.S("settings.status.connected")
                 : Loc.S("settings.status.disconnected")), 100),
-            UIColumn.Absolute(_loginBtn, ButtonColumn));
+            PropertyColumn.Absolute(_loginBtn, ButtonColumn));
 
         _table.AddSection(Loc.S("settings.sec.downloads"));
         _table.AddRow(
             Loc.S("settings.row.folder"), RowH,
-            UIColumn.Percent(_downloadFolder, 100),
-            UIColumn.Absolute(_browse, 44),
-            UIColumn.Absolute(_useDownloadFolder, 56));
+            PropertyColumn.Percent(_downloadFolder, 100),
+            PropertyColumn.Absolute(_browse, 44),
+            PropertyColumn.Absolute(_useDownloadFolder, 56));
 
         _table.AddSection(Loc.S("settings.sec.cache"));
         _table.AddRow(
             Loc.S("settings.row.used"), RowH,
-            UIColumn.Percent(_cacheSizeLabel, 100),
-            UIColumn.Absolute(_clearCacheOnStart, 56));
+            PropertyColumn.Percent(_cacheSizeLabel, 100),
+            PropertyColumn.Absolute(_clearCacheOnStart, 56));
         _table.AddRow(
             Loc.S("settings.row.folder"), RowH,
-            UIColumn.Percent(_cacheFolder, 100),
-            UIColumn.Absolute(_cacheBrowse, 44),
-            UIColumn.Absolute(_clearCacheButton, ButtonColumn));
+            PropertyColumn.Percent(_cacheFolder, 100),
+            PropertyColumn.Absolute(_cacheBrowse, 44),
+            PropertyColumn.Absolute(_clearCacheButton, ButtonColumn));
 
         _table.AddSection(Loc.S("settings.sec.credentials"));
         _table.AddRow(
             Loc.S("settings.row.reset"), RowH,
-            UIColumn.Percent(Desc(Loc.S("settings.reset.desc")), 100),
-            UIColumn.Absolute(_wipe, ButtonColumn));
+            PropertyColumn.Percent(Desc(Loc.S("settings.reset.desc")), 100),
+            PropertyColumn.Absolute(_wipe, ButtonColumn));
 
         UpdateCacheLabel();
     }
@@ -303,12 +303,11 @@ public sealed class SettingsForm : StyledForm
     private void ApplyTexts()
     {
         FormTitle = Loc.S("settings.title");
-        _help.Text = Loc.S("settings.guide");
-        _toolTip.SetToolTip(_help, Loc.S("settings.guide.tip"));
-
-        _loginBtn.Text = _isConnected ? Loc.S("settings.btn.signout") : Loc.S("settings.btn.signin");
-        _clearCacheButton.Text = Loc.S("settings.btn.clearCache");
-        _wipe.Text = Loc.S("settings.btn.delete");
+        // All of these are symbol buttons - only their tooltip is text.
+        UIStyles.Buttons.UpdateTooltip(_help, Loc.S("settings.guide.tip"));
+        UIStyles.Buttons.UpdateTooltip(_loginBtn, _isConnected ? Loc.S("settings.btn.signout") : Loc.S("settings.btn.signin"));
+        UIStyles.Buttons.UpdateTooltip(_clearCacheButton, Loc.S("settings.btn.clearCache"));
+        UIStyles.Buttons.UpdateTooltip(_wipe, Loc.S("settings.btn.delete"));
 
         // The browse buttons are symbol buttons - only their tooltip is text.
         UIStyles.Buttons.UpdateTooltip(_browse, Loc.S("settings.btn.chooseFolder"));
@@ -322,41 +321,16 @@ public sealed class SettingsForm : StyledForm
         BuildTable();
     }
 
-    private void AddLockedRow(string label, TextBox field)
+    private void AddLockedRow(string label, LockableTextBox field)
     {
-        field.ReadOnly = true;
-        field.TabStop = false;
-
-        Button lockBtn = UIStyles.Buttons.CreatePrimary(
-            field.ReadOnly ? Pencil : Check, Loc.S("settings.lock.tip"), new Size(40, 28));
-        lockBtn.TabStop = false;
-
         // While signed in, the credentials must not be changed - sign out first.
         if (_isConnected)
         {
-            lockBtn.Enabled = false;
-            _toolTip.SetToolTip(lockBtn, Loc.S("settings.lock.tip.locked"));
+            field.Enabled = false;
+            _toolTip.SetToolTip(field, Loc.S("settings.lock.tip.locked"));
         }
 
-        lockBtn.Click += (_, _) =>
-        {
-            if (field.ReadOnly)
-            {
-                field.ReadOnly = false;
-                field.TabStop = true;
-                lockBtn.Text = Check;
-                field.Focus();
-                field.SelectAll();
-            }
-            else
-            {
-                field.ReadOnly = true;
-                field.TabStop = false;
-                lockBtn.Text = Pencil;
-            }
-        };
-
-        _table.AddRow(label, RowH, UIColumn.Percent(field, 100), UIColumn.Absolute(lockBtn, 44));
+        _table.AddRow(label, RowH, PropertyColumn.Percent(field, 100));
     }
 
     private void Browse()
@@ -465,9 +439,16 @@ public sealed class SettingsForm : StyledForm
     /// Borderless text field without a placeholder (the factory's placeholder
     /// mechanism would otherwise overwrite a pre-filled value).
     /// </summary>
+    private static LockableTextBox LockedField(string value)
+    {
+        LockableTextBox tb = UIStyles.TextBoxes.CreateLockable(value ?? "");
+        tb.TabStop = false;
+        return tb;
+    }
+
     private static TextBox Field(string value)
     {
-        TextBox tb = UIStyles.TextBoxes.CreateBorderstyleNone();
+        TextBox tb = UIStyles.TextBoxes.CreateBorderless();
         tb.Text = value ?? "";
         return tb;
     }

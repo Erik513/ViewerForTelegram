@@ -150,7 +150,7 @@ One project, three folders, dependency direction `UI → Logic → Data`:
 |----------|---------------------------------------------------------------------|
 | `Data/`  | Telegram access (WTelegramClient), the file cache, the NAudio player, JSON config, models |
 | `Logic/` | `AudioFeedService` (time window + cache check), `MediaDownloader`   |
-| `UI/`    | `MainForm` (top bar + list + player), `SettingsForm`, and `UI/Controls/` (`PlayerPanel`, `GlyphIcons`) |
+| `UI/`    | `MainForm` (top bar + list + player), `SettingsForm`, and `UI/Controls/` (`PlayerPanel`) |
 
 ## License
 

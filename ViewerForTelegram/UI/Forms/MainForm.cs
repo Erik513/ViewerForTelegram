@@ -25,7 +25,7 @@ namespace ViewerForTelegram.UI.Forms;
 /// audio messages, and a player strip at the bottom. Double-click a row to
 /// download (if needed) and play it.
 /// </summary>
-public sealed class MainForm : StyledForm
+public sealed class MainForm : AppForm
 {
     // > 0 = days; < 0 = "the newest |n| audios" (no date limit) - see AudioFeedService.
     private static readonly int[] RangeDayOptions =
@@ -149,7 +149,7 @@ public sealed class MainForm : StyledForm
         IAudioPlayer audio,
         JsonUiStateStore uiStateStore,
         JsonFeedCacheStore feedCacheStore)
-        : base(StyledFormOptions.CreateStandard(
+        : base(FormOptions.CreateStandard(
             "Viewer for Telegram",
             titleTextAlign: ContentAlignment.MiddleLeft,
             icon: AppAssets.TitleBarLogo,
@@ -180,10 +180,8 @@ public sealed class MainForm : StyledForm
         _filterDebounce.Tick += (_, _) => { _filterDebounce.Stop(); RenderList(); };
 
         // ---- top bar ----
-        _settingsButton = UIStyles.Buttons.CreatePrimary("", Loc.S("top.settings.tip"), new Size(30, 30));
+        _settingsButton = UIStyles.Buttons.CreateSymbol(UIStyles.Buttons.Presets.Settings, Loc.S("top.settings.tip"), new Size(30, 30));
         _settingsButton.Anchor = AnchorStyles.None;   // square, centred in its cell, no clipping
-        _settingsButton.Paint += (s, e) => GlyphIcons.DrawGear(
-            e.Graphics, ((Control)s!).ClientRectangle, ((Control)s).ForeColor);
         _settingsButton.Click += async (_, _) => await OpenSettingsAsync(isStartup: false);
 
         _groupCombo = UIStyles.ComboBoxes.CreateStandard();
@@ -226,12 +224,12 @@ public sealed class MainForm : StyledForm
             RenderList();
         };
 
-        _refreshButton = UIStyles.Buttons.CreatePrimary("", Loc.S("top.refresh.tip"), new Size(30, 30));
+        _refreshButton = UIStyles.Buttons.CreateSymbol(UIStyles.Buttons.Presets.Refresh, Loc.S("top.refresh.tip"), new Size(30, 30));
         _refreshButton.Anchor = AnchorStyles.None;
         _refreshButton.Paint += (s, e) =>
         {
+            // The library draws the symbol; the "N new" badge goes on top of it.
             var ctl = (Control)s!;
-            GlyphIcons.DrawRefresh(e.Graphics, ctl.ClientRectangle, ctl.ForeColor);
             if (_newSinceLastVisit > 0)
             {
                 DrawNewBadge(e.Graphics, ctl.ClientRectangle, _newSinceLastVisit);

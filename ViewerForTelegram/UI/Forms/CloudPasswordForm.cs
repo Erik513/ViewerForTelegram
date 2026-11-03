@@ -12,7 +12,7 @@ namespace ViewerForTelegram.UI.Forms;
 /// "wrong password" line if the previous attempt failed. The value is handed
 /// back and never stored.
 /// </summary>
-public sealed class CloudPasswordForm : StyledForm
+public sealed class CloudPasswordForm : AppForm
 {
     // Segoe MDL2 Assets: RedEye (E7B3) / Hide (ED1A) - the same glyphs Windows
     // uses for its own password reveal button.
@@ -25,7 +25,7 @@ public sealed class CloudPasswordForm : StyledForm
     public string? Password { get; private set; }
 
     public CloudPasswordForm(string? hint, bool retry)
-        : base(StyledFormOptions.CreateDialog(
+        : base(FormOptions.CreateDialog(
             Loc.S("pwd.title"),
             titleTextAlign: ContentAlignment.MiddleLeft,
             icon: AppAssets.TitleBarLogo,

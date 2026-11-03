@@ -9,7 +9,7 @@ namespace ViewerForTelegram.UI.Forms;
 /// <see cref="Data.TelegramSource"/> through a callback, so the Data layer
 /// itself needs to know nothing about windows.
 /// </summary>
-public sealed class CodeInputForm : StyledForm
+public sealed class CodeInputForm : AppForm
 {
     private readonly TextBox _codeBox;
 
@@ -17,7 +17,7 @@ public sealed class CodeInputForm : StyledForm
     public string? Code { get; private set; }
 
     public CodeInputForm()
-        : base(StyledFormOptions.CreateDialog(
+        : base(FormOptions.CreateDialog(
             Loc.S("code.title"),
             titleTextAlign: ContentAlignment.MiddleLeft,
             icon: AppAssets.TitleBarLogo,

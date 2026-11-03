@@ -8,8 +8,8 @@ public static class AppAssets
 {
     /// <summary>
     /// The multi-resolution window icon (taskbar / Alt-Tab / system menu).
-    /// Passed to every <c>StyledFormOptions</c> so windows get the full icon
-    /// rather than <c>StyledForm</c>'s 32px <c>ExtractAssociatedIcon</c> fallback.
+    /// Passed to every <c>FormOptions</c> so windows get the full icon
+    /// rather than <c>AppForm</c>'s 32px <c>ExtractAssociatedIcon</c> fallback.
     /// </summary>
     public static Icon WindowIcon { get; } = LoadIcon("ViewerForTelegram.app.ico");
 

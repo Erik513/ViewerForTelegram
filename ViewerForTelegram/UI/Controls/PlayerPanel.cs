@@ -69,8 +69,8 @@ public sealed class PlayerPanel : Panel
         _tips.ReviveOnFormActivate(this);
 
         // One library preset per state; SetButton swaps the one that is shown.
-        _playButton = MakeMainButton(UIStyles.Buttons.Presets.Play);
-        _pauseButton = MakeMainButton(UIStyles.Buttons.Presets.Pause);
+        _playButton = MakeMainButton(UIStyles.Buttons.Presets.Play.WithColors(UIStyles.Colors.Sets.Primary));
+        _pauseButton = MakeMainButton(UIStyles.Buttons.Presets.Pause.WithColors(UIStyles.Colors.Sets.Primary));
         _cancelButton = MakeMainButton(UIStyles.Buttons.Presets.Cancel);
         _mainButton = _playButton;
         _playButton.Enabled = false;   // nothing selected yet

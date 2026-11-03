@@ -416,6 +416,9 @@ public sealed class TelegramSource : ITelegramSource
         return result;
     }
 
+    private static readonly TimeSpan DeletionCheckPause = TimeSpan.FromMilliseconds(1500);
+    private static readonly TimeSpan DeletionCheckSlowCall = TimeSpan.FromSeconds(4);
+
     private const int GetMessagesBatchSize = 100;   // Telegram's own per-call ceiling for this method
 
     /// <summary>
@@ -446,7 +449,23 @@ public sealed class TelegramSource : ITelegramSource
                 int[] batchIds = messageIds.Skip(offset).Take(GetMessagesBatchSize).ToArray();
                 InputMessage[] inputs = Array.ConvertAll(batchIds, id => (InputMessage)new InputMessageID { id = id });
 
+                // A background courtesy check - it must not hog Telegram's per-method
+                // rate limit: pace the batches, and give up the moment one call came back
+                // slowly (the client sleeps through a FLOOD_WAIT inside the call). Looping
+                // through 50 batches of 30 s waits used to block the single-message fetch
+                // of a download behind it for up to 25 s.
+                if (offset > 0)
+                {
+                    await Task.Delay(DeletionCheckPause, ct);
+                }
+
+                var timer = System.Diagnostics.Stopwatch.StartNew();
                 Messages_MessagesBase result = await _client.GetMessages(peer, inputs);
+                if (timer.Elapsed > DeletionCheckSlowCall)
+                {
+                    LogLine($"FindDeletedMessages: rate-limited for chat {chatId} - stopping the check");
+                    return Array.Empty<int>();
+                }
 
                 var found = new HashSet<int>();
                 foreach (MessageBase mb in result.Messages)
@@ -547,21 +566,41 @@ public sealed class TelegramSource : ITelegramSource
         try
         {
             ct.ThrowIfCancellationRequested();
-            Messages_MessagesBase result = await _client!.GetMessages(
-                peer, new InputMessage[] { new InputMessageID { id = messageId } });
 
-            foreach (MessageBase mb in result.Messages)
+            // Through the history, not messages.getMessages: that method is the one the
+            // background deletion check keeps rate-limited (FLOOD_WAIT of 30 s, one after
+            // the other), and a download waiting for its document stood in the same
+            // queue - the spinner sat at 0 for up to 25 s. The history has its own limit.
+            // offset_id is exclusive, so "just below id + 1" is the message itself.
+            Messages_MessagesBase result = await _client!.Messages_GetHistory(
+                peer, offset_id: messageId + 1, limit: 1).WaitAsync(ct);
+            if (MapMessage(result, chatId, messageId))
             {
-                if (mb is Message m)
-                {
-                    TryMapAudio(m, chatId, out _);
-                }
+                return;
             }
+
+            // Not found there (e.g. a chat kind that pages differently) - ask by id.
+            result = await _client.GetMessages(
+                peer, new InputMessage[] { new InputMessageID { id = messageId } }).WaitAsync(ct);
+            MapMessage(result, chatId, messageId);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             LogLine($"TryFetchDocument: message {messageId} in chat {chatId} failed: {ex.Message}");
         }
+    }
+
+    /// <summary>Maps the message with this id out of a result; whether it was an audio.</summary>
+    private bool MapMessage(Messages_MessagesBase result, long chatId, int messageId)
+    {
+        foreach (MessageBase mb in result.Messages)
+        {
+            if (mb is Message m && m.ID == messageId && TryMapAudio(m, chatId, out _))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     // Only used when the document has no filename of its own - give the file a

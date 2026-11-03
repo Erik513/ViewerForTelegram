@@ -53,7 +53,7 @@ public sealed class PlayerPanel : Panel
     private readonly VolumeControl _volume;   // mute button + slider, coupled to the player (BindVolume)
     private readonly TextBox _status;
     private string? _saveTipFileName;   // file name currently shown on the save button's tooltip
-    private readonly ToolTip _tips = new() { AutoPopDelay = 20000 };
+    private readonly ToolTip _tips = AppSurfaces.CreateToolTip(autoPopMs: 20000);
 
     private TimeSpan _duration;
     private long _sizeBytes;

@@ -11,6 +11,18 @@ namespace ViewerForTelegram.UI;
 /// </summary>
 internal static class AppSurfaces
 {
+    /// <summary>The library's themed tooltip, with this app's display times.</summary>
+    public static ToolTip CreateToolTip(int autoPopMs, int? initialDelayMs = null)
+    {
+        ToolTip tip = UIStyles.ToolTips.CreateToolTip();
+        tip.AutoPopDelay = autoPopMs;
+        if (initialDelayMs is int delay)
+        {
+            tip.InitialDelay = delay;
+        }
+        return tip;
+    }
+
     /// <summary>Whether the theme that is applied now is a light one.</summary>
     public static bool IsLight => UIStyles.Colors.BackgroundMedium.GetBrightness() > 0.5f;
 

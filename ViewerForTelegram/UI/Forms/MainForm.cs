@@ -78,7 +78,7 @@ public sealed class MainForm : AppForm
     private readonly Button _refreshButton;
     private readonly StyledGrid _list;
     private readonly PlayerPanel _player;
-    private readonly ToolTip _toolTip = new() { AutoPopDelay = 12000, InitialDelay = 400 };
+    private readonly ToolTip _toolTip = AppSurfaces.CreateToolTip(autoPopMs: 12000, initialDelayMs: 400);
     private readonly System.Windows.Forms.Timer _positionTimer;
     private readonly System.Windows.Forms.Timer _feedDebounce;    // coalesce rapid chat/range changes
     private readonly System.Windows.Forms.Timer _filterDebounce;  // coalesce search-box typing

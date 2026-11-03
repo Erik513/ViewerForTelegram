@@ -1684,20 +1684,27 @@ public sealed class MainForm : AppForm
     /// <summary>The one player button: download / cancel / play / pause the player's track.</summary>
     private void OnMainButton() => Activate(PlayerAudio);
 
-    /// <summary>Double-click / Enter on a row: act on that row, even while another track plays.</summary>
-    private void PlaySelected() => Activate(SelectedAudio);
+    /// <summary>
+    /// Double-click / Enter on a row: act on that row, even while another track plays.
+    /// On the row that is downloading it does nothing - only the cancel button cancels.
+    /// </summary>
+    private void PlaySelected() => Activate(SelectedAudio, fromList: true);
 
-    private void Activate(AudioMessage? audio)
+    private void Activate(AudioMessage? audio, bool fromList = false)
     {
         if (audio is null)
         {
             return;
         }
 
-        // Downloading this one -> cancel.
+        // Downloading this one -> the cancel button cancels; a double-click or Enter
+        // on the row must not (a second press would undo the first).
         if (_pendingFileId == audio.FileId)
         {
-            _playCts?.Cancel();
+            if (!fromList)
+            {
+                _playCts?.Cancel();
+            }
             return;
         }
 
@@ -2165,7 +2172,27 @@ public sealed class MainForm : AppForm
         HighlightPlayingRow();
     }
 
+    private bool _saving;   // a save is running - a second click must not start another
+
     private async void SaveSelected()
+    {
+        if (_saving)
+        {
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            await SaveSelectedCoreAsync();
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task SaveSelectedCoreAsync()
     {
         if (PlayerAudio is not { } audio)
         {

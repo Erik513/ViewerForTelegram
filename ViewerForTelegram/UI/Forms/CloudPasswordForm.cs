@@ -56,7 +56,7 @@ public sealed class CloudPasswordForm : AppForm
         _passwordBox.UseSystemPasswordChar = true;
         _passwordBox.SetBounds(x, y, w - 40, 30);
 
-        var eye = UIStyles.Buttons.CreateStandard("", Loc.S("pwd.show"), new Size(34, 30));
+        var eye = UIStyles.Buttons.CreatePrimary("", Loc.S("pwd.show"), new Size(34, 30));
         eye.Font = new Font("Segoe MDL2 Assets", 10f);
         eye.Text = EyeShow;
         eye.TabStop = false;

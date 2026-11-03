@@ -184,7 +184,7 @@ public sealed class MainForm : AppForm
         _settingsButton.Anchor = AnchorStyles.None;   // square, centred in its cell, no clipping
         _settingsButton.Click += async (_, _) => await OpenSettingsAsync(isStartup: false);
 
-        _groupCombo = UIStyles.ComboBoxes.CreateStandard();
+        _groupCombo = UIStyles.ComboBoxes.CreatePrimary();
         _groupCombo.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         // Long chat names get clipped in the narrow box - show the full one in a
         // tooltip, and widen the dropdown list so it isn't clipped there too.
@@ -206,13 +206,13 @@ public sealed class MainForm : AppForm
             OnFilterChanged();
         };
 
-        _rangeCombo = UIStyles.ComboBoxes.CreateStandard();
+        _rangeCombo = UIStyles.ComboBoxes.CreatePrimary();
         _rangeCombo.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _rangeCombo.SelectedIndexChanged += (_, _) => OnFilterChanged();
 
         // Filters the already-loaded list by file format - no re-fetch, just a
         // re-render, so it's not routed through OnFilterChanged.
-        _formatCombo = UIStyles.ComboBoxes.CreateStandard();
+        _formatCombo = UIStyles.ComboBoxes.CreatePrimary();
         _formatCombo.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _formatCombo.SelectedIndexChanged += (_, _) =>
         {

@@ -117,7 +117,7 @@ public sealed class SettingsForm : AppForm
         _table.Dock = DockStyle.Top;
         _table.Padding = new Padding(5);
 
-        _language = UIStyles.ComboBoxes.CreateStandard();
+        _language = UIStyles.ComboBoxes.CreatePrimary();
         _language.DropDownStyle = ComboBoxStyle.DropDownList;
         _language.TabStop = false;
         _language.Items.AddRange(new object[] { "English", "Deutsch" });

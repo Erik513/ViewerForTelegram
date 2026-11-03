@@ -8,7 +8,8 @@ Telegram group or channel you're in – or in your own **Saved Messages** or a
 and save the ones you want to keep.
 
 It signs in as **you** via Telegram's MTProto API (like the official clients),
-so it can see full history with no bot restrictions and no file-size limit.
+so it can see full history with no bot restrictions and no file-size limit
+(only files bigger than the local cache limit are not downloaded).
 
 > Built for the "let me hear what's new" case, not as a re-listen library. The
 > local cache is just a size-capped playback buffer – clear it any time, or
@@ -28,7 +29,9 @@ app checks for newer releases on startup and can update itself.
 
 - Reads from any group or channel you're in, plus your **Saved Messages** and
   your **bot chats** (person-to-person DMs are left out on purpose)
-- One player docked at the bottom: play/pause, seek, volume, "Save a copy"
+- One player docked at the bottom: play/pause, seek, volume with mute, "Save a copy".
+  It stays on the loaded track while you browse the list or switch chats;
+  double-click (or Enter) starts another one
 - Plays mp3, m4a/aac, wav, wma, aiff/aif and (on Windows 10+) flac; ogg/opus
   can be saved but not played in-app
 - Rolling time window (precise to the hour) or a fixed "Newest N" count, up
@@ -40,16 +43,17 @@ app checks for newer releases on startup and can update itself.
 - A ✓ column marks the tracks already in the local cache
 - Drag a downloaded track straight out of the list into Explorer, a music
   app or a chat window
-- Click a column header to sort by date, title, artist, length or size
+- Click a column header to sort by date, title, artist, duration, format or size
   (click again to reverse, once more for the normal newest-first order)
 - After a load or refresh, the refresh button badges how many tracks came
   in that you hadn't seen yet
 - Filter the list by file format, plus a live text filter over performer / title / file name
   (the text filter clears when you switch chats)
-- Volume, last chat, time range and format filter remembered between sessions
+- Volume (and mute), last chat, time range and format filter remembered between sessions
+- Dark and light theme with an accent color, switchable in Settings
 - UI language: English or German, switches instantly, no restart needed
 - Save to a fixed folder or via a save dialog, original file name preserved
-- Size-capped local cache (default 3000 MB) with a "clear now" button
+- Size-capped local cache (default 3000 MB; larger files are skipped) with a "clear now" button
 - Checks GitHub releases for updates at startup and offers to install them
 - Only one instance runs at a time
 
@@ -105,9 +109,9 @@ Everything is under `%AppData%\ViewerForTelegram\`:
 |--------------------------|---------------------------------------------------|
 | `appsettings.local.json` | api_id, api_hash, phone number, options           |
 | `telegram.session`       | the completed login – treat like a password       |
-| `ui-state.json`          | remembered chat / time range / volume / format filter |
+| `ui-state.json`          | remembered chat / time range / volume + mute / format filter |
 | `feed-cache.json`        | the loaded audio list per chat (up to 5000 each)  |
-| `durations.json`         | track lengths learned by playing "as a file" audio |
+| `durations.json`         | track durations learned by playing audio Telegram gave no length for |
 | `cache\`                 | downloaded audio files                            |
 | `crash.log` / `errors.log` | diagnostics for bug reports (safe to delete)    |
 

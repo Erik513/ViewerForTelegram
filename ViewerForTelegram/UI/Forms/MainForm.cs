@@ -317,7 +317,7 @@ public sealed class MainForm : AppForm
         AddColumn(Loc.S("col.artist"), fill: 38);
         AddColumn(Loc.S("col.length"), width: Math.Max(64, HeaderWidth(Loc.S("col.length"))));
         AddColumn(Loc.S("col.format"), width: FormatColumnWidth());
-        AddColumn(Loc.S("col.size"), width: 90, alignRight: true);
+        AddColumn(Loc.S("col.size"), width: SizeColumnWidth(), alignRight: true);
         AddCachedColumn();   // last: a check for tracks already downloaded
         // The list only shows info. The player's one button does the work:
         // download / cancel / play / pause on the selected row.
@@ -1265,6 +1265,18 @@ public sealed class MainForm : AppForm
         int header = HeaderWidth(Loc.S("col.format"));
 
         return Math.Max(cells + 20, header);
+    }
+
+    /// <summary>
+    /// Width for the size column: the widest size the cache can hold (the
+    /// 3000 MB limit, as shown by the list) plus the cell's right padding, or the header.
+    /// </summary>
+    private int SizeColumnWidth()
+    {
+        Font cellFont = _list.DefaultCellStyle.Font ?? _list.Font;
+        int cells = TextRenderer.MeasureText(TrackFormat.SizeMb(CachePolicy.LimitBytes), cellFont).Width;
+
+        return Math.Max(cells + 8 + 14, HeaderWidth(Loc.S("col.size")));   // 8 = right padding
     }
 
     private void AddColumn(string header, int fill = 0, int width = 0, bool alignRight = false)

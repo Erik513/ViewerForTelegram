@@ -52,6 +52,25 @@ public class AudioPlayerTests
     }
 
     [Fact]
+    public void Mute_KeepsTheVolumeAndRaisesVolumeChanged()
+    {
+        using IAudioPlayer player = new AudioPlayer { Volume = 0.6 };
+        int raised = 0;
+        player.VolumeChanged += (_, _) => raised++;
+
+        player.IsMuted = true;
+        Assert.True(player.IsMuted);
+        Assert.Equal(0.6, player.Volume, 3);   // remembered while muted
+        Assert.Equal(1, raised);
+
+        player.IsMuted = true;                  // no change, no event
+        Assert.Equal(1, raised);
+
+        player.IsMuted = false;
+        Assert.Equal(2, raised);
+    }
+
+    [Fact]
     public void Volume_IsClampedAndKept()
     {
         using IAudioPlayer player = new AudioPlayer { Volume = 2f };

@@ -11,7 +11,8 @@ public sealed record UiState(
     int RangeDays = 7,
     int VolumePercent = 10,
     long LastPlayedFileId = 0,
-    string FormatFilter = "")
+    string FormatFilter = "",
+    bool VolumeMuted = false)
 {
     public static UiState Default { get; } = new();
 }

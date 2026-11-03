@@ -142,7 +142,6 @@ public static class Loc
 
         // --- player ---
         ["player.nothingSelected"] = "Nothing selected",
-        ["player.vol"] = "Vol",
         ["player.tip.main"] = "Play / pause",
         ["player.tip.cancelDownload"] = "Cancel download",
         ["player.tip.pause"] = "Pause",
@@ -306,7 +305,6 @@ public static class Loc
         ["err.signinCancelled"] = "Anmeldung abgebrochen.",
 
         ["player.nothingSelected"] = "Nichts ausgewählt",
-        ["player.vol"] = "Vol",
         ["player.tip.main"] = "Wiedergabe / Pause",
         ["player.tip.cancelDownload"] = "Download abbrechen",
         ["player.tip.pause"] = "Pause",

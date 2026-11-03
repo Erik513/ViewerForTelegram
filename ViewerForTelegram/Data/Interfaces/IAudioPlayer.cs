@@ -12,8 +12,10 @@ public enum PlaybackState
 /// Plays one local audio file at a time. Knows nothing about Telegram or the
 /// cache - it is handed a ready file path. Events are raised on the thread that
 /// created the player (the UI thread), so handlers need no marshalling.
+/// Volume, mute and <c>VolumeChanged</c> come from <see cref="ErikwnkCore.IAudioVolume"/>, so
+/// a library <c>VolumeControl</c> can be coupled to a player directly.
 /// </summary>
-public interface IAudioPlayer : IDisposable
+public interface IAudioPlayer : IDisposable, ErikwnkCore.IAudioVolume
 {
     PlaybackState State { get; }
 
@@ -29,16 +31,6 @@ public interface IAudioPlayer : IDisposable
 
     /// <summary>Current playback position; settable to seek.</summary>
     TimeSpan Position { get; set; }
-
-    /// <summary>Volume from 0.0 to 1.0. Persists across <see cref="Load"/> calls.</summary>
-    float Volume { get; set; }
-
-    /// <summary>
-    /// Raised when the volume was changed from outside the app (the Windows
-    /// volume mixer). The argument is the new 0..1 value; setting
-    /// <see cref="Volume"/> from a handler must not loop back.
-    /// </summary>
-    event EventHandler<float>? VolumeChangedExternally;
 
     /// <summary>Raised when playback reaches the end of the file on its own.</summary>
     event EventHandler? PlaybackEnded;

@@ -50,8 +50,7 @@ public sealed class PlayerPanel : Panel
     private readonly Spinner _spinner;
     private readonly TableLayoutPanel _seekRow;
     private readonly Label _time;
-    private readonly Label _volLabel;
-    private readonly TrackBar _volume;
+    private readonly VolumeControl _volume;   // mute button + slider, coupled to the player (BindVolume)
     private readonly TextBox _status;
     private string? _saveTipFileName;   // file name currently shown on the save button's tooltip
     private readonly ToolTip _tips = new() { AutoPopDelay = 20000 };
@@ -133,12 +132,10 @@ public sealed class PlayerPanel : Panel
         _time = MakeLabel(UIStyles.Labels.CreateMuted("–:– / –:–"));
         _time.TextAlign = ContentAlignment.MiddleCenter;
 
-        _volLabel = MakeLabel(UIStyles.Labels.CreateMuted(Loc.S("player.vol")));
-        _volLabel.TextAlign = ContentAlignment.MiddleRight;
-
-        _volume = UIStyles.TrackBars.CreatePrimary(0.1, showValuePopup: true, formatValue: v => $"{v * 100:0}%");
+        _volume = UIStyles.VolumeControls.CreatePrimary(0.1, new Size(150, 26));
         _volume.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-        _volume.ValueChanged += (_, _) => VolumeChanged?.Invoke((float)_volume.Value);
+        _volume.Margin = new Padding(8, 0, 0, 0);
+        _volume.VolumeChanged += (_, _) => VolumeChanged?.Invoke(this, EventArgs.Empty);
 
         // Top-right cluster: size / bitrate / format stacked, then [save][open folder]
         var fileInfoStack = UIStyles.TableLayoutPanels.CreateTransparent(1, 3);
@@ -188,12 +185,10 @@ public sealed class PlayerPanel : Panel
         _seekRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
-        _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34));
-        _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
+        _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 166));
         _seekRow.Controls.Add(_seek, 0, 0);
         _seekRow.Controls.Add(_time, 1, 0);
-        _seekRow.Controls.Add(_volLabel, 2, 0);
-        _seekRow.Controls.Add(_volume, 3, 0);
+        _seekRow.Controls.Add(_volume, 2, 0);
 
         var stack = UIStyles.TableLayoutPanels.CreateTransparent(1, 3);
         stack.Dock = DockStyle.Fill;
@@ -259,7 +254,6 @@ public sealed class PlayerPanel : Panel
     /// <summary>(Re-)applies every visible string from <see cref="Loc"/>.</summary>
     public void ApplyTexts()
     {
-        _volLabel.Text = Loc.S("player.vol");
         _tips.SetToolTip(_browseButton, Loc.S("player.tip.browse"));
 
         SetButton(_state);   // re-localises the main button's tooltip
@@ -281,13 +275,14 @@ public sealed class PlayerPanel : Panel
     public event Action? Save;                  // save a copy to disk
     public event Action? BrowseFolder;          // open the download folder
     public event Action<double>? Seek;          // target position in seconds
-    public event Action<float>? VolumeChanged;  // 0..1
+    /// <summary>The user changed what is heard (slider or mute) - not raised when code sets the volume.</summary>
+    public event EventHandler? VolumeChanged;
 
-    public float Volume
-    {
-        get => (float)_volume.Value;
-        set => _volume.Value = Math.Clamp(value, 0f, 1f);
-    }
+    /// <summary>
+    /// Couples the volume control to the player: it takes over the player's volume
+    /// and mute and from then on both follow each other.
+    /// </summary>
+    public void BindVolume(ErikwnkCore.IAudioVolume target) => _volume.Target = target;
 
     public void SetIdle()
     {

@@ -28,6 +28,7 @@ public sealed class AudioPlayer : IAudioPlayer
     private AudioFileReader? _fileReader; // set only for the AudioFileReader path (has its own Volume)
     private SampleChannel? _sampleChannel; // set only for the FLAC path (volume goes here)
     private float _volume = 0.1f;
+    private bool _isMuted;
     private bool _stopIsIntentional;
 
     // Volume is routed through this process's own entry in the Windows volume
@@ -51,7 +52,8 @@ public sealed class AudioPlayer : IAudioPlayer
     // Applied to NAudio's own linear volume only when there is no per-app session
     // to route through (rare - e.g. no audio device). A -40 dB perceptual taper
     // so a linear amplitude doesn't feel far too loud in the lower half.
-    private float FallbackGain => _volume <= 0f ? 0f : MathF.Pow(10f, (_volume - 1f) * 2f);
+    private float EffectiveVolume => _isMuted ? 0f : _volume;
+    private float FallbackGain => EffectiveVolume <= 0f ? 0f : MathF.Pow(10f, (EffectiveVolume - 1f) * 2f);
 
     public PlaybackState State { get; private set; } = PlaybackState.Stopped;
 
@@ -75,15 +77,51 @@ public sealed class AudioPlayer : IAudioPlayer
         }
     }
 
-    public float Volume
+    /// <summary>The level the sound has when it is on, 0..1 (remembered while muted).</summary>
+    public double Volume
     {
         get => _volume;
         set
         {
-            _volume = Math.Clamp(value, 0f, 1f);
+            if (double.IsNaN(value))
+            {
+                return;
+            }
+
+            float clamped = (float)Math.Clamp(value, 0d, 1d);
+            if (clamped == _volume)
+            {
+                return;
+            }
+
+            _volume = clamped;
             ApplyVolume();
+            VolumeChanged?.Invoke(this, EventArgs.Empty);
         }
     }
+
+    /// <summary>Whether the sound is off. The volume is remembered meanwhile.</summary>
+    public bool IsMuted
+    {
+        get => _isMuted;
+        set
+        {
+            if (value == _isMuted)
+            {
+                return;
+            }
+
+            _isMuted = value;
+            ApplyVolume();
+            VolumeChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>
+    /// Raised when the volume or the mute changes - from code, from the volume
+    /// control, and when the user moves this app's slider in the Windows mixer.
+    /// </summary>
+    public event EventHandler? VolumeChanged;
 
     private void ApplyVolume()
     {
@@ -91,7 +129,7 @@ public sealed class AudioPlayer : IAudioPlayer
         {
             try
             {
-                float scalar = ToScalar(_volume);
+                float scalar = ToScalar(EffectiveVolume);
                 _lastAppliedScalar = scalar;
                 _sessionVolume.Volume = scalar;
                 SetChannelVolume(1f);   // session does the attenuation
@@ -117,9 +155,6 @@ public sealed class AudioPlayer : IAudioPlayer
             _sampleChannel.Volume = gain;
         }
     }
-
-    /// <summary>Raised when the volume was changed from the Windows volume mixer; the argument is the new 0..1 slider position.</summary>
-    public event EventHandler<float>? VolumeChangedExternally;
 
     public event EventHandler? PlaybackEnded;
     public event EventHandler<Exception>? PlaybackFailed;
@@ -399,17 +434,27 @@ public sealed class AudioPlayer : IAudioPlayer
     private void OnSessionVolume(float scalar, bool muted)
     {
         // Ignore the notification our own ApplyVolume just triggered - it comes
-        // back bit-for-bit equal, whereas a real mixer drag is a step of ~8%.
-        if (!muted && _lastAppliedScalar > 0f
-            && MathF.Abs(scalar - _lastAppliedScalar) < _lastAppliedScalar * 0.01f)
+        // back bit-for-bit equal (also 0 while muted), whereas a real mixer drag
+        // is a step of ~8%.
+        if (!muted && _lastAppliedScalar >= 0f
+            && MathF.Abs(scalar - _lastAppliedScalar) < MathF.Max(0.005f, _lastAppliedScalar * 0.01f))
         {
             return;
         }
 
-        float pos = muted ? 0f : ToSliderPos(scalar);
-        _volume = pos;
-        _lastAppliedScalar = ToScalar(pos);
-        _sync.Post(_ => VolumeChangedExternally?.Invoke(this, pos), null);
+        // The mixer's own mute switch is the same as ours; moving its slider
+        // turns the sound on again with that level.
+        if (muted)
+        {
+            _isMuted = true;
+        }
+        else
+        {
+            _isMuted = false;
+            _volume = ToSliderPos(scalar);
+        }
+        _lastAppliedScalar = ToScalar(EffectiveVolume);
+        _sync.Post(_ => VolumeChanged?.Invoke(this, EventArgs.Empty), null);
     }
 
     private sealed class SessionEvents : IAudioSessionEventsHandler

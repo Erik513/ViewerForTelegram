@@ -134,6 +134,7 @@ public sealed class MainForm : AppForm
 
     private int _newSinceLastVisit; // tracks the last load pulled in that weren't already known - badged on the refresh button
     private bool _suppressListEvents;
+    private bool _restoringVolume;
 
     private bool _started;
     private bool _connecting;
@@ -334,11 +335,15 @@ public sealed class MainForm : AppForm
         _player.Save += SaveSelected;
         _player.BrowseFolder += OpenDownloadFolder;
         _player.Seek += seconds => Seek(TimeSpan.FromSeconds(seconds));
-        _player.VolumeChanged += OnVolumeChanged;
-        _audio.VolumeChangedExternally += (_, pos) =>
+        _player.BindVolume(_audio);
+        // The player raises VolumeChanged for the slider, the mute button and the
+        // Windows mixer alike - remember the level each time.
+        _audio.VolumeChanged += (_, _) =>
         {
-            _player.Volume = pos;   // slider setter doesn't re-raise VolumeChanged
-            SaveUiState();
+            if (!_restoringVolume)
+            {
+                SaveUiState();
+            }
         };
 
         _positionTimer = new System.Windows.Forms.Timer { Interval = 250 };
@@ -524,8 +529,10 @@ public sealed class MainForm : AppForm
         int formatIdx = Array.FindIndex(FormatOptions, o => o.Key == state.FormatFilter);
         _formatCombo.SelectedIndex = formatIdx >= 0 ? formatIdx + 1 : 0;
         _suppressComboEvents = false;
-        _player.Volume = Math.Clamp(state.VolumePercent, 0, 100) / 100f;
-        _audio.Volume = _player.Volume;
+        _restoringVolume = true;   // (not a change by the user: don't write the state yet)
+        _audio.Volume = Math.Clamp(state.VolumePercent, 0, 100) / 100.0;   // the volume control follows
+        _audio.IsMuted = state.VolumeMuted;
+        _restoringVolume = false;
         _lastTrackId = state.LastPlayedFileId;   // select + tint this row once the feed loads
 
         // Show the last session's list for this chat immediately - before even
@@ -2045,12 +2052,6 @@ public sealed class MainForm : AppForm
         PlaybackStatus(Loc.T("status.playing", audio.DisplayName));
     }
 
-    private void OnVolumeChanged(float v)
-    {
-        _audio.Volume = v;
-        SaveUiState();
-    }
-
     private void OpenDownloadFolder()
     {
         TelegramConfig cfg = _configStore.Load();
@@ -2316,7 +2317,8 @@ public sealed class MainForm : AppForm
         _uiStateStore.Save(new UiState(
             LastChatId: SelectedChat?.Id ?? 0,
             RangeDays: SelectedRange,
-            VolumePercent: (int)Math.Round(_player.Volume * 100),
+            VolumePercent: (int)Math.Round(_audio.Volume * 100),
+            VolumeMuted: _audio.IsMuted,
             LastPlayedFileId: _lastTrackId,
             FormatFilter: _formatCombo.SelectedIndex >= 1
                 ? FormatOptions[_formatCombo.SelectedIndex - 1].Key

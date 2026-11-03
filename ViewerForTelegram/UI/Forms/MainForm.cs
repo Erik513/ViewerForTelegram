@@ -291,6 +291,11 @@ public sealed class MainForm : AppForm
         _list.ScrollBars = ScrollBars.Vertical;   // no horizontal scrollbar, ever
         _list.VirtualMode = true;              // cell values come from _view via CellValueNeeded
         _list.ContextMenuStrip = null;         // no right-click menu: the list only shows info
+        // The library grid drops its selection on a click anywhere else in the window
+        // (not on a button) - which includes the seek bar and the volume slider of the
+        // player. The selection IS the player's track, so that click used to reset
+        // the player to idle mid-song and the seek bar stopped working.
+        _list.DeselectOnOutsideClick = false;
         _list.ToastColors = UIStyles.Colors.Sets.Primary;   // the list's own toasts (copy) in the accent too
         _list.CellValueNeeded += OnCellValueNeeded;
         _list.CellFormatting += OnCellFormatting;

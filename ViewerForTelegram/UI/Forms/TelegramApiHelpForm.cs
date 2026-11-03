@@ -28,14 +28,9 @@ public sealed class TelegramApiHelpForm : AppForm
     {
         StartPosition = FormStartPosition.CenterParent;
 
-        var layout = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            BackColor = UIStyles.Colors.BackgroundLight,
-            Padding = new Padding(Pad),
-            ColumnCount = 1,
-            RowCount = 2
-        };
+        TableLayoutPanel layout = UIStyles.TableLayoutPanels.CreateStandard(1, 2);
+        layout.Dock = DockStyle.Fill;
+        layout.Padding = new Padding(Pad);
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, ButtonRow));
 
@@ -55,13 +50,10 @@ public sealed class TelegramApiHelpForm : AppForm
             TitleBar.Height + Padding.Vertical
                 + 2 * Pad + estimate + TextBottomMargin + ButtonRow);
 
-        var buttons = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.RightToLeft,
-            WrapContents = false,
-            BackColor = Color.Transparent
-        };
+        FlowLayoutPanel buttons = UIStyles.FlowLayoutPanels.CreateTransparent();
+        buttons.Dock = DockStyle.Fill;
+        buttons.FlowDirection = FlowDirection.RightToLeft;
+        buttons.WrapContents = false;
 
         Button close = UIStyles.Buttons.CreatePrimary(Loc.S("help.close"), "", new Size(110, 32));
         close.Margin = new Padding(8, 4, 0, 4);

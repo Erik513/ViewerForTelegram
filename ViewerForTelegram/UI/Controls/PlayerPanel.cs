@@ -66,7 +66,7 @@ public sealed class PlayerPanel : Panel
         Dock = DockStyle.Bottom;
         Height = PanelHeight;
         Padding = new Padding(12, 5, 14, 3);
-        BackColor = UIStyles.Colors.BackgroundDarkElevated;
+        AppSurfaces.Follow(this, () => BackColor = AppSurfaces.Bar);
         _tips.ReviveOnFormActivate(this);
 
         // One library preset per state; SetButton swaps the one that is shown.
@@ -141,11 +141,9 @@ public sealed class PlayerPanel : Panel
         _volume.ValueChanged += (_, _) => VolumeChanged?.Invoke((float)_volume.Value);
 
         // Top-right cluster: size / bitrate / format stacked, then [save][open folder]
-        var fileInfoStack = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3,
-            Margin = new Padding(0), BackColor = Color.Transparent
-        };
+        var fileInfoStack = UIStyles.TableLayoutPanels.CreateTransparent(1, 3);
+        fileInfoStack.Dock = DockStyle.Fill;
+        fileInfoStack.Margin = new Padding(0);
         fileInfoStack.RowStyles.Add(new RowStyle(SizeType.Percent, 34));
         fileInfoStack.RowStyles.Add(new RowStyle(SizeType.Percent, 33));
         fileInfoStack.RowStyles.Add(new RowStyle(SizeType.Percent, 33));
@@ -153,22 +151,18 @@ public sealed class PlayerPanel : Panel
         fileInfoStack.Controls.Add(_bitrate, 0, 1);
         fileInfoStack.Controls.Add(_fileFormat, 0, 2);
 
-        var clusterButtons = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1,
-            Margin = new Padding(0), BackColor = Color.Transparent
-        };
+        var clusterButtons = UIStyles.TableLayoutPanels.CreateTransparent(2, 1);
+        clusterButtons.Dock = DockStyle.Fill;
+        clusterButtons.Margin = new Padding(0);
         clusterButtons.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         clusterButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40));
         clusterButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40));
         clusterButtons.Controls.Add(_saveButton, 0, 0);
         clusterButtons.Controls.Add(_browseButton, 1, 0);
 
-        var cluster = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1,
-            Margin = new Padding(0), BackColor = Color.Transparent
-        };
+        var cluster = UIStyles.TableLayoutPanels.CreateTransparent(2, 1);
+        cluster.Dock = DockStyle.Fill;
+        cluster.Margin = new Padding(0);
         cluster.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         cluster.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         cluster.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 86));
@@ -176,11 +170,9 @@ public sealed class PlayerPanel : Panel
         cluster.Controls.Add(clusterButtons, 1, 0);
 
         // Row 0: title (fill) + the cluster
-        var titleRow = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1,
-            Margin = new Padding(0), BackColor = Color.Transparent
-        };
+        var titleRow = UIStyles.TableLayoutPanels.CreateTransparent(2, 1);
+        titleRow.Dock = DockStyle.Fill;
+        titleRow.Margin = new Padding(0);
         titleRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         titleRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         titleRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200));
@@ -190,11 +182,9 @@ public sealed class PlayerPanel : Panel
         // Row 2: seek (or download bar)  time  Vol  volume - flush with the
         // title / performer above it. The load spinner is in the left column
         // under the play button, not in this row.
-        _seekRow = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 1,
-            Margin = new Padding(0), BackColor = Color.Transparent
-        };
+        _seekRow = UIStyles.TableLayoutPanels.CreateTransparent(4, 1);
+        _seekRow.Dock = DockStyle.Fill;
+        _seekRow.Margin = new Padding(0);
         _seekRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _seekRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
@@ -205,11 +195,9 @@ public sealed class PlayerPanel : Panel
         _seekRow.Controls.Add(_volLabel, 2, 0);
         _seekRow.Controls.Add(_volume, 3, 0);
 
-        var stack = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3,
-            Margin = new Padding(12, 0, 0, 0), BackColor = Color.Transparent
-        };
+        var stack = UIStyles.TableLayoutPanels.CreateTransparent(1, 3);
+        stack.Dock = DockStyle.Fill;
+        stack.Margin = new Padding(12, 0, 0, 0);
         stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));   // title + the size/kbps/format stack
         stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 22));   // artist text box
         stack.RowStyles.Add(new RowStyle(SizeType.Percent, 100));   // seek row absorbs the rest
@@ -220,21 +208,17 @@ public sealed class PlayerPanel : Panel
         // Left column: play button pulled up to sit over the title / performer,
         // the load spinner directly under it - level with the seek row, so the
         // seek bar itself lines up with the title and performer above it.
-        _leftColumn = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2,
-            Margin = new Padding(0), BackColor = Color.Transparent
-        };
+        _leftColumn = UIStyles.TableLayoutPanels.CreateTransparent(1, 2);
+        _leftColumn.Dock = DockStyle.Fill;
+        _leftColumn.Margin = new Padding(0);
         _leftColumn.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));    // title + performer band
         _leftColumn.RowStyles.Add(new RowStyle(SizeType.Percent, 100));    // seek row band
         _leftColumn.Controls.Add(_mainButton, 0, 0);   // both anchored None -> centred in their band
         _leftColumn.Controls.Add(_spinner, 0, 1);
 
-        var controls = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1,
-            Margin = new Padding(0), BackColor = Color.Transparent
-        };
+        var controls = UIStyles.TableLayoutPanels.CreateTransparent(2, 1);
+        controls.Dock = DockStyle.Fill;
+        controls.Margin = new Padding(0);
         controls.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         controls.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 52));
         controls.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -250,13 +234,11 @@ public sealed class PlayerPanel : Panel
         _status.Margin = new Padding(0);
         _status.Font = UIStyles.Fonts.Small;
         _status.ForeColor = UIStyles.Colors.PrimaryLight;
-        _status.BackColor = BackColor;
+        AppSurfaces.Follow(_status, () => _status.BackColor = BackColor);
 
-        var root = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2,
-            Margin = new Padding(0), BackColor = Color.Transparent
-        };
+        var root = UIStyles.TableLayoutPanels.CreateTransparent(1, 2);
+        root.Dock = DockStyle.Fill;
+        root.Margin = new Padding(0);
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, StatusRowHeight));
         root.Controls.Add(controls, 0, 0);
@@ -475,8 +457,12 @@ public sealed class PlayerPanel : Panel
         tb.ReadOnly = true;
         tb.TabStop = false;
         tb.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-        tb.BackColor = BackColor;                 // blend into the panel
-        tb.ForeColor = UIStyles.Colors.White;
+        // blend into the panel, in every theme
+        AppSurfaces.Follow(tb, () =>
+        {
+            tb.BackColor = BackColor;
+            tb.ForeColor = UIStyles.Colors.TextPrimary;
+        });
         if (bold)
         {
             tb.Font = new Font(tb.Font, FontStyle.Bold);

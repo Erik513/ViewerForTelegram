@@ -244,29 +244,17 @@ public sealed class MainForm : AppForm
         _searchBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _searchBox.TextChanged += (_, _) => { _filterDebounce.Stop(); _filterDebounce.Start(); };
 
-        // Plain Label (not UIStyles.Labels.CreateMuted): that one is owner-drawn
-        // and ignores ForeColor, so the "cache full" red would never show.
-        _cacheLabel = new Label
-        {
-            Text = Loc.S("cache.initial"),
-            AutoSize = false,
-            AutoEllipsis = false,
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleRight,
-            Font = UIStyles.Fonts.Small,
-            ForeColor = UIStyles.Colors.TextMuted,
-            BackColor = UIStyles.Colors.BackgroundDarkElevated,
-            Margin = new Padding(6, 0, 0, 0),
-        };
+        _cacheLabel = UIStyles.Labels.CreateMuted(Loc.S("cache.initial"));
+        _cacheLabel.AutoSize = false;
+        _cacheLabel.Dock = DockStyle.Fill;
+        _cacheLabel.TextAlign = ContentAlignment.MiddleRight;
+        _cacheLabel.Margin = new Padding(6, 0, 0, 0);
+        AppSurfaces.Follow(_cacheLabel, () => _cacheLabel.BackColor = AppSurfaces.Bar);
 
-        var topRow = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 7,
-            RowCount = 1,
-            Padding = new Padding(10, 6, 10, 4),
-            BackColor = UIStyles.Colors.BackgroundDarkElevated
-        };
+        TableLayoutPanel topRow = UIStyles.TableLayoutPanels.CreateTransparent(7, 1);
+        topRow.Dock = DockStyle.Fill;
+        topRow.Padding = new Padding(10, 6, 10, 4);
+        AppSurfaces.Follow(topRow, () => topRow.BackColor = AppSurfaces.Bar);
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 42));
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42));
         topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150));
@@ -378,13 +366,8 @@ public sealed class MainForm : AppForm
         _player.Dock = DockStyle.Fill;
         _player.Margin = new Padding(0);   // the default 3px margin ate into the panel
 
-        var root = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 1,
-            RowCount = 3,
-            BackColor = UIStyles.Colors.BackgroundMedium
-        };
+        TableLayoutPanel root = UIStyles.TableLayoutPanels.CreateTransparent(1, 3);
+        root.Dock = DockStyle.Fill;
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, PlayerPanel.PanelHeight));
@@ -1224,8 +1207,12 @@ public sealed class MainForm : AppForm
         // The ✓ is white on a plain or selected row (SelectionForeColor keeps it
         // white under the selection bar); on the player-tinted row it goes blue
         // with the rest of that row via OnCellFormatting.
-        column.DefaultCellStyle.ForeColor = Color.White;
-        column.DefaultCellStyle.SelectionForeColor = Color.White;
+        AppSurfaces.Follow(_list, () =>
+        {
+            column.DefaultCellStyle.ForeColor = UIStyles.Colors.TextPrimary;
+            column.DefaultCellStyle.SelectionForeColor = UIStyles.Colors.TextPrimary;
+            _list.Invalidate();
+        });
         _list.Columns.Add(column);
     }
 
@@ -1255,8 +1242,8 @@ public sealed class MainForm : AppForm
     // Tint for the row of the track in the player (playing / paused), and on a
     // fresh launch the last track from ui-state - a muted blue so it stands out
     // without looking selected.
-    private static readonly Color PlayingRowBack = Color.FromArgb(26, 52, 78);
-    private static readonly Color PlayingRowFore = Color.FromArgb(156, 198, 242);
+    private static Color PlayingRowBack => AppSurfaces.PlayingRowBack;
+    private static Color PlayingRowFore => AppSurfaces.PlayingRowFore;
 
     private long? _tintedFileId;   // which row currently carries the playing tint
 
@@ -2312,7 +2299,7 @@ public sealed class MainForm : AppForm
         _cacheLabel.Text = Loc.T("cache.label", size, count);
         _cacheLabel.ForeColor = bytes > CacheWarnBytes
             ? UIStyles.Colors.RedLight
-            : UIStyles.Colors.TextMuted;
+            : Color.Empty;   // Empty = the muted color of the library, in every theme
         _toolTip.SetToolTip(_cacheLabel, Loc.T("cache.tip", size, limitMb, count));
     }
 

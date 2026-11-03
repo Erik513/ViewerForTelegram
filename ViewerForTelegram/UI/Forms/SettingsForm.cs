@@ -66,6 +66,8 @@ public sealed class SettingsForm : AppForm
     private readonly Button _clearCacheButton;
     private readonly Button _loginBtn;
     private readonly Button _wipe;
+    private Label _statusDesc = null!;   // set in BuildTable
+    private Label _resetDesc = null!;
     private readonly bool _isConnected;
 
     /// <summary>Current state - filled from the fields on close.</summary>
@@ -227,6 +229,7 @@ public sealed class SettingsForm : AppForm
             top.Height + _table.Height + TitleBar.Height + 40 + (VersionStrip?.Height ?? 0));
 
         ApplyTexts();
+        FixTableSize();
         Recenter();
         Loc.Changed += OnLanguageChanged;
         Shown += (_, _) => Recenter();
@@ -264,49 +267,51 @@ public sealed class SettingsForm : AppForm
         _table.Top = 16;
     }
 
-    /// <summary>(Re-)builds the sections and rows with the current language.</summary>
+    /// <summary>
+    /// Builds the sections and rows once. Their labels are given as functions, so the
+    /// table follows a language switch by itself - the rows (and the language combo
+    /// box in them) are never torn down and put back.
+    /// </summary>
     private void BuildTable()
     {
-        _table.ClearRows();
+        _table.AddSection(() => Loc.S("settings.sec.general"));
+        _table.AddRow(() => Loc.S("settings.row.language"), RowH, PropertyColumn.Percent(_language, 100));
 
-        _table.AddSection(Loc.S("settings.sec.general"));
-        _table.AddRow(Loc.S("settings.row.language"), RowH, PropertyColumn.Percent(_language, 100));
+        _table.AddSection(() => Loc.S("settings.sec.api"));
+        AddLockedRow(() => "api_id", _apiId);
+        AddLockedRow(() => "api_hash", _apiHash);
+        AddLockedRow(() => Loc.S("settings.row.phone"), _phone);
 
-        _table.AddSection(Loc.S("settings.sec.api"));
-        AddLockedRow("api_id", _apiId);
-        AddLockedRow("api_hash", _apiHash);
-        AddLockedRow(Loc.S("settings.row.phone"), _phone);
-
-        _table.AddSection(Loc.S("settings.sec.signin"));
+        _statusDesc = Desc("");
+        _table.AddSection(() => Loc.S("settings.sec.signin"));
         _table.AddRow(
-            Loc.S("settings.row.status"), RowH,
-            PropertyColumn.Percent(Desc(_isConnected
-                ? Loc.S("settings.status.connected")
-                : Loc.S("settings.status.disconnected")), 100),
+            () => Loc.S("settings.row.status"), RowH,
+            PropertyColumn.Percent(_statusDesc, 100),
             PropertyColumn.Absolute(_loginBtn, ButtonColumn));
 
-        _table.AddSection(Loc.S("settings.sec.downloads"));
+        _table.AddSection(() => Loc.S("settings.sec.downloads"));
         _table.AddRow(
-            Loc.S("settings.row.folder"), RowH,
+            () => Loc.S("settings.row.folder"), RowH,
             PropertyColumn.Percent(_downloadFolder, 100),
             PropertyColumn.Absolute(_browse, 44),
             PropertyColumn.Absolute(_useDownloadFolder, 56));
 
-        _table.AddSection(Loc.S("settings.sec.cache"));
+        _table.AddSection(() => Loc.S("settings.sec.cache"));
         _table.AddRow(
-            Loc.S("settings.row.used"), RowH,
+            () => Loc.S("settings.row.used"), RowH,
             PropertyColumn.Percent(_cacheSizeLabel, 100),
             PropertyColumn.Absolute(_clearCacheOnStart, 56));
         _table.AddRow(
-            Loc.S("settings.row.folder"), RowH,
+            () => Loc.S("settings.row.folder"), RowH,
             PropertyColumn.Percent(_cacheFolder, 100),
             PropertyColumn.Absolute(_cacheBrowse, 44),
             PropertyColumn.Absolute(_clearCacheButton, ButtonColumn));
 
-        _table.AddSection(Loc.S("settings.sec.credentials"));
+        _resetDesc = Desc("");
+        _table.AddSection(() => Loc.S("settings.sec.credentials"));
         _table.AddRow(
-            Loc.S("settings.row.reset"), RowH,
-            PropertyColumn.Percent(Desc(Loc.S("settings.reset.desc")), 100),
+            () => Loc.S("settings.row.reset"), RowH,
+            PropertyColumn.Percent(_resetDesc, 100),
             PropertyColumn.Absolute(_wipe, ButtonColumn));
 
         UpdateCacheLabel();
@@ -331,10 +336,21 @@ public sealed class SettingsForm : AppForm
         _clearCacheOnStart.ToolTipTextChecked = Loc.S("settings.toggle.clearCache.on");
         _clearCacheOnStart.ToolTipTextUnchecked = Loc.S("settings.toggle.clearCache.off");
 
-        BuildTable();
+        SetDesc(_statusDesc, _isConnected
+            ? Loc.S("settings.status.connected")
+            : Loc.S("settings.status.disconnected"));
+        SetDesc(_resetDesc, Loc.S("settings.reset.desc"));
+        if (_isConnected)
+        {
+            foreach (LockableTextBox field in new[] { _apiId, _apiHash, _phone })
+            {
+                _toolTip.SetToolTip(field, Loc.S("settings.lock.tip.locked"));
+            }
+        }
+        UpdateCacheLabel();
     }
 
-    private void AddLockedRow(string label, LockableTextBox field)
+    private void AddLockedRow(Func<string> label, LockableTextBox field)
     {
         // While signed in, the credentials must not be changed - sign out first.
         if (_isConnected)
@@ -476,6 +492,12 @@ public sealed class SettingsForm : AppForm
         l.Anchor = AnchorStyles.Left;
         _toolTip.SetToolTip(l, text);
         return l;
+    }
+
+    private void SetDesc(Label l, string text)
+    {
+        l.Text = text;
+        _toolTip.SetToolTip(l, text);
     }
 
     private static string Mb(long bytes) => $"{bytes / 1024d / 1024d:0} MB";

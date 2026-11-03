@@ -31,6 +31,9 @@ public sealed class MediaDownloader
     /// download instead of starting it again.
     /// </summary>
     /// <param name="progress">Progress 0..100, optional.</param>
+    /// <exception cref="FileTooLargeException">
+    /// The file is larger than the cache limit - nothing is downloaded.
+    /// </exception>
     /// <exception cref="OperationCanceledException">
     /// Cancelled (via <see cref="Cancel"/> / <see cref="CancelAll"/>) or a
     /// parallel download of the same file ran into the timeout.
@@ -42,6 +45,11 @@ public sealed class MediaDownloader
         if (_cache.Contains(audio))
         {
             return path;
+        }
+
+        if (!CachePolicy.FitsInCache(audio.SizeBytes, _cacheLimitBytes))
+        {
+            throw new FileTooLargeException(audio.SizeBytes, _cacheLimitBytes);
         }
 
         bool mine;

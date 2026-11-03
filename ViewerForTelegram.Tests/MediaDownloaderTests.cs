@@ -1,5 +1,6 @@
 using ViewerForTelegram.Data;
 using ViewerForTelegram.Data.Models;
+using ViewerForTelegram.Logic;
 using ViewerForTelegram.Logic.Services;
 
 namespace ViewerForTelegram.Tests;
@@ -113,5 +114,54 @@ public class MediaDownloaderTests
 
         Assert.True(cache.Contains(fresh)); // the new one stays
         Assert.False(cache.Contains(old));  // the old one is trimmed away
+    }
+
+    [Fact]
+    public async Task EnsureLocalAsync_FileLargerThanCache_ThrowsAndDownloadsNothing()
+    {
+        var tg = new FakeTelegramSource();
+        using var dir = TempPath.Dir();
+        var cache = new FileMediaCache(dir.Path);
+        var dl = new MediaDownloader(tg, cache, cacheLimitBytes: 1000);
+        AudioMessage huge = Audio(1, size: 1001);
+
+        var ex = await Assert.ThrowsAsync<FileTooLargeException>(
+            () => dl.EnsureLocalAsync(huge, null, CancellationToken.None));
+
+        Assert.Equal(0, tg.DownloadCalls);
+        Assert.False(cache.Contains(huge));
+        Assert.Equal(1001, ex.SizeBytes);
+        Assert.Equal(1000, ex.LimitBytes);
+    }
+
+    [Fact]
+    public async Task EnsureLocalAsync_FileExactlyAtLimit_IsDownloaded()
+    {
+        var tg = new FakeTelegramSource();
+        using var dir = TempPath.Dir();
+        var cache = new FileMediaCache(dir.Path);
+        var dl = new MediaDownloader(tg, cache, cacheLimitBytes: 1000);
+        AudioMessage a = Audio(1, size: 1000);
+
+        await dl.EnsureLocalAsync(a, null, CancellationToken.None);
+
+        Assert.Equal(1, tg.DownloadCalls);
+        Assert.True(cache.Contains(a));
+    }
+
+    [Fact]
+    public async Task EnsureLocalAsync_OversizedFileAlreadyCached_StillReturnsPath()
+    {
+        var tg = new FakeTelegramSource();
+        using var dir = TempPath.Dir();
+        var cache = new FileMediaCache(dir.Path);
+        AudioMessage a = Audio(1, size: 50);
+        File.WriteAllBytes(cache.GetPath(a), new byte[50]);
+        var dl = new MediaDownloader(tg, cache, cacheLimitBytes: 10);
+
+        string path = await dl.EnsureLocalAsync(a, null, CancellationToken.None);
+
+        Assert.Equal(cache.GetPath(a), path);
+        Assert.Equal(0, tg.DownloadCalls);
     }
 }

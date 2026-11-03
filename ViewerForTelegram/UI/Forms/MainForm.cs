@@ -322,7 +322,7 @@ public sealed class MainForm : AppForm
         {
             if (e.RowIndex >= 0)   // not a header / row-header double-click
             {
-                OnMainButton();
+                PlaySelected();
             }
         };
         _list.KeyDown += OnListKeyDown;
@@ -349,7 +349,8 @@ public sealed class MainForm : AppForm
         _positionTimer = new System.Windows.Forms.Timer { Interval = 250 };
         _positionTimer.Tick += (_, _) =>
         {
-            if (_selectedFileId == _currentFileId)
+            // The player always shows the loaded track, wherever the list selection is.
+            if (_currentFileId is not null)
             {
                 _player.SetPosition(_audio.Position);
             }
@@ -359,7 +360,7 @@ public sealed class MainForm : AppForm
         _audio.PlaybackEnded += (_, _) =>
         {
             _positionTimer.Stop();
-            if (_selectedFileId == _currentFileId)
+            if (_currentFileId is not null)
             {
                 _player.SetButton(PlayerButton.Play);
                 _player.SetPosition(_audio.Duration);
@@ -1485,12 +1486,22 @@ public sealed class MainForm : AppForm
             ? _view[i].Audio
             : null;
 
+    private AudioMessage? FindAudio(long? fileId) =>
+        fileId is long id && _byFileId.TryGetValue(id, out AudioMessage? a) ? a : null;
+
+    /// <summary>
+    /// What the player shows and its buttons act on: the downloading / loaded
+    /// track, and only when there is none the selected row.
+    /// </summary>
+    private AudioMessage? PlayerAudio =>
+        PlayerTrack.Choose(FindAudio(_pendingFileId), FindAudio(_currentFileId), SelectedAudio);
+
     private void OnListKeyDown(object? sender, KeyEventArgs e)
     {
         switch (e.KeyCode)
         {
             case Keys.Enter:
-                OnMainButton();
+                PlaySelected();
                 e.Handled = true;
                 break;
             case Keys.Right:
@@ -1507,7 +1518,7 @@ public sealed class MainForm : AppForm
 
     private void Seek(TimeSpan position)
     {
-        if (_currentFileId is not null && _selectedFileId == _currentFileId)
+        if (_currentFileId is not null)
         {
             _audio.Position = position;
             _player.SetPosition(_audio.Position);
@@ -1516,9 +1527,7 @@ public sealed class MainForm : AppForm
 
     private void SeekBy(TimeSpan delta)
     {
-        if (_currentFileId is not null
-            && _selectedFileId == _currentFileId
-            && _audio.Duration > TimeSpan.Zero)
+        if (_currentFileId is not null && _audio.Duration > TimeSpan.Zero)
         {
             _audio.Position += delta;
             _player.SetPosition(_audio.Position);
@@ -1542,14 +1551,16 @@ public sealed class MainForm : AppForm
             SetNewCount(0);
         }
 
-        if (SelectedAudio is not { } audio)
+        _selectedFileId = SelectedAudio?.FileId;
+
+        // A running download or loaded track keeps the player; browsing the
+        // list doesn't swap it out.
+        if (PlayerAudio is not { } audio)
         {
-            _selectedFileId = null;
             _player.SetIdle();
             return;
         }
 
-        _selectedFileId = audio.FileId;
         bool cached = _cache.Contains(audio);
         // "Save a copy" downloads an un-cached file on demand, so it's usable
         // whenever the track is cached or we're still connected - this is the
@@ -1607,10 +1618,15 @@ public sealed class MainForm : AppForm
         });
     }
 
-    /// <summary>The one player button: download / cancel / play / pause the selected track.</summary>
-    private void OnMainButton()
+    /// <summary>The one player button: download / cancel / play / pause the player's track.</summary>
+    private void OnMainButton() => Activate(PlayerAudio);
+
+    /// <summary>Double-click / Enter on a row: act on that row, even while another track plays.</summary>
+    private void PlaySelected() => Activate(SelectedAudio);
+
+    private void Activate(AudioMessage? audio)
     {
-        if (SelectedAudio is not { } audio)
+        if (audio is null)
         {
             return;
         }
@@ -1651,11 +1667,23 @@ public sealed class MainForm : AppForm
         {
             PlayFromCache(audio);
         }
+        else if (!FitsInCache(audio))
+        {
+            Toast(TooLargeText(audio));
+        }
         else
         {
             _ = DownloadAndPlayAsync(audio);
         }
     }
+
+    // A file bigger than the whole cache would be downloaded just to be pruned again.
+    private static bool FitsInCache(AudioMessage audio) =>
+        CachePolicy.FitsInCache(audio.SizeBytes);
+
+    private static string TooLargeText(AudioMessage audio) =>
+        Loc.T("status.tooLarge", audio.DisplayName, TrackFormat.SizeMb(audio.SizeBytes),
+            TrackFormat.SizeMb(CachePolicy.LimitBytes));
 
     private void PlayFromCache(AudioMessage audio)
     {
@@ -1676,10 +1704,9 @@ public sealed class MainForm : AppForm
         BackfillDuration(audio.FileId, _audio.Duration);
         HighlightPlayingRow();
         SaveUiState();   // remember this track for the next launch
-        _player.SetLoaded(_audio.Duration, _audio.BitrateKbps);
         _audio.Play();
-        _player.SetButton(PlayerButton.Pause);
         _positionTimer.Start();
+        ShowSelected();   // the player now shows this track
         PlaybackStatus(Loc.T("status.playing", audio.DisplayName));
     }
 
@@ -1970,10 +1997,7 @@ public sealed class MainForm : AppForm
         _pendingFileId = audio.FileId;
         _lastProgress = 0;
 
-        if (_selectedFileId == audio.FileId)
-        {
-            _player.SetDownloadProgress(0);
-        }
+        ShowSelected();   // the player switches to this download
         PlaybackStatus(Loc.T("status.loadingFile", audio.DisplayName));
 
         var progress = new Progress<int>(p =>
@@ -1983,10 +2007,7 @@ public sealed class MainForm : AppForm
                 return;
             }
             _lastProgress = p;
-            if (_selectedFileId == audio.FileId)
-            {
-                _player.SetDownloadProgress(p);
-            }
+            _player.SetDownloadProgress(p);
         });
 
         string path;
@@ -2044,11 +2065,7 @@ public sealed class MainForm : AppForm
         SaveUiState();   // remember this track for the next launch
         _audio.Play();
         _positionTimer.Start();
-        if (_selectedFileId == audio.FileId)
-        {
-            _player.SetLoaded(_audio.Duration, _audio.BitrateKbps);
-            _player.SetButton(PlayerButton.Pause);
-        }
+        ShowSelected();   // loaded track, Pause button
         PlaybackStatus(Loc.T("status.playing", audio.DisplayName));
     }
 
@@ -2078,7 +2095,7 @@ public sealed class MainForm : AppForm
 
     private async void SaveSelected()
     {
-        if (SelectedAudio is not { } audio)
+        if (PlayerAudio is not { } audio)
         {
             return;
         }
@@ -2087,11 +2104,19 @@ public sealed class MainForm : AppForm
         // which can never be cached by playing them).
         if (!_cache.Contains(audio))
         {
-            _pendingFileId = audio.FileId;
+            if (!FitsInCache(audio))
+            {
+                Toast(TooLargeText(audio));
+                return;
+            }
+
+            // Not _pendingFileId: that would turn the player into a cancel-able
+            // download of this track, and this download can't be cancelled.
+            bool saving = true;
             PlaybackStatus(Loc.T("status.loadingFile", audio.DisplayName));
             var dlProgress = new Progress<int>(p =>
             {
-                if (_pendingFileId == audio.FileId)
+                if (saving)
                 {
                     PlaybackStatus(Loc.T("status.loadingFileProgress", audio.DisplayName, p));
                 }
@@ -2102,12 +2127,12 @@ public sealed class MainForm : AppForm
             }
             catch (Exception ex)
             {
-                _pendingFileId = 0;
+                saving = false;
                 AppLog.Error("Download", $"{audio.FileName}: {ex.Message}");
                 Toast(Loc.T("status.downloadFailed", ex.Message));
                 return;
             }
-            _pendingFileId = 0;
+            saving = false;
             PushCacheInfo();
             RefreshCachedColumn();
             if (!_cache.Contains(audio))

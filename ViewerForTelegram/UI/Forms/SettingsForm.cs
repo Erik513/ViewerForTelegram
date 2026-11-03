@@ -54,8 +54,8 @@ public sealed class SettingsForm : OptionsForm
     private readonly LockableTextBox _apiId;
     private readonly LockableTextBox _apiHash;
     private readonly LockableTextBox _phone;
-    private readonly TextBox _downloadFolder;
-    private readonly TextBox _cacheFolder;
+    private readonly TextBox _downloadFolder;   // editable: type or browse a folder
+    private readonly TextBox _cacheFolder;       // read-only (dimmed by the library)
     private readonly ToggleSwitch _useDownloadFolder;
     private readonly ToggleSwitch _clearCacheOnStart;
     private readonly Label _cacheSizeLabel;
@@ -139,8 +139,7 @@ public sealed class SettingsForm : OptionsForm
         _phone = LockedField(current.PhoneNumber);
 
         _downloadFolder = Field(current.EffectiveDownloadFolder);
-        _downloadFolder.ReadOnly = true;
-        _downloadFolder.TabStop = false;
+        _downloadFolder.TabStop = false;   // not the first focus (it would open with its text selected)
 
         _useDownloadFolder = UIStyles.ToggleSwitches.CreatePrimary(
             current.UseDownloadFolder,

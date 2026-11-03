@@ -292,6 +292,8 @@ public sealed class MainForm : AppForm
             AllowUserToDeleteRows = false,
             AllowUserToResizeColumns = false,
             AllowUserToOrderColumns = false,
+            AllowColumnResizing = false,     // the library grid has its own switches; fixed column widths
+            AllowColumnReordering = false,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
             ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
@@ -1734,6 +1736,7 @@ public sealed class MainForm : AppForm
     // (the "downloaded" check column shows which rows qualify).
     private void OnListMouseDown(object? sender, MouseEventArgs e)
     {
+        NoteHeaderPress(e);
         _dragFileId = null;
         if (e.Button != MouseButtons.Left)
         {
@@ -1818,8 +1821,44 @@ public sealed class MainForm : AppForm
     private static string CleanFileName(AudioMessage a) =>
         string.Join("_", a.FileName.Split(Path.GetInvalidFileNameChars()));
 
+    // The list resizes columns itself, and finishing such a drag (or just pressing
+    // on a column border) still raises ColumnHeaderMouseClick - the list swallows
+    // it for its own sort, but our handler would still re-sort the rows.
+    private const int ColumnBorderGrip = 5;   // px, the same grip the list uses
+    private bool _headerPressOnBorder;
+
+    private void NoteHeaderPress(MouseEventArgs e)
+    {
+        _headerPressOnBorder = false;
+        if (e.Button != MouseButtons.Left || e.Y >= _list.ColumnHeadersHeight)
+        {
+            return;
+        }
+
+        int right = 0;
+        foreach (DataGridViewColumn c in _list.Columns)
+        {
+            if (!c.Visible)
+            {
+                continue;
+            }
+            right += c.Width;
+            if (Math.Abs(e.X - right) <= ColumnBorderGrip)
+            {
+                _headerPressOnBorder = true;
+                return;
+            }
+        }
+    }
+
     private void OnColumnHeaderClick(object? sender, DataGridViewCellMouseEventArgs e)
     {
+        if (_headerPressOnBorder)
+        {
+            _headerPressOnBorder = false;
+            return;   // that was a column resize, not a click on the header
+        }
+
         if (e.ColumnIndex is < 0 or > 4)
         {
             return;   // Cached column and out-of-range: not sortable

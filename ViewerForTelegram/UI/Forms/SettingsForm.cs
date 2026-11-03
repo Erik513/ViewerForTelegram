@@ -121,10 +121,23 @@ public sealed class SettingsForm : AppForm
         _language.Items.AddRange(new object[] { "English", "Deutsch" });
         _language.SelectedIndex = current.Language == AppLanguage.German ? 1 : 0;
         _language.SelectedIndexChanged += (_, _) =>
-            // Switch the whole UI right now (Loc.Changed -> ApplyTexts here too).
-            Loc.Current = _language.SelectedIndex == 1
+        {
+            AppLanguage chosen = _language.SelectedIndex == 1
                 ? AppLanguage.German
                 : AppLanguage.English;
+
+            // The switch rebuilds the table, which takes this very combo box out
+            // of its cell and puts it back. Doing that inside its own selection
+            // event (dropdown still closing) left it unusable - so let the event
+            // finish first, then switch the whole UI (Loc.Changed -> ApplyTexts).
+            BeginInvoke(() =>
+            {
+                if (Loc.Current != chosen)
+                {
+                    Loc.Current = chosen;
+                }
+            });
+        };
 
         _apiId = LockedField(current.ApiId > 0 ? current.ApiId.ToString() : "");
         _apiHash = LockedField(current.ApiHash);

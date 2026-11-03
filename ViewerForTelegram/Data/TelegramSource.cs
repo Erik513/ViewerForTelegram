@@ -370,13 +370,20 @@ public sealed class TelegramSource : ITelegramSource
         {
             ct.ThrowIfCancellationRequested();
 
-            // Plain history, NOT Messages_Search+InputMessagesFilterMusic:
-            // the "music" filter only matches posts tagged as music and misses
-            // tracks sent "as a file" (audio/* mime, no audio attribute) - which
-            // TryMapAudio does accept. This window (new posts since last visit)
-            // is small, so scanning a few unfiltered pages costs nothing.
-            Messages_MessagesBase batch = await _client!.Messages_GetHistory(
-                peer, offset_id: offsetId, min_id: afterMessageId, limit: HistoryPageSize);
+            // The same source as the full load (GetAudioMessagesSinceAsync): the
+            // "music" search for groups / channels, plain history for bot and
+            // Saved Messages chats. Mixing the two made the list depend on HOW it
+            // was loaded - a top-up pulled in tracks sent "as a file" that the
+            // music filter never returns, so "Newest N" showed tracks that
+            // "Last N days" (always a full music search) did not.
+            bool plainHistory = _chatKinds.TryGetValue(chatId, out TelegramChatKind kind)
+                && kind is TelegramChatKind.Bot or TelegramChatKind.SavedMessages;
+            Messages_MessagesBase batch = plainHistory
+                ? await _client!.Messages_GetHistory(
+                    peer, offset_id: offsetId, min_id: afterMessageId, limit: HistoryPageSize)
+                : await _client!.Messages_Search(
+                    peer, q: "", filter: new InputMessagesFilterMusic(),
+                    offset_id: offsetId, min_id: afterMessageId, limit: HistoryPageSize);
 
             MessageBase[] messages = batch.Messages;
             if (messages.Length == 0)

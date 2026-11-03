@@ -101,7 +101,8 @@ public sealed class AudioFeedService
     /// </summary>
     private FeedItem Enrich(AudioMessage a)
     {
-        AudioMessage enriched = a.Duration is null
+        // Telegram sometimes reports 0 s rather than nothing - same "unknown" for us.
+        AudioMessage enriched = a.Duration is not { TotalSeconds: > 0 }
             ? a with { Duration = _cache.GetKnownDuration(a) }
             : a;
         return new FeedItem(enriched, _cache.Contains(enriched));

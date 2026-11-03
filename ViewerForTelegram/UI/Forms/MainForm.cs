@@ -315,7 +315,7 @@ public sealed class MainForm : AppForm
         AddColumn(Loc.S("col.date"), width: 84);
         AddColumn(Loc.S("col.title"), fill: 62);
         AddColumn(Loc.S("col.artist"), fill: 38);
-        AddColumn(Loc.S("col.length"), width: 64);
+        AddColumn(Loc.S("col.length"), width: Math.Max(64, HeaderWidth(Loc.S("col.length"))));
         AddColumn(Loc.S("col.format"), width: FormatColumnWidth());
         AddColumn(Loc.S("col.size"), width: 90, alignRight: true);
         AddCachedColumn();   // last: a check for tracks already downloaded
@@ -1246,6 +1246,10 @@ public sealed class MainForm : AppForm
         _list.Columns.Add(column);
     }
 
+    /// <summary>Width a header text needs, with room for the sort arrow.</summary>
+    private int HeaderWidth(string text) =>
+        TextRenderer.MeasureText(text, _list.ColumnHeadersDefaultCellStyle.Font ?? _list.Font).Width + 22;
+
     /// <summary>
     /// Width for the format column: the widest extension the list can show
     /// (measured, so it follows the font and DPI) or the header with its sort arrow.
@@ -1253,13 +1257,12 @@ public sealed class MainForm : AppForm
     private int FormatColumnWidth()
     {
         Font cellFont = _list.DefaultCellStyle.Font ?? _list.Font;
-        Font headerFont = _list.ColumnHeadersDefaultCellStyle.Font ?? _list.Font;
 
         int cells = FormatOptions
             .SelectMany(o => o.Ext)
             .Select(ext => TextRenderer.MeasureText(ext.TrimStart('.').ToUpperInvariant(), cellFont).Width)
             .Max();
-        int header = TextRenderer.MeasureText(Loc.S("col.format"), headerFont).Width + 22;   // + arrow
+        int header = HeaderWidth(Loc.S("col.format"));
 
         return Math.Max(cells + 20, header);
     }
@@ -1353,7 +1356,7 @@ public sealed class MainForm : AppForm
             0 => AppDateFormatter.Format(a.DateUtc.ToLocalTime()),
             1 => a.Title,
             2 => a.Performer,
-            3 => a.Duration is { } d ? TrackFormat.Duration(d) : "–",
+            3 => a.Duration is { TotalSeconds: > 0 } d ? TrackFormat.Duration(d) : "–",
             4 => TrackFormat.Format(a),
             5 => TrackFormat.SizeMb(a.SizeBytes),
             CachedColumnIndex => _cachedIds.Contains(a.FileId) ? "✓" : "",
@@ -2002,12 +2005,17 @@ public sealed class MainForm : AppForm
         _byFileId[fileId] = updated;
         _cache.RememberDuration(updated, duration);
 
-        for (int i = 0; i < _items.Count; i++)
+        // _items and the remembered superset (what feed-cache.json is written from)
+        // are separate lists - fix both, or the next save still carries the old value.
+        foreach (List<FeedItem> list in new[] { _items, _largestItems })
         {
-            if (_items[i].Audio.FileId == fileId)
+            for (int i = 0; i < list.Count; i++)
             {
-                _items[i] = _items[i] with { Audio = updated };
-                break;
+                if (list[i].Audio.FileId == fileId)
+                {
+                    list[i] = list[i] with { Audio = updated };
+                    break;
+                }
             }
         }
 

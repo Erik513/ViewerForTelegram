@@ -521,7 +521,7 @@ public sealed class TelegramSource : ITelegramSource
             FileId: doc.id,
             Title: title,
             Performer: audioAttr?.performer ?? "",
-            Duration: audioAttr is not null
+            Duration: audioAttr is { duration: > 0 }
                 ? TimeSpan.FromSeconds(audioAttr.duration)
                 : null,
             SizeBytes: doc.size,

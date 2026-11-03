@@ -259,4 +259,42 @@ public class AudioFeedServiceTests
         Assert.Equal(TimeSpan.FromSeconds(90), restored.Single().Audio.Duration);
         Assert.True(restored.Single().Cached);
     }
+
+    [Fact]
+    public void Restore_ZeroDuration_GetsTheRememberedOne()
+    {
+        using var dir = TempPath.Dir();
+        var cache = new FileMediaCache(dir.Path);
+        AudioMessage zero = Audio(1, DateTime.UtcNow) with { Duration = TimeSpan.Zero };
+        cache.RememberDuration(zero, TimeSpan.FromSeconds(185));
+        var svc = new AudioFeedService(new FakeTelegramSource(), cache);
+
+        FeedItem item = svc.Restore(new[] { zero }).Single();
+
+        Assert.Equal(TimeSpan.FromSeconds(185), item.Audio.Duration);
+    }
+
+    [Fact]
+    public void Restore_ZeroDurationNeverDecoded_BecomesUnknown()
+    {
+        using var dir = TempPath.Dir();
+        var svc = new AudioFeedService(new FakeTelegramSource(), new FileMediaCache(dir.Path));
+        AudioMessage zero = Audio(1, DateTime.UtcNow) with { Duration = TimeSpan.Zero };
+
+        FeedItem item = svc.Restore(new[] { zero }).Single();
+
+        Assert.Null(item.Audio.Duration);
+    }
+
+    [Fact]
+    public void Restore_KnownDuration_IsKept()
+    {
+        using var dir = TempPath.Dir();
+        var cache = new FileMediaCache(dir.Path);
+        AudioMessage a = Audio(1, DateTime.UtcNow) with { Duration = TimeSpan.FromSeconds(60) };
+        cache.RememberDuration(a, TimeSpan.FromSeconds(999));
+        var svc = new AudioFeedService(new FakeTelegramSource(), cache);
+
+        Assert.Equal(TimeSpan.FromSeconds(60), svc.Restore(new[] { a }).Single().Audio.Duration);
+    }
 }

@@ -95,7 +95,8 @@ public sealed class MainForm : AppForm
 
     private readonly Dictionary<long, AudioMessage> _byFileId = new();
     private long? _currentFileId;   // loaded in the audio player (playing / paused)
-    private long? _selectedFileId;  // the row the player panel is showing
+    private long? _selectedFileId;  // the row selected in the list
+    private (long, bool, bool, PlaybackState, bool)? _shownKey;   // what the player panel last rendered
     private long _pendingFileId;    // a track being downloaded right now
     private long _lastTrackId;    // last track put in the player (persisted; drives the row tint before playback)
     private int _playSeq;           // bumped per download so a superseded one bails out
@@ -300,6 +301,16 @@ public sealed class MainForm : AppForm
         _list.ToastColors = UIStyles.Colors.Sets.Primary;   // the list's own toasts (copy) in the accent too
         _list.CellValueNeeded += OnCellValueNeeded;
         _list.CellFormatting += OnCellFormatting;
+        _list.CellPainting += (_, e) =>
+        {
+            // The standard dotted focus frame around the current cell (it shows up
+            // after keyboard use) just looks like a glitch on a full-row selection.
+            if (!e.Handled && (e.PaintParts & DataGridViewPaintParts.Focus) != 0)
+            {
+                e.Paint(e.ClipBounds, e.PaintParts & ~DataGridViewPaintParts.Focus);
+                e.Handled = true;
+            }
+        };
         _list.RowTemplate.Height = 26;
         AddColumn(Loc.S("col.date"), width: 84);
         AddColumn(Loc.S("col.title"), fill: 62);
@@ -1557,6 +1568,7 @@ public sealed class MainForm : AppForm
         // list doesn't swap it out.
         if (PlayerAudio is not { } audio)
         {
+            _shownKey = null;
             _player.SetIdle();
             return;
         }
@@ -1566,6 +1578,16 @@ public sealed class MainForm : AppForm
         // whenever the track is cached or we're still connected - this is the
         // only way to get a save-only format (ogg/opus) out, since Play can't.
         bool canSave = cached || _connected;
+
+        // Browsing rows while a track plays leaves the player exactly as it is -
+        // don't repaint (and flicker) it for a selection that changes nothing there.
+        var key = (audio.FileId, _pendingFileId == audio.FileId, _currentFileId == audio.FileId,
+            _audio.State, canSave);
+        if (key == _shownKey && _selectedFileId != audio.FileId)
+        {
+            return;
+        }
+        _shownKey = key;
 
         if (_pendingFileId == audio.FileId)
         {

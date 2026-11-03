@@ -213,6 +213,10 @@ public sealed class SettingsForm : OptionsForm
         _toolTip.SetToolTip(_downloadFolder, current.EffectiveDownloadFolder);
 
         BuildTable();
+        foreach (Button b in new[] { _loginBtn, _browse, _cacheBrowse, _clearCacheButton, _wipe })
+        {
+            CenterInCell(b);
+        }
 
         ApplyTexts();
         FitToContent();
@@ -467,6 +471,45 @@ public sealed class SettingsForm : OptionsForm
         LockableTextBox tb = UIStyles.TextBoxes.CreateLockable(value ?? "");
         tb.TabStop = false;
         return tb;
+    }
+
+    /// <summary>
+    /// The table anchors a button at the left edge of its cell; keep it in the
+    /// middle of the cell instead (the table has no alignment of its own).
+    /// </summary>
+    private static void CenterInCell(Control control)
+    {
+        void Center()
+        {
+            if (control.Parent is not { } cell)
+            {
+                return;
+            }
+
+            Rectangle area = cell.DisplayRectangle;
+            control.Anchor = AnchorStyles.None;
+            control.Location = new Point(
+                area.Left + (area.Width - control.Width) / 2,
+                area.Top + (area.Height - control.Height) / 2);
+        }
+
+        void Hook()
+        {
+            if (control.Parent is { } cell)
+            {
+                cell.Resize += (_, _) => Center();
+                Center();
+            }
+        }
+
+        if (control.Parent is null)
+        {
+            control.ParentChanged += (_, _) => Hook();
+        }
+        else
+        {
+            Hook();
+        }
     }
 
     /// <summary>

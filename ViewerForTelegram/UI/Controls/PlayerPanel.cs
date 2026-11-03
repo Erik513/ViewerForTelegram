@@ -316,7 +316,7 @@ public sealed class PlayerPanel : Panel
         _sizeBytes = a.SizeBytes;
         _fileSize.Text = TrackFormat.SizeMb(a.SizeBytes);
         _bitrate.Text = a.BitrateKbps is { } kb ? $"{kb} kbps" : "";
-        _fileFormat.Text = Path.GetExtension(a.FileName).TrimStart('.').ToUpperInvariant();
+        _fileFormat.Text = TrackFormat.Format(a);
         _saveTipFileName = a.FileName;
         _tips.SetToolTip(_saveButton, Loc.T("player.tip.downloadFile", a.FileName));
 

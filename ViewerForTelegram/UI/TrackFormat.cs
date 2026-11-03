@@ -1,3 +1,5 @@
+using ViewerForTelegram.Data.Models;
+
 namespace ViewerForTelegram.UI;
 
 /// <summary>
@@ -11,4 +13,8 @@ internal static class TrackFormat
 
     /// <summary>The file size in whole tenths of a megabyte (e.g. <c>4.2 MB</c>).</summary>
     public static string SizeMb(long bytes) => $"{bytes / 1024d / 1024d:0.0} MB";
+
+    /// <summary>The file format as shown in the list and the player (e.g. <c>MP3</c>).</summary>
+    public static string Format(AudioMessage a) =>
+        Path.GetExtension(a.FileName).TrimStart('.').ToUpperInvariant();
 }

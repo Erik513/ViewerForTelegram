@@ -316,6 +316,7 @@ public sealed class MainForm : AppForm
         AddColumn(Loc.S("col.title"), fill: 62);
         AddColumn(Loc.S("col.artist"), fill: 38);
         AddColumn(Loc.S("col.length"), width: 64);
+        AddColumn(Loc.S("col.format"), width: FormatColumnWidth());
         AddColumn(Loc.S("col.size"), width: 90, alignRight: true);
         AddCachedColumn();   // last: a check for tracks already downloaded
         // The list only shows info. The player's one button does the work:
@@ -323,7 +324,7 @@ public sealed class MainForm : AppForm
         // ShowCellToolTips (WinForms default) shows a tooltip only for a cell
         // whose text is clipped - no explicit ToolTipText, so nothing else.
         _list.ShowCellToolTips = true;
-        for (int c = 0; c <= 4; c++)
+        for (int c = 0; c <= LastSortableColumn; c++)
         {
             _list.Columns[c].SortMode = DataGridViewColumnSortMode.Programmatic;
         }
@@ -446,7 +447,8 @@ public sealed class MainForm : AppForm
         _list.Columns[1].HeaderText = Loc.S("col.title");
         _list.Columns[2].HeaderText = Loc.S("col.artist");
         _list.Columns[3].HeaderText = Loc.S("col.length");
-        _list.Columns[4].HeaderText = Loc.S("col.size");
+        _list.Columns[4].HeaderText = Loc.S("col.format");
+        _list.Columns[5].HeaderText = Loc.S("col.size");
         _list.Columns[CachedColumnIndex].ToolTipText = Loc.S("col.cached");
 
         _suppressComboEvents = true;
@@ -1216,7 +1218,8 @@ public sealed class MainForm : AppForm
     }
 
     /// <summary>Add a column: pass <paramref name="fill"/> for a stretchy column, or <paramref name="width"/> for a fixed one.</summary>
-    private const int CachedColumnIndex = 5;
+    private const int LastSortableColumn = 5;   // date .. size; the check column after it is not
+    private const int CachedColumnIndex = 6;
 
     private void AddCachedColumn()
     {
@@ -1241,6 +1244,24 @@ public sealed class MainForm : AppForm
             _list.Invalidate();
         });
         _list.Columns.Add(column);
+    }
+
+    /// <summary>
+    /// Width for the format column: the widest extension the list can show
+    /// (measured, so it follows the font and DPI) or the header with its sort arrow.
+    /// </summary>
+    private int FormatColumnWidth()
+    {
+        Font cellFont = _list.DefaultCellStyle.Font ?? _list.Font;
+        Font headerFont = _list.ColumnHeadersDefaultCellStyle.Font ?? _list.Font;
+
+        int cells = FormatOptions
+            .SelectMany(o => o.Ext)
+            .Select(ext => TextRenderer.MeasureText(ext.TrimStart('.').ToUpperInvariant(), cellFont).Width)
+            .Max();
+        int header = TextRenderer.MeasureText(Loc.S("col.format"), headerFont).Width + 22;   // + arrow
+
+        return Math.Max(cells + 20, header);
     }
 
     private void AddColumn(string header, int fill = 0, int width = 0, bool alignRight = false)
@@ -1333,7 +1354,8 @@ public sealed class MainForm : AppForm
             1 => a.Title,
             2 => a.Performer,
             3 => a.Duration is { } d ? TrackFormat.Duration(d) : "–",
-            4 => TrackFormat.SizeMb(a.SizeBytes),
+            4 => TrackFormat.Format(a),
+            5 => TrackFormat.SizeMb(a.SizeBytes),
             CachedColumnIndex => _cachedIds.Contains(a.FileId) ? "✓" : "",
             _ => "",
         };
@@ -1910,7 +1932,7 @@ public sealed class MainForm : AppForm
             return;   // that was a column resize, not a click on the header
         }
 
-        if (e.ColumnIndex is < 0 or > 4)
+        if (e.ColumnIndex is < 0 or > LastSortableColumn)
         {
             return;   // Cached column and out-of-range: not sortable
         }
@@ -1948,10 +1970,11 @@ public sealed class MainForm : AppForm
             1 => i => i.Audio.Title ?? "",
             2 => i => i.Audio.Performer ?? "",
             3 => i => i.Audio.Duration ?? TimeSpan.Zero,
+            4 => i => TrackFormat.Format(i.Audio),
             _ => i => i.Audio.SizeBytes,
         };
 
-        IComparer<object> comparer = _sortColumn is 1 or 2
+        IComparer<object> comparer = _sortColumn is 1 or 2 or 4
             ? Comparer<object>.Create((a, b) =>
                 string.Compare((string)a, (string)b, StringComparison.CurrentCultureIgnoreCase))
             : Comparer<object>.Default;

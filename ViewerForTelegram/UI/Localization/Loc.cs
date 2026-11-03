@@ -68,6 +68,7 @@ public static class Loc
         ["col.title"] = "Title",
         ["col.artist"] = "Artist",
         ["col.length"] = "Length",
+        ["col.format"] = "Format",
         ["col.size"] = "Size",
         ["col.cached"] = "Downloaded",
 
@@ -240,6 +241,7 @@ public static class Loc
         ["col.title"] = "Titel",
         ["col.artist"] = "Interpret",
         ["col.length"] = "Länge",
+        ["col.format"] = "Format",
         ["col.size"] = "Größe",
         ["col.cached"] = "Heruntergeladen",
 

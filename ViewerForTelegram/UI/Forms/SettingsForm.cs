@@ -44,7 +44,7 @@ public sealed class SettingsForm : OptionsForm
     private const int RowH = 40;
 
     private static readonly Size SymbolSize = new(44, 30);
-    private const int ButtonColumn = 52;   // 30 px button + the cell's own padding and border (14 + 4 at 96 dpi)
+    private const int ButtonColumn = 52;   // the width of every narrow column: 30 px button / toggle + the cell's own padding and border
 
     private readonly IMediaCache _cache;
     private readonly PropertyTable _table;
@@ -213,7 +213,7 @@ public sealed class SettingsForm : OptionsForm
         _toolTip.SetToolTip(_downloadFolder, current.EffectiveDownloadFolder);
 
         BuildTable();
-        foreach (Button b in new[] { _loginBtn, _browse, _cacheBrowse, _clearCacheButton, _wipe })
+        foreach (Control b in new Control[] { _loginBtn, _browse, _cacheBrowse, _clearCacheButton, _wipe, _useDownloadFolder, _clearCacheOnStart })
         {
             CenterInCell(b);
         }
@@ -290,13 +290,13 @@ public sealed class SettingsForm : OptionsForm
             () => Loc.S("settings.row.folder"), RowH,
             PropertyColumn.Percent(_downloadFolder, 100),
             PropertyColumn.Absolute(_browse, ButtonColumn),
-            PropertyColumn.Absolute(_useDownloadFolder, 56));
+            PropertyColumn.Absolute(_useDownloadFolder, ButtonColumn));
 
         _table.AddSection(() => Loc.S("settings.sec.cache"));
         _table.AddRow(
             () => Loc.S("settings.row.used"), RowH,
             PropertyColumn.Percent(_cacheSizeLabel, 100),
-            PropertyColumn.Absolute(_clearCacheOnStart, 56));
+            PropertyColumn.Absolute(_clearCacheOnStart, ButtonColumn));
         _table.AddRow(
             () => Loc.S("settings.row.folder"), RowH,
             PropertyColumn.Percent(_cacheFolder, 100),
@@ -474,7 +474,7 @@ public sealed class SettingsForm : OptionsForm
     }
 
     /// <summary>
-    /// The table anchors a button at the left edge of its cell; keep it in the
+    /// The table anchors a button or toggle at the left edge of its cell; keep it in the
     /// middle of the cell instead (the table has no alignment of its own).
     /// </summary>
     private static void CenterInCell(Control control)

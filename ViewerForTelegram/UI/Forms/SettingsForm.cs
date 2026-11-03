@@ -44,7 +44,7 @@ public sealed class SettingsForm : OptionsForm
     private const int RowH = 40;
 
     private static readonly Size SymbolSize = new(44, 30);
-    private const int ButtonColumn = 44;
+    private const int ButtonColumn = 52;   // 30 px button + the cell's own padding and border (14 + 4 at 96 dpi)
 
     private readonly IMediaCache _cache;
     private readonly PropertyTable _table;
@@ -275,7 +275,7 @@ public sealed class SettingsForm : OptionsForm
         _table.AddRow(
             () => Loc.S("settings.row.folder"), RowH,
             PropertyColumn.Percent(_downloadFolder, 100),
-            PropertyColumn.Absolute(_browse, 44),
+            PropertyColumn.Absolute(_browse, ButtonColumn),
             PropertyColumn.Absolute(_useDownloadFolder, 56));
 
         _table.AddSection(() => Loc.S("settings.sec.cache"));
@@ -286,7 +286,7 @@ public sealed class SettingsForm : OptionsForm
         _table.AddRow(
             () => Loc.S("settings.row.folder"), RowH,
             PropertyColumn.Percent(_cacheFolder, 100),
-            PropertyColumn.Absolute(_cacheBrowse, 44),
+            PropertyColumn.Absolute(_cacheBrowse, ButtonColumn),
             PropertyColumn.Absolute(_clearCacheButton, ButtonColumn));
 
         _resetDesc = Desc("");
@@ -390,7 +390,7 @@ public sealed class SettingsForm : OptionsForm
             _cache.Clear();
             CacheCleared = true;
             UpdateCacheLabel();
-            ToastForm.ShowToast(Loc.T("toast.cacheCleared", Loc.Files(count), Mb(bytes)), this);
+            AppToast.Show(Loc.T("toast.cacheCleared", Loc.Files(count), Mb(bytes)), this);
         }
     }
 

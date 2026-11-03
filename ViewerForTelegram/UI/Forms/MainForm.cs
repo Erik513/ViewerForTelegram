@@ -289,6 +289,7 @@ public sealed class MainForm : AppForm
             VirtualMode = true,   // cell values come from _view via CellValueNeeded
             ContextMenuStrip = null,   // this list has no cut/copy/paste/insert affordances of its own
         };
+        _list.ToastColors = UIStyles.Colors.Sets.Primary;   // the list's own toasts (copy) in the accent too
         _list.CellValueNeeded += OnCellValueNeeded;
         _list.CellFormatting += OnCellFormatting;
         _list.RowTemplate.Height = 26;
@@ -2146,7 +2147,7 @@ public sealed class MainForm : AppForm
     private void Toast(string message)
     {
         Status(message);
-        ToastForm.ShowToast(message, this);
+        AppToast.Show(message, this);
     }
 
     // ---------- settings ----------

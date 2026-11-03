@@ -98,6 +98,10 @@ public sealed class MainForm : AppForm
     private long? _selectedFileId;  // the row selected in the list
     private (long, bool, bool, PlaybackState, bool)? _shownKey;   // what the player panel last rendered
     private long _pendingFileId;    // a track being downloaded right now
+    // The tracks themselves: a chat switch replaces _byFileId, and the player must
+    // keep showing the track that is playing / downloading from the old chat.
+    private AudioMessage? _currentAudio;
+    private AudioMessage? _pendingAudio;
     private long _lastTrackId;    // last track put in the player (persisted; drives the row tint before playback)
     private int _playSeq;           // bumped per download so a superseded one bails out
     private int _feedSeq;           // bumped per feed load so a superseded one bails out
@@ -1534,15 +1538,15 @@ public sealed class MainForm : AppForm
             ? _view[i].Audio
             : null;
 
-    private AudioMessage? FindAudio(long? fileId) =>
-        fileId is long id && _byFileId.TryGetValue(id, out AudioMessage? a) ? a : null;
-
     /// <summary>
     /// What the player shows and its buttons act on: the downloading / loaded
     /// track, and only when there is none the selected row.
     /// </summary>
     private AudioMessage? PlayerAudio =>
-        PlayerTrack.Choose(FindAudio(_pendingFileId), FindAudio(_currentFileId), SelectedAudio);
+        PlayerTrack.Choose(
+            _pendingFileId != 0 ? _pendingAudio : null,
+            _currentFileId is not null ? _currentAudio : null,
+            SelectedAudio);
 
     private void OnListKeyDown(object? sender, KeyEventArgs e)
     {
@@ -1759,6 +1763,7 @@ public sealed class MainForm : AppForm
         }
 
         _currentFileId = audio.FileId;
+        _currentAudio = audio;
         _lastTrackId = audio.FileId;
         BackfillDuration(audio.FileId, _audio.Duration);
         HighlightPlayingRow();
@@ -2060,6 +2065,7 @@ public sealed class MainForm : AppForm
 
         int seq = ++_playSeq;
         _pendingFileId = audio.FileId;
+        _pendingAudio = audio;
         _lastProgress = 0;
 
         ShowSelected();   // the player switches to this download
@@ -2124,6 +2130,7 @@ public sealed class MainForm : AppForm
         }
 
         _currentFileId = audio.FileId;
+        _currentAudio = audio;
         _lastTrackId = audio.FileId;
         BackfillDuration(audio.FileId, _audio.Duration);
         HighlightPlayingRow();

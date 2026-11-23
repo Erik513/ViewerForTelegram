@@ -140,7 +140,6 @@ public sealed class SettingsForm : OptionsForm
 
         _downloadFolder = Field(current.EffectiveDownloadFolder);
         _downloadFolder.TabStop = false;   // not the first focus (it would open with its text selected)
-        AttachTextMenu(_downloadFolder);
 
         _useDownloadFolder = UIStyles.ToggleSwitches.CreatePrimary(
             current.UseDownloadFolder,
@@ -175,7 +174,6 @@ public sealed class SettingsForm : OptionsForm
                 _cacheFolder.SelectAll();
             }
         };
-        AttachTextMenu(_cacheFolder);
 
         _cacheBrowse = UIStyles.Buttons.CreateSymbol(UIStyles.Buttons.Presets.Browse, Loc.S("settings.btn.openCache"));
         _cacheBrowse.TabStop = false;
@@ -213,10 +211,6 @@ public sealed class SettingsForm : OptionsForm
         _toolTip.SetToolTip(_downloadFolder, current.EffectiveDownloadFolder);
 
         BuildTable();
-        foreach (Control b in new Control[] { _loginBtn, _browse, _cacheBrowse, _clearCacheButton, _wipe, _useDownloadFolder, _clearCacheOnStart })
-        {
-            CenterInCell(b);
-        }
 
         ApplyTexts();
         FitToContent();
@@ -285,32 +279,32 @@ public sealed class SettingsForm : OptionsForm
         _table.AddRow(
             () => Loc.S("settings.row.status"), RowH,
             PropertyColumn.Percent(_statusDesc, 100),
-            PropertyColumn.Absolute(_loginBtn, ButtonColumn));
+            PropertyColumn.Absolute(_loginBtn, ButtonColumn).CenterControl());
 
         _table.AddSection(() => Loc.S("settings.sec.downloads"));
         _table.AddRow(
             () => Loc.S("settings.row.folder"), RowH,
             PropertyColumn.Percent(_downloadFolder, 100),
-            PropertyColumn.Absolute(_browse, ButtonColumn),
-            PropertyColumn.Absolute(_useDownloadFolder, ButtonColumn));
+            PropertyColumn.Absolute(_browse, ButtonColumn).CenterControl(),
+            PropertyColumn.Absolute(_useDownloadFolder, ButtonColumn).CenterControl());
 
         _table.AddSection(() => Loc.S("settings.sec.cache"));
         _table.AddRow(
             () => Loc.S("settings.row.used"), RowH,
             PropertyColumn.Percent(_cacheSizeLabel, 100),
-            PropertyColumn.Absolute(_clearCacheOnStart, ButtonColumn));
+            PropertyColumn.Absolute(_clearCacheOnStart, ButtonColumn).CenterControl());
         _table.AddRow(
             () => Loc.S("settings.row.folder"), RowH,
             PropertyColumn.Percent(_cacheFolder, 100),
-            PropertyColumn.Absolute(_cacheBrowse, ButtonColumn),
-            PropertyColumn.Absolute(_clearCacheButton, ButtonColumn));
+            PropertyColumn.Absolute(_cacheBrowse, ButtonColumn).CenterControl(),
+            PropertyColumn.Absolute(_clearCacheButton, ButtonColumn).CenterControl());
 
         _resetDesc = Desc("");
         _table.AddSection(() => Loc.S("settings.sec.credentials"));
         _table.AddRow(
             () => Loc.S("settings.row.reset"), RowH,
             PropertyColumn.Percent(_resetDesc, 100),
-            PropertyColumn.Absolute(_wipe, ButtonColumn));
+            PropertyColumn.Absolute(_wipe, ButtonColumn).CenterControl());
 
         UpdateCacheLabel();
     }
@@ -473,70 +467,6 @@ public sealed class SettingsForm : OptionsForm
         LockableTextBox tb = UIStyles.TextBoxes.CreateLockable(value ?? "");
         tb.TabStop = false;
         return tb;
-    }
-
-    /// <summary>
-    /// The table anchors a button or toggle at the left edge of its cell; keep it in the
-    /// middle of the cell instead (the table has no alignment of its own).
-    /// </summary>
-    private static void CenterInCell(Control control)
-    {
-        void Center()
-        {
-            if (control.Parent is not { } cell)
-            {
-                return;
-            }
-
-            Rectangle area = cell.DisplayRectangle;
-            control.Anchor = AnchorStyles.None;
-            control.Location = new Point(
-                area.Left + (area.Width - control.Width) / 2,
-                area.Top + (area.Height - control.Height) / 2);
-        }
-
-        void Hook()
-        {
-            if (control.Parent is { } cell)
-            {
-                cell.Resize += (_, _) => Center();
-                Center();
-            }
-        }
-
-        if (control.Parent is null)
-        {
-            control.ParentChanged += (_, _) => Hook();
-        }
-        else
-        {
-            Hook();
-        }
-    }
-
-    /// <summary>
-    /// The library's themed context menu (accent highlight) with the usual text
-    /// commands, in place of the unthemed Windows edit menu. Built on each open
-    /// so it follows the language and the field's state (read-only, selection).
-    /// </summary>
-    private static void AttachTextMenu(TextBox box)
-    {
-        System.Windows.Forms.ContextMenuStrip menu = UIStyles.ContextMenuStrips.CreatePrimary();
-        menu.Opening += (_, _) =>
-        {
-            menu.Items.Clear();
-            if (!box.ReadOnly)
-            {
-                menu.Items.Add(Loc.S("menu.cut"), null, (_, _) => box.Cut()).Enabled = box.SelectionLength > 0;
-            }
-            menu.Items.Add(Loc.S("menu.copy"), null, (_, _) => box.Copy()).Enabled = box.SelectionLength > 0;
-            if (!box.ReadOnly)
-            {
-                menu.Items.Add(Loc.S("menu.paste"), null, (_, _) => box.Paste()).Enabled = Clipboard.ContainsText();
-            }
-            menu.Items.Add(Loc.S("menu.selectAll"), null, (_, _) => box.SelectAll()).Enabled = box.TextLength > 0;
-        };
-        box.ContextMenuStrip = menu;
     }
 
     private static TextBox Field(string value)

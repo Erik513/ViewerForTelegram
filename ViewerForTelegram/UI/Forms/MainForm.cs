@@ -95,14 +95,14 @@ public sealed class MainForm : AppForm
 
     private readonly Dictionary<long, AudioMessage> _byFileId = new();
     private long? _currentFileId;   // loaded in the audio player (playing / paused)
-    private long? _selectedFileId;  // the row selected in the list
+    private TrackKey? _selectedKey;     // the row selected in the list
     private (long, bool, bool, PlaybackState, bool)? _shownKey;   // what the player panel last rendered
     private long _pendingFileId;    // a track being downloaded right now
     // The tracks themselves: a chat switch replaces _byFileId, and the player must
     // keep showing the track that is playing / downloading from the old chat.
     private AudioMessage? _currentAudio;
     private AudioMessage? _pendingAudio;
-    private long _lastTrackId;    // last track put in the player (persisted; drives the row tint before playback)
+    private TrackKey? _lastTrack;   // last track put in the player (persisted; drives the row tint before playback)
     private int _playSeq;           // bumped per download so a superseded one bails out
     private int _feedSeq;           // bumped per feed load so a superseded one bails out
     private int _feedLoadingSeq;    // != 0 while a feed load owns the status line (matches its _feedSeq)
@@ -297,11 +297,6 @@ public sealed class MainForm : AppForm
         _list.ScrollBars = ScrollBars.Vertical;   // no horizontal scrollbar, ever
         _list.VirtualMode = true;              // cell values come from _view via CellValueNeeded
         _list.ContextMenuStrip = null;         // no right-click menu: the list only shows info
-        // The library grid drops its selection on a click anywhere else in the window
-        // (not on a button) - which includes the seek bar and the volume slider of the
-        // player. The selection IS the player's track, so that click used to reset
-        // the player to idle mid-song and the seek bar stopped working.
-        _list.DeselectOnOutsideClick = false;
         _list.ToastColors = UIStyles.Colors.Sets.Primary;   // the list's own toasts (copy) in the accent too
         _list.CellValueNeeded += OnCellValueNeeded;
         _list.CellFormatting += OnCellFormatting;
@@ -548,10 +543,12 @@ public sealed class MainForm : AppForm
         _formatCombo.SelectedIndex = formatIdx >= 0 ? formatIdx + 1 : 0;
         _suppressComboEvents = false;
         _restoringVolume = true;   // (not a change by the user: don't write the state yet)
-        _audio.Volume = Math.Clamp(state.VolumePercent, 0, 100) / 100.0;   // the volume control follows
-        _audio.IsMuted = state.VolumeMuted;
+        state.StartVolume.Apply(_audio);   // volume first, then mute; the volume control follows
         _restoringVolume = false;
-        _lastTrackId = state.LastPlayedFileId;   // select + tint this row once the feed loads
+        // select + tint this row once the feed loads (chat 0 = saved by an older version)
+        _lastTrack = state.LastPlayedFileId != 0
+            ? new TrackKey(state.LastPlayedChatId, state.LastPlayedFileId)
+            : null;
 
         // Show the last session's list for this chat immediately - before even
         // connecting - instead of a blank grid while a fresh "Newest N" is
@@ -1312,10 +1309,11 @@ public sealed class MainForm : AppForm
     private static Color PlayingRowBack => AppSurfaces.PlayingRowBack;
     private static Color PlayingRowFore => AppSurfaces.PlayingRowFore;
 
-    private long? _tintedFileId;   // which row currently carries the playing tint
+    private TrackKey? _tintedKey;   // which row currently carries the playing tint
 
-    private long? PlayingMark =>
-        _currentFileId ?? (_lastTrackId != 0 ? _lastTrackId : (long?)null);
+    // The loaded track (of the chat it was started in), else the last one played.
+    private TrackKey? PlayingMark =>
+        _currentFileId is not null && _currentAudio is { } playing ? TrackKey.Of(playing) : _lastTrack;
 
     /// <summary>
     /// Moves the muted-blue tint to the current / last-played track's row.
@@ -1323,25 +1321,25 @@ public sealed class MainForm : AppForm
     /// </summary>
     private void HighlightPlayingRow()
     {
-        long? mark = PlayingMark;
-        if (mark == _tintedFileId)
+        TrackKey? mark = PlayingMark;
+        if (mark == _tintedKey)
         {
             return;
         }
 
-        long? previous = _tintedFileId;
-        _tintedFileId = mark;   // OnCellFormatting reads PlayingMark; just repaint the two rows
+        TrackKey? previous = _tintedKey;
+        _tintedKey = mark;   // OnCellFormatting reads PlayingMark; just repaint the two rows
         InvalidateRowFor(previous);
         InvalidateRowFor(mark);
     }
 
-    private void InvalidateRowFor(long? fileId)
+    private void InvalidateRowFor(TrackKey? track)
     {
-        if (fileId is not long f)
+        if (track is not { } key)
         {
             return;
         }
-        int idx = _view.FindIndex(i => i.Audio.FileId == f);
+        int idx = _view.FindIndex(i => key.Matches(i.Audio));
         if (idx >= 0)
         {
             _list.InvalidateRow(idx);
@@ -1390,7 +1388,7 @@ public sealed class MainForm : AppForm
             return;
         }
 
-        if (PlayingMark is long m && _view[e.RowIndex].Audio.FileId == m)
+        if (PlayingMark is { } mark && mark.Matches(_view[e.RowIndex].Audio))
         {
             e.CellStyle.BackColor = PlayingRowBack;
             e.CellStyle.ForeColor = PlayingRowFore;   // whole row, ✓ included, goes blue
@@ -1412,7 +1410,7 @@ public sealed class MainForm : AppForm
         _suppressListEvents = true;
         _list.SuspendLayout();
         int scrollBefore = Math.Max(0, _list.FirstDisplayedScrollingRowIndex);
-        _tintedFileId = PlayingMark;
+        _tintedKey = PlayingMark;
 
         // VirtualMode: just tell the grid the row count and let it pull the ~30
         // visible cells from _view. Drop CurrentCell first so shrinking the
@@ -1464,14 +1462,12 @@ public sealed class MainForm : AppForm
     // in _view, or -1.
     private int RestoreKeptSelection()
     {
-        long? keep = _selectedFileId ?? _currentFileId
-            ?? (_lastTrackId != 0 ? _lastTrackId : (long?)null);
-        if (keep is not long fid)
+        if ((_selectedKey ?? PlayingMark) is not { } keep)
         {
             return -1;
         }
 
-        int idx = _view.FindIndex(i => i.Audio.FileId == fid);
+        int idx = _view.FindIndex(i => keep.Matches(i.Audio));
         if (idx >= 0)
         {
             _list.CurrentCell = _list.Rows[idx].Cells[0];
@@ -1603,7 +1599,7 @@ public sealed class MainForm : AppForm
             SetNewCount(0);
         }
 
-        _selectedFileId = SelectedAudio?.FileId;
+        _selectedKey = SelectedAudio is { } picked ? TrackKey.Of(picked) : null;
 
         // A running download or loaded track keeps the player; browsing the
         // list doesn't swap it out.
@@ -1624,7 +1620,7 @@ public sealed class MainForm : AppForm
         // don't repaint (and flicker) it for a selection that changes nothing there.
         var key = (audio.FileId, _pendingFileId == audio.FileId, _currentFileId == audio.FileId,
             _audio.State, canSave);
-        if (key == _shownKey && _selectedFileId != audio.FileId)
+        if (key == _shownKey && !(_selectedKey is { } selected && selected.Matches(audio)))
         {
             return;
         }
@@ -1771,7 +1767,7 @@ public sealed class MainForm : AppForm
 
         _currentFileId = audio.FileId;
         _currentAudio = audio;
-        _lastTrackId = audio.FileId;
+        _lastTrack = TrackKey.Of(audio);
         BackfillDuration(audio.FileId, _audio.Duration);
         HighlightPlayingRow();
         SaveUiState();   // remember this track for the next launch
@@ -2138,7 +2134,7 @@ public sealed class MainForm : AppForm
 
         _currentFileId = audio.FileId;
         _currentAudio = audio;
-        _lastTrackId = audio.FileId;
+        _lastTrack = TrackKey.Of(audio);
         BackfillDuration(audio.FileId, _audio.Duration);
         HighlightPlayingRow();
         SaveUiState();   // remember this track for the next launch
@@ -2412,7 +2408,7 @@ public sealed class MainForm : AppForm
         _view = new();
         _list.RowCount = 0;
         _suppressListEvents = false;
-        _selectedFileId = null;
+        _selectedKey = null;
         _player.SetIdle();
         Toast(wipeConfig ? Loc.S("status.credentialsDeleted") : Loc.S("status.signedOut"));
     }
@@ -2441,9 +2437,9 @@ public sealed class MainForm : AppForm
         _uiStateStore.Save(new UiState(
             LastChatId: SelectedChat?.Id ?? 0,
             RangeDays: SelectedRange,
-            VolumePercent: (int)Math.Round(_audio.Volume * 100),
-            VolumeMuted: _audio.IsMuted,
-            LastPlayedFileId: _lastTrackId,
+            Volume: AudioVolumeSnapshot.Capture(_audio),
+            LastPlayedFileId: _lastTrack?.FileId ?? 0,
+            LastPlayedChatId: _lastTrack?.ChatId ?? 0,
             FormatFilter: _formatCombo.SelectedIndex >= 1
                 ? FormatOptions[_formatCombo.SelectedIndex - 1].Key
                 : ""));

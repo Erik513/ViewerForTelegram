@@ -580,7 +580,7 @@ public sealed class TelegramSource : ITelegramSource
             }
 
             // Not found there (e.g. a chat kind that pages differently) - ask by id.
-            result = await _client.GetMessages(
+            result = await _client!.GetMessages(
                 peer, new InputMessage[] { new InputMessageID { id = messageId } }).WaitAsync(ct);
             MapMessage(result, chatId, messageId);
         }

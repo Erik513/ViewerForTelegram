@@ -645,8 +645,7 @@ public sealed class TelegramSource : ITelegramSource
 
             if (!_documents.TryGetValue(message.FileId, out doc))
             {
-                throw new InvalidOperationException(
-                    "File not known - load the list first.");
+                throw new FileNotKnownException();
             }
         }
 

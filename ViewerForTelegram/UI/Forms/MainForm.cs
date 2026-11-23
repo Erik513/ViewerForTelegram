@@ -383,7 +383,8 @@ public sealed class MainForm : AppForm
             _currentFileId = null;
             HighlightPlayingRow();
             ShowSelected();
-            PlaybackStatus(Loc.T("status.playbackFailed", ex.Message));
+            AppLog.Error("Audio", $"Playback failed: {ex}");
+            PlaybackStatus(Loc.T("status.playbackFailed", FailureText.For(ex, whilePlaying: true)));
         };
 
         // A 3-row grid so nothing can overlap regardless of window size.
@@ -667,22 +668,8 @@ public sealed class MainForm : AppForm
         && !IsRateLimit(ex, out _)
         && ex is not NotSupportedException and not InvalidOperationException;
 
-    /// <summary>Matches WTelegramClient's "FLOOD_WAIT_&lt;seconds&gt;" rate-limit error.</summary>
-    private static bool IsRateLimit(Exception ex, out int seconds)
-    {
-        seconds = 0;
-        for (Exception? e = ex; e is not null; e = e.InnerException)
-        {
-            System.Text.RegularExpressions.Match m =
-                System.Text.RegularExpressions.Regex.Match(e.Message ?? "", @"FLOOD_WAIT_(\d+)");
-            if (m.Success)
-            {
-                seconds = int.Parse(m.Groups[1].Value);
-                return true;
-            }
-        }
-        return false;
-    }
+    private static bool IsRateLimit(Exception ex, out int seconds) =>
+        FailureClassifier.TryGetRateLimit(ex, out seconds);
 
     private static string DescribeFailure(string what, Exception ex)
     {
@@ -691,7 +678,7 @@ public sealed class MainForm : AppForm
         {
             return Loc.T("status.rateLimit", seconds);
         }
-        return Loc.T("status.opFailed", Loc.S("op." + what), ex.Message);
+        return Loc.T("status.opFailed", Loc.S("op." + what), FailureText.For(ex));
     }
 
     private async Task ConnectAndListChatsAsync()
@@ -1761,7 +1748,7 @@ public sealed class MainForm : AppForm
         catch (Exception ex)
         {
             AppLog.Error("Audio", $"Load failed for {audio.FileName}: {ex}");
-            PlaybackStatus(Loc.T("status.cannotPlay", Path.GetExtension(audio.FileName), ex.Message));
+            PlaybackStatus(Loc.T("status.cannotPlay", Path.GetExtension(audio.FileName), FailureText.For(ex, whilePlaying: true)));
             return;
         }
 
@@ -2104,7 +2091,8 @@ public sealed class MainForm : AppForm
             if (seq == _playSeq)
             {
                 _pendingFileId = 0;
-                PlaybackStatus(Loc.T("status.downloadFailed", ex.Message));
+                AppLog.Error("Download", $"{audio.FileName}: {ex}");
+                PlaybackStatus(Loc.T("status.downloadFailed", FailureText.For(ex)));
                 ShowSelected();
             }
             return;
@@ -2127,7 +2115,7 @@ public sealed class MainForm : AppForm
         catch (Exception ex)
         {
             AppLog.Error("Audio", $"Load failed for {audio.FileName}: {ex}");
-            PlaybackStatus(Loc.T("status.cannotPlayElsewhere", Path.GetExtension(audio.FileName), ex.Message));
+            PlaybackStatus(Loc.T("status.cannotPlayElsewhere", Path.GetExtension(audio.FileName), FailureText.For(ex, whilePlaying: true)));
             ShowSelected();
             return;
         }
@@ -2156,7 +2144,8 @@ public sealed class MainForm : AppForm
         }
         catch (Exception ex)
         {
-            PlaybackStatus(Loc.T("status.cannotOpenFolder", ex.Message));
+            AppLog.Error("Folder", ex.ToString());
+            PlaybackStatus(Loc.T("status.cannotOpenFolder", FailureText.For(ex)));
         }
     }
 
@@ -2224,7 +2213,7 @@ public sealed class MainForm : AppForm
             {
                 saving = false;
                 AppLog.Error("Download", $"{audio.FileName}: {ex.Message}");
-                Toast(Loc.T("status.downloadFailed", ex.Message));
+                Toast(Loc.T("status.downloadFailed", FailureText.For(ex)));
                 return;
             }
             saving = false;
@@ -2267,7 +2256,7 @@ public sealed class MainForm : AppForm
         catch (Exception ex)
         {
             AppLog.Error("Download", $"{name}: {ex.Message}");
-            Toast(Loc.T("status.downloadFailed", ex.Message));
+            Toast(Loc.T("status.downloadFailed", FailureText.For(ex)));
         }
     }
 

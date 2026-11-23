@@ -178,7 +178,7 @@ public sealed class AudioPlayer : IAudioPlayer
             // Media Foundation has no AIFF source reader at all ("stream type
             // not supported", 0xC00D36C4) - AudioFileReader's fallback to it
             // fails the same way. NAudio ships its own AiffFileReader though.
-            output = WrapAsSampleChannel(new AiffFileReader(filePath));
+            output = WrapAsSampleChannel(OpenAiff(filePath));
         }
         else
         {
@@ -216,6 +216,18 @@ public sealed class AudioPlayer : IAudioPlayer
     }
 
     private Stream? _ownedStream;   // a FileStream we opened ourselves and must dispose
+
+    /// <summary>Opens an .aiff, tolerating stray bytes after its last chunk (see <see cref="AiffTolerance"/>).</summary>
+    private WaveStream OpenAiff(string filePath)
+    {
+        AiffFileReader reader = AiffTolerance.Open(filePath, out Stream? owned);
+        if (owned is not null)
+        {
+            AppLog.Line("Audio", $"AIFF with stray bytes after its last chunk: {Path.GetFileName(filePath)} - read up to the last complete chunk");
+            _ownedStream = owned;
+        }
+        return reader;
+    }
 
     /// <summary>
     /// Opens a .flac file. Falls back for the two common failures of
